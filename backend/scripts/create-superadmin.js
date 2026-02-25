@@ -14,9 +14,9 @@ const createSuperAdmin = async () => {
     console.log("✅ Connected to database");
 
     // Check if superadmin already exists
-    const existingSuperAdmin = await Staff.findOne({ email: "superadmin@ecommerce.com" });
+    const existingSuperAdmin = await Staff.findOne({ email: "superadmin@shopwithniya.com" });
     if (existingSuperAdmin) {
-      console.log("⚠️  Superadmin already exists with email: superadmin@ecommerce.com");
+      console.log("⚠️  Superadmin already exists with email: superadmin@shopwithniya.com");
       process.exit(0);
     }
 
@@ -42,7 +42,7 @@ const createSuperAdmin = async () => {
     // Create superadmin user
     const superAdmin = new Staff({
       name: "Super Admin",
-      email: "superadmin@ecommerce.com",
+      email: "superadmin@shopwithniya.com",
       password: hashedPassword,
       phone: "+1234567890",
       joining_date: new Date(),
@@ -53,7 +53,7 @@ const createSuperAdmin = async () => {
 
     await superAdmin.save();
     console.log("✅ Superadmin created successfully!");
-    console.log("📧 Email: superadmin@ecommerce.com");
+    console.log("📧 Email: superadmin@shopwithniya.com");
     console.log("🔑 Password: 123456");
     console.log("👤 Role: Super Admin");
 

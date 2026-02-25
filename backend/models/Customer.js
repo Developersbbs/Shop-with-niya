@@ -15,6 +15,7 @@ const customerSchema = new mongoose.Schema({
   updated_at: { type: Date, default: Date.now },
 });
 
+
 // Add indexes for better query performance
 customerSchema.index({ name: 1 });
 // Create unique index for phone with partial filter to allow multiple nulls but ensure unique non-null values

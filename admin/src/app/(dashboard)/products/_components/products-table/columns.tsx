@@ -44,8 +44,14 @@ function transformProductsForTable(products: Product[]): TransformedProduct[] {
     if (product.product_variants && product.product_variants.length > 0) {
       // For variant products, create separate rows for each variant
       product.product_variants.forEach((variant, index) => {
+        // Ensure each variant row has a unique _id so React keys are unique.
+        // Prefer the variant's own _id if available, otherwise synthesize one.
+        const variantRowId = variant._id?.toString() || `${product._id}-variant-${index}`;
+
         transformedProducts.push({
           ...product,
+          id: variantRowId,
+          _id: variantRowId,
           _isVariant: true,
           _variantIndex: index,
           _variantData: variant,
@@ -66,9 +72,10 @@ function transformProductsForTable(products: Product[]): TransformedProduct[] {
         } as TransformedProduct);
       });
     } else {
-      // For simple products, add as-is
+      // For simple products, add as-is and ensure `id` is set for table row keys
       transformedProducts.push({
         ...product,
+        id: product._id?.toString() || product.id,
         _isVariant: false,
         _variantIndex: 0,
       } as TransformedProduct);
