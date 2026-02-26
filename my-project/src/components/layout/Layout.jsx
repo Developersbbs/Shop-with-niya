@@ -10,7 +10,7 @@ const Layout = () => {
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      <main className={`flex-grow ${!isHomePage ? 'pt-[72px] container mx-auto px-4 py-6' : ''}`}>
+      <main className={`flex-grow ${!isHomePage ? 'pt-[82px] container mx-auto px-4 py-6' : ''}`}>
         <Outlet />
       </main>
       <Footer />
