@@ -7,1206 +7,634 @@ import { uploadProfilePhoto } from '../services/storageService';
 import orderService from '../services/orderService';
 import addressService from '../services/addressService';
 
-const ProfilePage = () => {
-  const [activeTab, setActiveTab] = useState('profile');
-  const [isPageLoading, setIsPageLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+const STYLE_ID = 'profile-v2-styles';
+if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
+  const s = document.createElement('style');
+  s.id = STYLE_ID;
+  s.textContent = `
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600&display=swap');
+    .pp { font-family: 'DM Sans', sans-serif; }
+    @keyframes pp-in { from{opacity:0;transform:translateY(24px) scale(0.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+    @keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
+    .pp-fade { animation: pp-in 0.55s cubic-bezier(0.22,1,0.36,1) both; }
+    .pp-shimmer { background:linear-gradient(90deg,#f0f0f0 25%,#e4e4e4 50%,#f0f0f0 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:12px; }
+    .pp-input {
+      width:100%; padding:12px 16px; border-radius:12px;
+      border:1.5px solid #d1e8e4; background:#f7faf9;
+      font-size:14px; font-family:'DM Sans',sans-serif; color:#111;
+      transition:all 0.2s; outline:none; box-sizing:border-box;
+    }
+    .pp-input:focus { border-color:#082B27; background:#fff; box-shadow:0 0 0 4px rgba(8,43,39,0.07); }
+    .pp-input:hover:not(:focus) { border-color:#a8cec8; }
+    .pp-input:disabled { background:#f0f0f0; color:#aaa; cursor:not-allowed; }
+    select.pp-input { cursor:pointer; }
+    .pp-label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#082B27; opacity:0.55; margin-bottom:6px; }
+    .pp-primary {
+      display:inline-flex; align-items:center; justify-content:center; gap:7px;
+      padding:11px 22px; border-radius:12px; background:#082B27;
+      color:#fff; font-weight:600; font-size:14px; font-family:'DM Sans',sans-serif;
+      border:none; cursor:pointer; transition:all 0.25s;
+    }
+    .pp-primary:hover { background:#0d3d38; transform:translateY(-1px); box-shadow:0 8px 24px rgba(8,43,39,0.25); }
+    .pp-primary:active { transform:scale(0.97); }
+    .pp-primary:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none; }
+    .pp-ghost {
+      display:inline-flex; align-items:center; justify-content:center; gap:7px;
+      padding:11px 22px; border-radius:12px;
+      border:1.5px solid #d1e8e4; background:#fff;
+      color:#082B27; font-weight:500; font-size:14px; font-family:'DM Sans',sans-serif;
+      cursor:pointer; transition:all 0.2s;
+    }
+    .pp-ghost:hover { border-color:#082B27; background:#f7faf9; }
+    .pp-ghost:disabled { opacity:0.5; cursor:not-allowed; }
+    .pp-tab {
+      padding:14px 22px; font-size:13px; font-weight:500;
+      font-family:'DM Sans',sans-serif; border:none; background:transparent;
+      cursor:pointer; color:#94b5b0; border-bottom:2px solid transparent;
+      transition:all 0.2s; white-space:nowrap; display:flex; align-items:center; gap:6px;
+    }
+    .pp-tab.active { color:#082B27; border-bottom-color:#082B27; font-weight:700; }
+    .pp-tab:hover:not(.active) { color:#082B27; background:#f7faf9; }
+    .pp-status {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:4px 12px; border-radius:99px;
+      font-size:11px; font-weight:700; text-transform:capitalize; letter-spacing:0.03em;
+    }
+    .pp-order-card {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 20px; border-radius:16px; border:1.5px solid #e8f4f1;
+      background:#fff; transition:all 0.2s; cursor:pointer;
+    }
+    .pp-order-card:hover { border-color:#082B27; box-shadow:0 4px 20px rgba(8,43,39,0.08); transform:translateY(-1px); }
+    .pp-addr-card {
+      padding:20px; border-radius:16px; border:1.5px solid #e8f4f1;
+      background:#fff; transition:all 0.25s; position:relative;
+    }
+    .pp-addr-card.default { border-color:#082B27; background:linear-gradient(135deg,#f7faf9,#f0fdf8); }
+    .pp-addr-card:hover { box-shadow:0 4px 20px rgba(8,43,39,0.08); }
+    .pp-info-row {
+      display:flex; padding:14px 20px; align-items:flex-start; gap:16px;
+      border-bottom:1px solid #f0f7f5; transition:background 0.15s;
+    }
+    .pp-info-row:last-child { border-bottom:none; }
+    .pp-info-row:hover { background:#fafcfb; }
+    .pp-check {
+      width:18px; height:18px; border-radius:6px; border:1.5px solid #d1e8e4;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; transition:all 0.2s; flex-shrink:0;
+    }
+    .pp-check.checked { background:#082B27; border-color:#082B27; }
+  `;
+  document.head.appendChild(s);
+}
+
+const STATUS_STYLES = {
+  delivered:  { bg:'#dcfce7', color:'#166534', dot:'#16a34a' },
+  shipped:    { bg:'#dbeafe', color:'#1e40af', dot:'#3b82f6' },
+  processing: { bg:'#fef9c3', color:'#854d0e', dot:'#ca8a04' },
+  cancelled:  { bg:'#fee2e2', color:'#991b1b', dot:'#ef4444' },
+  default:    { bg:'#f3f4f6', color:'#374151', dot:'#9ca3af' },
+};
+
+/* ── tiny reusable field ── */
+const Field = ({ label, error, children }) => (
+  <div>
+    {label && <label className="pp-label">{label}</label>}
+    {children}
+    {error && <p style={{ color:'#e05555', fontSize:12, marginTop:5 }}>{error}</p>}
+  </div>
+);
+
+const Spinner = () => (
+  <svg className="animate-spin" style={{ width:16, height:16 }} fill="none" viewBox="0 0 24 24">
+    <circle style={{ opacity:0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+    <path style={{ opacity:0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+  </svg>
+);
+
+export default function ProfilePage() {
+  const [activeTab, setActiveTab]               = useState('profile');
+  const [isPageLoading, setIsPageLoading]       = useState(true);
+  const [isSaving, setIsSaving]                 = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [error, setError] = useState(null);
-  const [authChecked, setAuthChecked] = useState(false);
-  const { user, loading: authLoading } = useSelector((state) => state.auth);
-  const [userData, setUserData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: '',
-    avatar: 'https://via.placeholder.com/150',
-    memberSince: '',
-  });
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ ...userData });
+  const [error, setError]                       = useState(null);
+  const [authChecked, setAuthChecked]           = useState(false);
+  const { loading: authLoading }                = useSelector(s => s.auth);
+
+  const [userData, setUserData] = useState({ firstName:'', lastName:'', email:'', phone:'', address:'', avatar:'https://via.placeholder.com/150', memberSince:'' });
+  const [isEditing, setIsEditing]               = useState(false);
+  const [formData, setFormData]                 = useState({ ...userData });
   const [selectedAvatarFile, setSelectedAvatarFile] = useState(null);
-  const [orders, setOrders] = useState([]);
+
+  const [orders, setOrders]                   = useState([]);
   const [isOrdersLoading, setIsOrdersLoading] = useState(false);
-  const [addresses, setAddresses] = useState([]);
+
+  const [addresses, setAddresses]                   = useState([]);
   const [isAddressesLoading, setIsAddressesLoading] = useState(false);
-  const [showAddressModal, setShowAddressModal] = useState(false);
-  const [editingAddress, setEditingAddress] = useState(null);
-  const [addressForm, setAddressForm] = useState({
-    type: 'Home',
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    street: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: 'USA',
-    is_default: false
-  });
+  const [showAddressModal, setShowAddressModal]     = useState(false);
+  const [editingAddress, setEditingAddress]         = useState(null);
+
+  const emptyAddrForm = { type:'Home', firstName:'', lastName:'', email:'', phone:'', street:'', city:'', state:'', zipCode:'', country:'India', is_default:false };
+  const [addressForm, setAddressForm] = useState(emptyAddrForm);
+
   const navigate = useNavigate();
   const location = useLocation();
-  const auth = getAuth();
+  const auth     = getAuth();
 
+  /* ── fetch profile ── */
   const fetchUserData = useCallback(async () => {
+    if (!authChecked || authLoading) return;
+    setIsPageLoading(true); setError(null);
     try {
-      if (!authChecked || authLoading) {
-        console.log('fetchUserData: Skipping because authChecked:', authChecked, 'authLoading:', authLoading);
-        return;
-      }
-      
-      setIsPageLoading(true);
-      setError(null);
-      
-      const currentUser = auth.currentUser;
-      console.log('fetchUserData: currentUser:', currentUser ? { uid: currentUser.uid, email: currentUser.email } : 'null');
-      
-      if (!currentUser) {
-        setError('Please sign in to view your profile');
-        setIsPageLoading(false);
-        return;
-      }
-
-      console.log('fetchUserData: Fetching profile for UID:', currentUser.uid);
-      // Fetch user data from the backend using the new endpoint
-      const response = await fetch(`http://localhost:5000/api/auth/profile/${currentUser.uid}`);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('fetchUserData: Response not ok:', response.status, errorData);
-        throw new Error(errorData.error || 'Failed to fetch user data');
-      }
-
-      const result = await response.json();
-      console.log('fetchUserData: Raw API response:', result);
-      
-      if (!result.success) {
-        console.error('fetchUserData: API returned success=false:', result);
-        throw new Error(result.error || 'Failed to load profile data');
-      }
-
-      const data = result.data;
-      console.log('fetchUserData: User data from API:', data);
-      console.log('fetchUserData: image_url from API:', data.image_url);
-
-      // Format the data for the form
-      const formattedData = {
-        firstName: data.name?.split(' ')[0] || '',
-        lastName: data.name?.split(' ').slice(1).join(' ') || '',
-        email: data.email || '',
-        phone: data.phone || '',
-        address: data.address || '',
-        avatar: data.image_url || 'https://via.placeholder.com/150',
-        memberSince: data.created_at ? new Date(data.created_at).toLocaleDateString('en-US', { 
-          year: 'numeric', 
-          month: 'long' 
-        }) : 'N/A'
+      const cu = auth.currentUser;
+      if (!cu) { setError('Please sign in'); setIsPageLoading(false); return; }
+      const res  = await fetch(`http://localhost:5000/api/auth/profile/${cu.uid}`);
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed'); }
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error || 'Failed');
+      const d = result.data;
+      const fmt = {
+        firstName: d.name?.split(' ')[0] || '',
+        lastName:  d.name?.split(' ').slice(1).join(' ') || '',
+        email:     d.email   || '',
+        phone:     d.phone   || '',
+        address:   d.address || '',
+        avatar:    d.image_url || 'https://via.placeholder.com/150',
+        memberSince: d.created_at ? new Date(d.created_at).toLocaleDateString('en-US',{ year:'numeric', month:'long' }) : 'N/A',
       };
-
-      console.log('fetchUserData: Formatted data:', formattedData);
-      console.log('fetchUserData: Avatar URL set to:', formattedData.avatar);
-
-      setUserData(formattedData);
-      setFormData(formattedData);
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      setError('Failed to load profile data. Please try again.');
-    } finally {
-      setIsPageLoading(false);
-    }
+      setUserData(fmt); setFormData(fmt);
+    } catch(e) { setError('Failed to load profile data. Please try again.'); }
+    finally { setIsPageLoading(false); }
   }, [authChecked, authLoading, auth]);
 
+  /* ── fetch orders ── */
   const fetchUserOrders = useCallback(async () => {
+    const cu = auth.currentUser; if (!cu) return;
+    setIsOrdersLoading(true);
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        console.log('fetchUserOrders: No current user');
-        return;
-      }
-
-      setIsOrdersLoading(true);
-      console.log('fetchUserOrders: Fetching orders for UID:', currentUser.uid);
-
-      const response = await orderService.getMyOrders(currentUser.uid);
-      console.log('fetchUserOrders: Orders response:', response);
-
-      // orderService returns the orders array directly
-      if (Array.isArray(response)) {
-        setOrders(response);
-        console.log('fetchUserOrders: Successfully loaded', response.length, 'orders');
-      } else {
-        console.error('fetchUserOrders: Invalid response format:', response);
-        setOrders([]);
-        toast.error('Failed to load orders - invalid response format');
-      }
-    } catch (error) {
-      console.error('Error fetching user orders:', error);
-      setOrders([]);
-      toast.error('Failed to load orders');
-    } finally {
-      setIsOrdersLoading(false);
-    }
+      const res = await orderService.getMyOrders(cu.uid);
+      setOrders(Array.isArray(res) ? res : []);
+    } catch { setOrders([]); toast.error('Failed to load orders'); }
+    finally { setIsOrdersLoading(false); }
   }, [auth]);
 
+  /* ── fetch addresses ── */
   const fetchUserAddresses = useCallback(async () => {
+    const cu = auth.currentUser; if (!cu) return;
+    setIsAddressesLoading(true);
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        console.log('fetchUserAddresses: No current user');
-        return;
-      }
-
-      setIsAddressesLoading(true);
-      console.log('fetchUserAddresses: Fetching addresses for UID:', currentUser.uid);
-
-      const response = await addressService.getAddresses();
-      console.log('fetchUserAddresses: Addresses response:', response);
-
-      if (response.success) {
-        setAddresses(response.data || []);
-      } else {
-        console.error('fetchUserAddresses: Failed to fetch addresses:', response.error);
-        setAddresses([]);
-        toast.error('Failed to load addresses');
-      }
-    } catch (error) {
-      console.error('Error fetching user addresses:', error);
-      setAddresses([]);
-      toast.error('Failed to load addresses');
-    } finally {
-      setIsAddressesLoading(false);
-    }
+      const res = await addressService.getAddresses();
+      setAddresses(res.success ? (res.data || []) : []);
+      if (!res.success) toast.error('Failed to load addresses');
+    } catch { setAddresses([]); toast.error('Failed to load addresses'); }
+    finally { setIsAddressesLoading(false); }
   }, [auth]);
 
-  const handleAddAddress = () => {
-    setEditingAddress(null);
-    setAddressForm({
-      type: 'Home',
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: 'USA',
-      is_default: false
-    });
-    setShowAddressModal(true);
-  };
+  /* ── address CRUD ── */
+  const handleAddAddress = () => { setEditingAddress(null); setAddressForm(emptyAddrForm); setShowAddressModal(true); };
 
-  const handleEditAddress = (address) => {
-    setEditingAddress(address);
-    setAddressForm({
-      type: address.type || 'Home',
-      firstName: address.firstName || '',
-      lastName: address.lastName || '',
-      email: address.email || '',
-      phone: address.phone || '',
-      street: address.street || '',
-      city: address.city || '',
-      state: address.state || '',
-      zipCode: address.zipCode || '',
-      country: address.country || 'USA',
-      is_default: address.is_default || false
-    });
+  const handleEditAddress = (a) => {
+    setEditingAddress(a);
+    setAddressForm({ type:a.type||'Home', firstName:a.firstName||'', lastName:a.lastName||'', email:a.email||'', phone:a.phone||'', street:a.street||'', city:a.city||'', state:a.state||'', zipCode:a.zipCode||'', country:a.country||'India', is_default:a.is_default||false });
     setShowAddressModal(true);
   };
 
   const handleSaveAddress = async () => {
-    try {
-      // Validate required structured fields
-      if (!addressForm.firstName.trim() || !addressForm.lastName.trim() || !addressForm.email.trim() || !addressForm.phone.trim() || !addressForm.street.trim() || !addressForm.city.trim() || !addressForm.state.trim() || !addressForm.zipCode.trim()) {
-        toast.error('Please fill in all required address fields');
-        return;
-      }
-
-      console.log('handleSaveAddress: Saving structured address', addressForm);
-
-      let response;
-      if (editingAddress) {
-        // Update existing address
-        response = await addressService.updateAddress(editingAddress._id, {
-          type: addressForm.type,
-          firstName: addressForm.firstName,
-          lastName: addressForm.lastName,
-          email: addressForm.email,
-          phone: addressForm.phone,
-          street: addressForm.street,
-          city: addressForm.city,
-          state: addressForm.state,
-          zipCode: addressForm.zipCode,
-          country: addressForm.country,
-          is_default: addressForm.is_default || false
-        });
-      } else {
-        // Create new address
-        response = await addressService.createAddress({
-          type: addressForm.type,
-          firstName: addressForm.firstName,
-          lastName: addressForm.lastName,
-          email: addressForm.email,
-          phone: addressForm.phone,
-          street: addressForm.street,
-          city: addressForm.city,
-          state: addressForm.state,
-          zipCode: addressForm.zipCode,
-          country: addressForm.country,
-          is_default: addressForm.is_default || false
-        });
-      }
-
-      console.log('handleSaveAddress: Response:', response);
-
-      if (response.success) {
-        setShowAddressModal(false);
-        setAddressForm({
-          type: 'Home',
-          firstName: '',
-          lastName: '',
-          email: '',
-          phone: '',
-          street: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          country: 'USA',
-          is_default: false
-        });
-        setEditingAddress(null);
-        toast.success(editingAddress ? 'Address updated successfully!' : 'Address added successfully!');
-
-        // Refresh addresses
-        await fetchUserAddresses();
-      } else {
-        throw new Error(response.error || 'Failed to save address');
-      }
-    } catch (error) {
-      console.error('Error saving address:', error);
-      toast.error('Failed to save address. Please try again.');
+    const f = addressForm;
+    if (!f.firstName.trim()||!f.lastName.trim()||!f.email.trim()||!f.phone.trim()||!f.street.trim()||!f.city.trim()||!f.state.trim()||!f.zipCode.trim()) {
+      toast.error('Please fill all required fields'); return;
     }
+    try {
+      const payload = { type:f.type, firstName:f.firstName, lastName:f.lastName, email:f.email, phone:f.phone, street:f.street, city:f.city, state:f.state, zipCode:f.zipCode, country:f.country, is_default:f.is_default||false };
+      const res = editingAddress ? await addressService.updateAddress(editingAddress._id, payload) : await addressService.createAddress(payload);
+      if (res.success) {
+        setShowAddressModal(false); setEditingAddress(null); setAddressForm(emptyAddrForm);
+        toast.success(editingAddress ? 'Address updated!' : 'Address added!');
+        await fetchUserAddresses();
+      } else throw new Error(res.error || 'Failed to save');
+    } catch { toast.error('Failed to save address.'); }
   };
 
-  const handleDeleteAddress = async (address) => {
-    if (!confirm('Are you sure you want to delete this address?')) {
-      return;
-    }
-
+  const handleDeleteAddress = async (a) => {
+    if (!confirm('Delete this address?')) return;
     try {
-      console.log('handleDeleteAddress: Deleting address', address._id);
-
-      const response = await addressService.deleteAddress(address._id);
-      console.log('handleDeleteAddress: Response:', response);
-
-      if (response.success) {
-        toast.success('Address deleted successfully!');
-
-        // Refresh addresses
-        await fetchUserAddresses();
-      } else {
-        throw new Error(response.error || 'Failed to delete address');
-      }
-    } catch (error) {
-      console.error('Error deleting address:', error);
-      toast.error('Failed to delete address. Please try again.');
-    }
+      const res = await addressService.deleteAddress(a._id);
+      if (res.success) { toast.success('Address deleted!'); await fetchUserAddresses(); }
+      else throw new Error(res.error);
+    } catch { toast.error('Failed to delete address.'); }
   };
 
+  /* ── effects ── */
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setAuthChecked(true);
-      if (!user) {
-        setError('Please sign in to view your profile');
-        setIsPageLoading(false);
-      }
-    });
-    return () => unsubscribe();
-  }, [navigate]);
-
-  useEffect(() => {
-    fetchUserData();
-  }, [fetchUserData]);
-
-  // Fetch orders when orders tab is active
-  useEffect(() => {
-    if (activeTab === 'orders' && auth.currentUser) {
-      fetchUserOrders();
-    }
-  }, [activeTab, auth.currentUser, fetchUserOrders]);
-
-  // Fetch addresses when addresses tab is active
-  useEffect(() => {
-    if (activeTab === 'addresses' && auth.currentUser) {
-      fetchUserAddresses();
-    }
-  }, [activeTab, auth.currentUser, fetchUserAddresses]);
-
-  const handleEditProfile = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('handleEditProfile called, setting isEditing to true');
-    setIsEditing(true);
+    const unsub = onAuthStateChanged(auth, u => { setAuthChecked(true); if (!u) { setError('Please sign in'); setIsPageLoading(false); } });
+    return () => unsub();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  useEffect(() => { fetchUserData(); }, [fetchUserData]);
+  useEffect(() => { if (activeTab==='orders'    && auth.currentUser) fetchUserOrders(); },    [activeTab]);
+  useEffect(() => { if (activeTab==='addresses' && auth.currentUser) fetchUserAddresses(); }, [activeTab]);
 
-  const handleSubmit = async (e) => {
+  /* ── profile edit ── */
+  const handleEditProfile = useCallback(e => { e.preventDefault(); e.stopPropagation(); setIsEditing(true); }, []);
+  const handleChange = e => { const {name,value}=e.target; setFormData(p=>({...p,[name]:value})); };
+
+  const handleSubmit = async e => {
     e.preventDefault();
-    console.log('handleSubmit called, isEditing will be set to false');
+    setIsSaving(true);
     try {
-      setIsSaving(true);
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        setError('Please sign in to update your profile');
-        setIsSaving(false);
-        return;
-      }
-
-      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+      const cu = auth.currentUser;
+      if (!cu) { setError('Please sign in'); setIsSaving(false); return; }
       let avatarUrl = formData.avatar;
-
       if (selectedAvatarFile) {
-        try {
-          const { downloadURL } = await uploadProfilePhoto(currentUser.uid, selectedAvatarFile);
-          avatarUrl = downloadURL;
-        } catch (uploadError) {
-          console.error('Error uploading profile photo:', uploadError);
-          setError('Failed to upload profile photo. Please try again.');
-          toast.error('Failed to upload profile photo. Please try again.');
-          setIsSaving(false);
-          return;
-        }
+        try { const { downloadURL } = await uploadProfilePhoto(cu.uid, selectedAvatarFile); avatarUrl = downloadURL; }
+        catch { toast.error('Failed to upload photo.'); setIsSaving(false); return; }
       }
-
-      if (typeof avatarUrl === 'string' && avatarUrl.startsWith('data:')) {
-        avatarUrl = userData.avatar;
-      }
-      
-      const response = await fetch(`http://localhost:5000/api/auth/profile/${currentUser.uid}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: fullName,
-          email: formData.email,
-          phone: formData.phone,
-          address: formData.address,
-          image_url: avatarUrl
-        })
+      if (typeof avatarUrl==='string' && avatarUrl.startsWith('data:')) avatarUrl = userData.avatar;
+      const res = await fetch(`http://localhost:5000/api/auth/profile/${cu.uid}`, {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ name:`${formData.firstName} ${formData.lastName}`.trim(), email:formData.email, phone:formData.phone, address:formData.address, image_url:avatarUrl })
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update profile');
-      }
-
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to update profile');
-      }
-
-      // Update the local state with the new data
-      const updatedData = {
-        ...formData,
-        avatar: avatarUrl,
-        memberSince: userData.memberSince // Keep the original memberSince
-      };
-      
-      setUserData(updatedData);
-      setFormData(updatedData);
-      setSelectedAvatarFile(null);
-      setIsEditing(false);
-      setError(null);
-      toast.success('Profile updated successfully!');
-      
-      // Refetch user data to update the state
-      await fetchUserData();
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      setError(error.message || 'Failed to update profile. Please try again.');
-      toast.error('Failed to update profile. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
+      if (!res.ok) { const e=await res.json(); throw new Error(e.error||'Failed'); }
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error||'Failed');
+      const upd = { ...formData, avatar:avatarUrl, memberSince:userData.memberSince };
+      setUserData(upd); setFormData(upd); setSelectedAvatarFile(null); setIsEditing(false); setError(null);
+      toast.success('Profile updated!'); await fetchUserData();
+    } catch(e) { setError(e.message||'Failed to update.'); toast.error('Failed to update profile.'); }
+    finally { setIsSaving(false); }
   };
 
-  const handleCancel = () => {
-    console.log('handleCancel called, setting isEditing to false');
-    setFormData({
-      ...userData,
-      // Ensure we're using the latest userData
-      firstName: userData.firstName || '',
-      lastName: userData.lastName || '',
-      email: userData.email || '',
-      phone: userData.phone || '',
-      address: userData.address || '',
-      avatar: userData.avatar || 'https://via.placeholder.com/150'
-    });
-    setSelectedAvatarFile(null);
-    setIsEditing(false);
-    setError(null);
+  const handleCancel = () => { setFormData({...userData}); setSelectedAvatarFile(null); setIsEditing(false); setError(null); };
+
+  const handleFileChange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    if (!file.type.match('image.*')) { setError('Invalid image file'); return; }
+    if (file.size > 5*1024*1024) { setError('Image must be under 5MB'); return; }
+    const reader = new FileReader();
+    reader.onloadstart = () => setIsUploadingImage(true);
+    reader.onloadend  = () => { setFormData(p=>({...p,avatar:reader.result})); setSelectedAvatarFile(file); setError(null); setIsUploadingImage(false); };
+    reader.onerror    = () => { setError('Error reading file'); setIsUploadingImage(false); };
+    reader.readAsDataURL(file);
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.match('image.*')) {
-        setError('Please select a valid image file');
-        return;
-      }
-
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image size should be less than 5MB');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadstart = () => setIsUploadingImage(true);
-      reader.onloadend = () => {
-        setFormData(prev => ({
-          ...prev,
-          avatar: reader.result
-        }));
-        setSelectedAvatarFile(file);
-        setError(null);
-        setIsUploadingImage(false);
-      };
-      reader.onerror = () => {
-        setError('Error reading file');
-        setIsUploadingImage(false);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  if (!authChecked || authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+  /* ── guards ── */
+  if (!authChecked || authLoading) return (
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f7faf9' }}>
+      <div style={{ width:40, height:40, borderRadius:'50%', border:'3px solid #082B27', borderTopColor:'transparent', animation:'spin 0.8s linear infinite' }} />
+    </div>
+  );
+  if (!auth.currentUser) return <Navigate to="/login" state={{ from:location }} replace />;
+  if (isPageLoading) return (
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f7faf9' }}>
+      <div style={{ textAlign:'center' }}>
+        <div style={{ width:44, height:44, borderRadius:'50%', border:'3px solid #082B27', borderTopColor:'transparent', animation:'spin 0.8s linear infinite', margin:'0 auto 12px' }} />
+        <p style={{ color:'#7a9e99', fontSize:13, fontFamily:'DM Sans,sans-serif' }}>Loading your profile…</p>
       </div>
-    );
-  }
+    </div>
+  );
 
-  // Redirect to login if not authenticated
-  if (!auth.currentUser) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
+  const initials = `${userData.firstName?.[0]||''}${userData.lastName?.[0]||''}`.toUpperCase() || '?';
+  const fullName = `${userData.firstName} ${userData.lastName}`.trim();
 
-  if (isPageLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
+  const tabs = [
+    { key:'profile',   icon:'👤', label:'Profile'   },
+    { key:'orders',    icon:'📦', label:'Orders'     },
+    { key:'addresses', icon:'📍', label:'Addresses'  },
+  ];
 
-  if (error) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="bg-red-50 border-l-4 border-red-400 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
+  return (
+    <div className="pp pp-fade" style={{ minHeight:'100vh', background:'linear-gradient(160deg,#f0fdf4 0%,#f7faf9 45%,#ecfdf5 100%)', paddingTop:40, paddingBottom:60 }}>
+      <div style={{ maxWidth:860, margin:'0 auto', padding:'0 16px' }}>
+
+        {/* ══════════ HERO CARD ══════════ */}
+        <div style={{ borderRadius:28, overflow:'hidden', boxShadow:'0 12px 50px rgba(8,43,39,0.11)', marginBottom:20 }}>
+          {/* Banner */}
+          <div style={{ height:130, background:'linear-gradient(135deg,#052018 0%,#082B27 40%,#155e4c 75%,#0a3830 100%)', position:'relative', overflow:'hidden' }}>
+            {/* decorative rings */}
+            {[180,120,70].map((size,i)=>(
+              <div key={i} style={{ position:'absolute', right:-size*0.3, top:-size*0.3, width:size, height:size, borderRadius:'50%', border:'1.5px solid rgba(255,255,255,0.07)' }} />
+            ))}
+            {/* dot grid */}
+            <div style={{ position:'absolute', inset:0, opacity:0.06, backgroundImage:'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize:'22px 22px' }} />
+            {/* Niya brand text watermark */}
+            <div style={{ position:'absolute', right:24, bottom:12, fontFamily:'"Playfair Display",serif', fontSize:42, fontWeight:900, color:'white', opacity:0.04, letterSpacing:'-1px', userSelect:'none' }}>NIYA</div>
+          </div>
+
+          {/* Profile info row */}
+          <div style={{ background:'white', padding:'0 28px 24px' }}>
+            <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginTop:-15 }}>
+              {/* Avatar */}
+              <div style={{ position:'relative', width:80, height:80, flexShrink:0 }}>
+                {userData.avatar && !userData.avatar.includes('placeholder') ? (
+                  <img src={userData.avatar} alt="avatar" style={{ width:80, height:80, borderRadius:20, objectFit:'cover', border:'4px solid white', boxShadow:'0 4px 20px rgba(8,43,39,0.18)' }} />
+                ) : (
+                  <div style={{ width:80, height:80, borderRadius:20, background:'#082B27', border:'4px solid white', boxShadow:'0 4px 20px rgba(8,43,39,0.18)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, fontWeight:900, color:'white', fontFamily:'"Playfair Display",serif' }}>
+                    {initials}
+                  </div>
+                )}
+                {/* online dot */}
+                <div style={{ position:'absolute', bottom:4, right:4, width:14, height:14, borderRadius:'50%', background:'#22c55e', border:'2.5px solid white' }} />
+              </div>
+
+              {/* Name + email */}
+              <div style={{ flex:1, minWidth:0, paddingBottom:12 }}>
+                <h1 style={{ margin:0, fontSize:22, fontWeight:900, color:'#082B27', fontFamily:'"Playfair Display",serif', letterSpacing:'-0.5px' }}>{fullName || 'Your Name'}</h1>
+                <p style={{ margin:'3px 0 0', fontSize:13, color:'#7a9e99' }}>{userData.email}</p>
+              </div>
+
+              {/* Stats pills */}
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap', paddingBottom:4 }}>
+                <div style={{ padding:'7px 16px', borderRadius:99, background:'#f0fdf4', border:'1px solid #bbf7d0', fontSize:12, fontWeight:600, color:'#082B27', display:'flex', alignItems:'center', gap:5 }}>
+                  🌿 Since {userData.memberSince}
+                </div>
+                <div style={{ padding:'7px 16px', borderRadius:99, background:'#fefce8', border:'1px solid #fde68a', fontSize:12, fontWeight:600, color:'#854d0e', display:'flex', alignItems:'center', gap:5 }}>
+                  📦 {orders.length} Orders
+                </div>
+              </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="mt-2 text-sm font-medium text-red-700 hover:text-red-600"
-              >
-                Try again
+          </div>
+        </div>
+
+        {/* ══════════ MAIN CARD ══════════ */}
+        <div style={{ background:'white', borderRadius:24, overflow:'hidden', boxShadow:'0 8px 40px rgba(8,43,39,0.08)' }}>
+
+          {/* Tab bar */}
+          <div style={{ display:'flex', borderBottom:'1.5px solid #e8f4f1', padding:'0 12px', background:'white', position:'sticky', top:0, zIndex:10 }}>
+            {tabs.map(t => (
+              <button key={t.key} className={`pp-tab ${activeTab===t.key?'active':''}`} onClick={()=>setActiveTab(t.key)}>
+                <span>{t.icon}</span> {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ padding:'28px 32px' }}>
+
+            {/* ════ PROFILE TAB ════ */}
+            {activeTab==='profile' && (
+              <div>
+                {/* Section header */}
+                <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:24 }}>
+                  <div>
+                    <h2 style={{ margin:0, fontSize:18, fontWeight:900, color:'#082B27', fontFamily:'"Playfair Display",serif' }}>Profile Information</h2>
+                    <p style={{ margin:'4px 0 0', fontSize:13, color:'#7a9e99' }}>Update your personal details</p>
+                  </div>
+                  {!isEditing && (
+                    <button className="pp-ghost" style={{ fontSize:13, padding:'9px 18px' }} onClick={handleEditProfile}>
+                      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                      Edit Profile
+                    </button>
+                  )}
+                </div>
+
+                {error && (
+                  <div style={{ display:'flex', gap:10, padding:'12px 16px', borderRadius:12, background:'#fff5f5', border:'1px solid #fca5a5', marginBottom:20 }}>
+                    <svg width="16" height="16" style={{ color:'#e05555', flexShrink:0, marginTop:1 }} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/></svg>
+                    <p style={{ margin:0, fontSize:13, color:'#c53030' }}>{error}</p>
+                  </div>
+                )}
+
+                {isEditing ? (
+                  <form key="edit" onSubmit={handleSubmit}>
+                    {/* Avatar row */}
+                    <div style={{ display:'flex', alignItems:'center', gap:20, padding:20, borderRadius:16, background:'#f7faf9', border:'1.5px dashed #d1e8e4', marginBottom:20 }}>
+                      <div style={{ width:68, height:68, borderRadius:16, overflow:'hidden', border:'2px solid #d1e8e4', flexShrink:0 }}>
+                        {formData.avatar && !formData.avatar.includes('placeholder') ? (
+                          <img src={formData.avatar} alt="avatar" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                        ) : (
+                          <div style={{ width:'100%', height:'100%', background:'#082B27', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontWeight:900, color:'white' }}>{initials}</div>
+                        )}
+                      </div>
+                      <div>
+                        <label htmlFor="avatar-input" className="pp-ghost" style={{ fontSize:13, padding:'8px 16px', cursor:'pointer' }}>
+                          {isUploadingImage ? 'Uploading…' : '📷 Change Photo'}
+                          <input id="avatar-input" name="avatar" type="file" style={{ display:'none' }} onChange={handleFileChange} accept="image/*" />
+                        </label>
+                        <p style={{ margin:'6px 0 0', fontSize:11, color:'#a0b8b4' }}>JPG, PNG or GIF · Max 5MB</p>
+                      </div>
+                    </div>
+
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
+                      <Field label="First Name"><input className="pp-input" type="text" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="First name" /></Field>
+                      <Field label="Last Name"><input className="pp-input" type="text" name="lastName" value={formData.lastName} onChange={handleChange} placeholder="Last name" /></Field>
+                    </div>
+                    <div style={{ marginBottom:16 }}>
+                      <Field label="Email Address"><input className="pp-input" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email" /></Field>
+                    </div>
+                    <div style={{ marginBottom:16 }}>
+                      <Field label="Phone Number"><input className="pp-input" type="text" name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone" /></Field>
+                    </div>
+                    <div style={{ marginBottom:24 }}>
+                      <Field label="Address"><input className="pp-input" type="text" name="address" value={formData.address} onChange={handleChange} placeholder="Your address" /></Field>
+                    </div>
+
+                    <div style={{ display:'flex', justifyContent:'flex-end', gap:12 }}>
+                      <button type="button" className="pp-ghost" onClick={handleCancel}>Cancel</button>
+                      <button type="submit" className="pp-primary" disabled={isSaving}>
+                        {isSaving ? <><Spinner /> Saving…</> : '✓ Save Changes'}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div style={{ borderRadius:16, overflow:'hidden', border:'1.5px solid #e8f4f1' }}>
+                    {[
+                      { icon:'👤', label:'Full Name',     value: fullName || '—'            },
+                      { icon:'✉️', label:'Email',         value: userData.email || '—'      },
+                      { icon:'📱', label:'Phone',         value: userData.phone || '—'      },
+                      { icon:'📍', label:'Address',       value: userData.address || '—'    },
+                      { icon:'📅', label:'Member Since',  value: userData.memberSince || '—'},
+                    ].map((row, i) => (
+                      <div key={i} className="pp-info-row" style={{ background: i%2===0 ? 'white' : '#fafcfb' }}>
+                        <span style={{ fontSize:18, flexShrink:0, marginTop:1 }}>{row.icon}</span>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'#082B27', opacity:0.45, marginBottom:3 }}>{row.label}</div>
+                          <div style={{ fontSize:14, fontWeight:500, color:'#1a1a1a', wordBreak:'break-word' }}>{row.value}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ════ ORDERS TAB ════ */}
+            {activeTab==='orders' && (
+              <div>
+                <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:24 }}>
+                  <div>
+                    <h2 style={{ margin:0, fontSize:18, fontWeight:900, color:'#082B27', fontFamily:'"Playfair Display",serif' }}>Order History</h2>
+                    <p style={{ margin:'4px 0 0', fontSize:13, color:'#7a9e99' }}>Track and review your orders</p>
+                  </div>
+                  <button className="pp-ghost" style={{ fontSize:13, padding:'9px 18px' }} onClick={fetchUserOrders} disabled={isOrdersLoading}>
+                    {isOrdersLoading ? <><Spinner /> Loading</> : '↻ Refresh'}
+                  </button>
+                </div>
+
+                {isOrdersLoading ? (
+                  <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                    {[...Array(3)].map((_,i)=><div key={i} className="pp-shimmer" style={{ height:72 }} />)}
+                  </div>
+                ) : orders.length===0 ? (
+                  <div style={{ textAlign:'center', padding:'48px 0' }}>
+                    <div style={{ width:64, height:64, borderRadius:20, background:'#f0fdf4', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:28 }}>🛍️</div>
+                    <h3 style={{ margin:'0 0 6px', fontSize:15, fontWeight:700, color:'#082B27' }}>No orders yet</h3>
+                    <p style={{ margin:'0 0 20px', fontSize:13, color:'#7a9e99' }}>Your order history will appear here</p>
+                    <Link to="/products"><button className="pp-primary">Start Shopping</button></Link>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                    {orders.map(order => {
+                      const st = (order.status||'').toLowerCase();
+                      const sc = STATUS_STYLES[st] || STATUS_STYLES.default;
+                      return (
+                        <div key={order._id||order.id} className="pp-order-card">
+                          <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+                            <div style={{ width:44, height:44, borderRadius:14, background:'#f0fdf4', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:20 }}>🛍️</div>
+                            <div>
+                              <p style={{ margin:0, fontSize:14, fontWeight:700, color:'#082B27' }}>Order #{order.order_number || order._id?.slice(-8) || 'N/A'}</p>
+                              <p style={{ margin:'3px 0 0', fontSize:12, color:'#7a9e99' }}>
+                                {order.items?.length||0} item{order.items?.length!==1?'s':''} · {order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : 'N/A'}
+                              </p>
+                            </div>
+                          </div>
+                          <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+                            <span style={{ fontSize:15, fontWeight:800, color:'#082B27' }}>₹{order.total_amount||order.total||0}</span>
+                            <span className="pp-status" style={{ background:sc.bg, color:sc.color }}>
+                              <span style={{ width:7, height:7, borderRadius:'50%', background:sc.dot, display:'inline-block' }} />
+                              {order.status||'Processing'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ════ ADDRESSES TAB ════ */}
+            {activeTab==='addresses' && (
+              <div>
+                <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:24 }}>
+                  <div>
+                    <h2 style={{ margin:0, fontSize:18, fontWeight:900, color:'#082B27', fontFamily:'"Playfair Display",serif' }}>Saved Addresses</h2>
+                    <p style={{ margin:'4px 0 0', fontSize:13, color:'#7a9e99' }}>Manage your delivery addresses</p>
+                  </div>
+                  <div style={{ display:'flex', gap:8 }}>
+                    <button className="pp-ghost" style={{ fontSize:13, padding:'9px 14px' }} onClick={fetchUserAddresses} disabled={isAddressesLoading}>{isAddressesLoading?'…':'↻'}</button>
+                    <button className="pp-primary" style={{ fontSize:13, padding:'9px 18px' }} onClick={handleAddAddress}>
+                      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4"/></svg>
+                      Add Address
+                    </button>
+                  </div>
+                </div>
+
+                {isAddressesLoading ? (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:16 }}>
+                    {[...Array(2)].map((_,i)=><div key={i} className="pp-shimmer" style={{ height:140 }} />)}
+                  </div>
+                ) : addresses.length===0 ? (
+                  <div style={{ textAlign:'center', padding:'48px 0' }}>
+                    <div style={{ width:64, height:64, borderRadius:20, background:'#f0fdf4', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:28 }}>📍</div>
+                    <h3 style={{ margin:'0 0 6px', fontSize:15, fontWeight:700, color:'#082B27' }}>No addresses saved</h3>
+                    <p style={{ margin:'0 0 20px', fontSize:13, color:'#7a9e99' }}>Add an address for faster checkout</p>
+                    <button className="pp-primary" onClick={handleAddAddress}>Add Your First Address</button>
+                  </div>
+                ) : (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:16 }}>
+                    {addresses.map(addr => (
+                      <div key={addr._id||addr.id} className={`pp-addr-card ${addr.is_default?'default':''}`}>
+                        {addr.is_default && (
+                          <div style={{ position:'absolute', top:14, right:14 }}>
+                            <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:99, background:'#082B27', color:'white', letterSpacing:'0.06em', textTransform:'uppercase' }}>Default</span>
+                          </div>
+                        )}
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+                          <span style={{ fontSize:18 }}>{addr.type==='Home'?'🏠':addr.type==='Work'?'💼':'📍'}</span>
+                          <span style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'#082B27', background:'#f0fdf4', padding:'3px 8px', borderRadius:8 }}>{addr.type||'Home'}</span>
+                        </div>
+                        <div style={{ fontSize:13, color:'#333', lineHeight:1.6 }}>
+                          {addr.firstName && <p style={{ margin:0, fontWeight:600 }}>{addr.firstName} {addr.lastName}</p>}
+                          <p style={{ margin:0 }}>{addr.street}</p>
+                          <p style={{ margin:0 }}>{addr.city}, {addr.state} {addr.zipCode}</p>
+                          <p style={{ margin:0, color:'#7a9e99' }}>{addr.country}</p>
+                          {addr.phone && <p style={{ margin:'4px 0 0', color:'#7a9e99', fontSize:12 }}>📱 {addr.phone}</p>}
+                        </div>
+                        <div style={{ display:'flex', gap:16, marginTop:14, paddingTop:12, borderTop:'1px solid #e8f4f1' }}>
+                          <button style={{ background:'none', border:'none', fontSize:12, fontWeight:700, color:'#082B27', cursor:'pointer', padding:0, textDecoration:'underline', textUnderlineOffset:3 }} onClick={()=>handleEditAddress(addr)}>Edit</button>
+                          {!addr.is_default && <button style={{ background:'none', border:'none', fontSize:12, fontWeight:700, color:'#e05555', cursor:'pointer', padding:0, textDecoration:'underline', textUnderlineOffset:3 }} onClick={()=>handleDeleteAddress(addr)}>Delete</button>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════ ADDRESS MODAL ══════════ */}
+      {showAddressModal && (
+        <div style={{ position:'fixed', inset:0, zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:16, background:'rgba(8,43,39,0.45)', backdropFilter:'blur(6px)' }}>
+          <div className="pp-fade" style={{ width:'100%', maxWidth:520, borderRadius:24, background:'white', boxShadow:'0 24px 80px rgba(8,43,39,0.22)', maxHeight:'90vh', overflowY:'auto' }}>
+            {/* Modal header */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 24px', borderBottom:'1.5px solid #e8f4f1' }}>
+              <h3 style={{ margin:0, fontSize:17, fontWeight:900, color:'#082B27', fontFamily:'"Playfair Display",serif' }}>
+                {editingAddress ? '✏️ Edit Address' : '➕ Add New Address'}
+              </h3>
+              <button style={{ width:32, height:32, borderRadius:10, border:'1.5px solid #e8f4f1', background:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#666', transition:'all 0.2s' }}
+                onClick={()=>{ setShowAddressModal(false); setEditingAddress(null); setAddressForm(emptyAddrForm); }}>
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:14 }}>
+              <Field label="Address Type">
+                <select className="pp-input" value={addressForm.type} onChange={e=>setAddressForm(p=>({...p,type:e.target.value}))}>
+                  <option value="Home">🏠 Home</option>
+                  <option value="Work">💼 Work</option>
+                  <option value="Other">📍 Other</option>
+                </select>
+              </Field>
+
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <Field label="First Name *"><input className="pp-input" type="text" placeholder="First" value={addressForm.firstName} onChange={e=>setAddressForm(p=>({...p,firstName:e.target.value}))} /></Field>
+                <Field label="Last Name *"><input className="pp-input" type="text" placeholder="Last" value={addressForm.lastName} onChange={e=>setAddressForm(p=>({...p,lastName:e.target.value}))} /></Field>
+              </div>
+
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <Field label="Email *"><input className="pp-input" type="email" placeholder="Email" value={addressForm.email} onChange={e=>setAddressForm(p=>({...p,email:e.target.value}))} /></Field>
+                <Field label="Phone *"><input className="pp-input" type="tel" placeholder="Phone" value={addressForm.phone} onChange={e=>setAddressForm(p=>({...p,phone:e.target.value}))} /></Field>
+              </div>
+
+              <Field label="Street Address *"><input className="pp-input" type="text" placeholder="Street address" value={addressForm.street} onChange={e=>setAddressForm(p=>({...p,street:e.target.value}))} /></Field>
+
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
+                <Field label="City *"><input className="pp-input" type="text" placeholder="City" value={addressForm.city} onChange={e=>setAddressForm(p=>({...p,city:e.target.value}))} /></Field>
+                <Field label="State *"><input className="pp-input" type="text" placeholder="State" value={addressForm.state} onChange={e=>setAddressForm(p=>({...p,state:e.target.value}))} /></Field>
+                <Field label="PIN Code *"><input className="pp-input" type="text" placeholder="PIN" value={addressForm.zipCode} onChange={e=>setAddressForm(p=>({...p,zipCode:e.target.value}))} /></Field>
+              </div>
+
+              {/* Custom checkbox */}
+              <label style={{ display:'flex', alignItems:'center', gap:12, cursor:'pointer', marginTop:4 }} onClick={()=>setAddressForm(p=>({...p,is_default:!p.is_default}))}>
+                <div className={`pp-check ${addressForm.is_default?'checked':''}`}>
+                  {addressForm.is_default && <svg width="10" height="10" fill="none" stroke="white" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>}
+                </div>
+                <span style={{ fontSize:13, fontWeight:500, color:'#374151' }}>Set as default address</span>
+              </label>
+            </div>
+
+            {/* Modal footer */}
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:12, padding:'16px 24px', borderTop:'1.5px solid #e8f4f1' }}>
+              <button className="pp-ghost" onClick={()=>{ setShowAddressModal(false); setEditingAddress(null); setAddressForm(emptyAddrForm); }}>Cancel</button>
+              <button className="pp-primary" onClick={handleSaveAddress}>
+                {editingAddress ? '✓ Update Address' : '✓ Save Address'}
               </button>
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-gray-50 min-h-screen py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto">
-          {error && (
-            <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-            <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200">
-              <h1 className="text-2xl font-bold text-gray-900">My Account</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Manage your account settings and view your order history.
-              </p>
-            </div>
-
-            <div className="border-b border-gray-200">
-              <nav className="flex -mb-px">
-                <button
-                  onClick={() => setActiveTab('profile')}
-                  className={`${activeTab === 'profile' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
-                >
-                  Profile
-                </button>
-                <button
-                  onClick={() => setActiveTab('orders')}
-                  className={`${activeTab === 'orders' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
-                >
-                  Orders
-                </button>
-                <button
-                  onClick={() => setActiveTab('addresses')}
-                  className={`${activeTab === 'addresses' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
-                >
-                  Addresses
-                </button>
-              </nav>
-            </div>
-
-            {activeTab === 'profile' && (
-              <div className="px-4 py-5 sm:p-6">
-                <div className="md:flex md:items-center md:justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-lg font-medium leading-6 text-gray-900">Profile Information</h2>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Update your account's profile information and email address.
-                    </p>
-                  </div>
-                  {(!isEditing && (
-                    <div className="mt-4 flex-shrink-0 flex md:mt-0 md:ml-4">
-                      <button
-                        type="button"
-                        onClick={handleEditProfile}
-                        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        Edit Profile
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {isEditing ? (
-                  <form key="edit-form" className="mt-6 space-y-6" onSubmit={handleSubmit}>
-                    <div className="flex items-center space-x-6">
-                      <div className="flex-shrink-0 h-24 w-24">
-                        <img
-                          className="h-24 w-24 rounded-full object-cover"
-                          src={formData.avatar}
-                          alt="Profile"
-                        />
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="avatar"
-                          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
-                        >
-                          Change Photo
-                          <input
-                            id="avatar"
-                            name="avatar"
-                            type="file"
-                            className="sr-only"
-                            onChange={handleFileChange}
-                            accept="image/*"
-                          />
-                        </label>
-                        <p className="mt-2 text-xs text-gray-500">JPG, GIF or PNG. Max size of 2MB</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                      <div className="sm:col-span-3">
-                        <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                          First name
-                        </label>
-                        <input
-                          type="text"
-                          name="firstName"
-                          id="firstName"
-                          value={formData.firstName}
-                          onChange={handleChange}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-3">
-                        <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                          Last name
-                        </label>
-                        <input
-                          type="text"
-                          name="lastName"
-                          id="lastName"
-                          value={formData.lastName}
-                          onChange={handleChange}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-4">
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                          Email address
-                        </label>
-                        <input
-                          id="email"
-                          name="email"
-                          type="email"
-                          value={formData.email}
-                          onChange={handleChange}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-4">
-                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                          Phone number
-                        </label>
-                        <input
-                          type="text"
-                          name="phone"
-                          id="phone"
-                          value={formData.phone}
-                          onChange={handleChange}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-6">
-                        <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                          Address
-                        </label>
-                        <input
-                          type="text"
-                          name="address"
-                          id="address"
-                          value={formData.address}
-                          onChange={handleChange}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pt-5">
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          onClick={handleCancel}
-                          className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-                ) : (
-                  <div key="view-mode" className="mt-6 border-t border-gray-200">
-                    <dl className="divide-y divide-gray-200">
-                      <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt className="text-sm font-medium text-gray-500">Full name</dt>
-                        <dd className="mt-1 flex text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                          <span className="flex-grow">{`${userData.firstName} ${userData.lastName}`}</span>
-                        </dd>
-                      </div>
-                      <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt className="text-sm font-medium text-gray-500">Email address</dt>
-                        <dd className="mt-1 flex text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                          <span className="flex-grow">{userData.email}</span>
-                        </dd>
-                      </div>
-                      <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt className="text-sm font-medium text-gray-500">Phone number</dt>
-                        <dd className="mt-1 flex text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                          <span className="flex-grow">{userData.phone}</span>
-                        </dd>
-                      </div>
-                      <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt className="text-sm font-medium text-gray-500">Address</dt>
-                        <dd className="mt-1 flex text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                          <span className="flex-grow">{userData.address}</span>
-                        </dd>
-                      </div>
-                      <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt className="text-sm font-medium text-gray-500">Member since</dt>
-                        <dd className="mt-1 flex text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                          <span className="flex-grow">{userData.memberSince}</span>
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'orders' && (
-              <div className="px-4 py-5 sm:p-6">
-                <div className="md:flex md:items-center md:justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-lg font-medium leading-6 text-gray-900">Order History</h2>
-                    <p className="mt-1 text-sm text-gray-500">
-                      View your recent orders and track their status.
-                    </p>
-                  </div>
-                  <div className="mt-4 flex-shrink-0 flex md:mt-0 md:ml-4">
-                    <button
-                      type="button"
-                      onClick={() => fetchUserOrders()}
-                      disabled={isOrdersLoading}
-                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                    >
-                      {isOrdersLoading ? 'Loading...' : 'Refresh'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-8">
-                  {isOrdersLoading ? (
-                    <div className="flex justify-center items-center h-32">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                    </div>
-                  ) : orders.length === 0 ? (
-                    <div className="text-center py-12">
-                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                      </svg>
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">No orders</h3>
-                      <p className="mt-1 text-sm text-gray-500">You haven't placed any orders yet.</p>
-                      <div className="mt-6">
-                        <Link
-                          to="/shop"
-                          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                        >
-                          Start Shopping
-                        </Link>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-white shadow overflow-hidden sm:rounded-md">
-                      <ul className="divide-y divide-gray-200">
-                        {orders.map((order) => (
-                          <li key={order._id || order.id}>
-                            <div className="px-4 py-4 flex items-center sm:px-6">
-                              <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between">
-                                <div className="truncate">
-                                  <div className="flex text-sm">
-                                    <p className="font-medium text-blue-600 truncate">
-                                      Order #{order.order_number || order._id?.slice(-8) || 'N/A'}
-                                    </p>
-                                    <p className="ml-1 flex-shrink-0 font-normal text-gray-500">
-                                      on {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
-                                    </p>
-                                  </div>
-                                  <div className="mt-2 flex">
-                                    <div className="flex items-center text-sm text-gray-500">
-                                      <p>
-                                        {order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''} •
-                                        Total: ${order.total_amount || order.total || 0}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="mt-4 flex-shrink-0 sm:mt-0 sm:ml-5">
-                                  <div className="flex items-center">
-                                    <div className={`h-5 w-5 rounded-full flex items-center justify-center ${
-                                      order.status === 'delivered' ? 'bg-green-500' :
-                                      order.status === 'shipped' ? 'bg-blue-500' :
-                                      order.status === 'processing' ? 'bg-yellow-500' : 'bg-gray-500'
-                                    }`}>
-                                      <svg className="h-3.5 w-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                      </svg>
-                                    </div>
-                                    <span className="ml-2 text-sm font-medium text-gray-900 capitalize">
-                                      {order.status || 'Processing'}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="ml-5 flex-shrink-0">
-                                <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                                </svg>
-                              </div>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'addresses' && (
-              <div className="px-4 py-5 sm:p-6">
-                <div className="md:flex md:items-center md:justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-lg font-medium leading-6 text-gray-900">Saved Addresses</h2>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Manage your saved addresses for faster checkout.
-                    </p>
-                  </div>
-                  <div className="mt-4 flex-shrink-0 flex md:mt-0 md:ml-4">
-                    <button
-                      type="button"
-                      onClick={() => fetchUserAddresses()}
-                      disabled={isAddressesLoading}
-                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 mr-3"
-                    >
-                      {isAddressesLoading ? 'Loading...' : 'Refresh'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddAddress}
-                      className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                      </svg>
-                      Add New Address
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  {isAddressesLoading ? (
-                    <div className="flex justify-center items-center h-32">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                    </div>
-                  ) : addresses.length === 0 ? (
-                    <div className="text-center py-12">
-                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">No addresses</h3>
-                      <p className="mt-1 text-sm text-gray-500">You haven't added any addresses yet.</p>
-                      <div className="mt-6">
-                        <button
-                          type="button"
-                          onClick={handleAddAddress}
-                          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                        >
-                          <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                          </svg>
-                          Add Your First Address
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      {addresses.map((address) => (
-                        <div key={address._id || address.id} className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                          <div className="flex-1 min-w-0">
-                            <div className="focus:outline-none">
-                              <div className="flex items-center justify-between">
-                                <p className="text-sm font-medium text-gray-900">{address.type}</p>
-                                {address.is_default && (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    Default
-                                  </span>
-                                )}
-                              </div>
-                              <div className="mt-2 text-sm text-gray-600">
-                                {/* Handle both structured and legacy address formats */}
-                                {address.firstName && address.lastName ? (
-                                  // Structured address format
-                                  <>
-                                    <p className="font-medium">{address.firstName} {address.lastName}</p>
-                                    <p>{address.street}, {address.city}, {address.state} {address.zipCode}</p>
-                                    <p>{address.country || 'USA'}</p>
-                                    <p className="mt-1">{address.phone}</p>
-                                    <p>{address.email}</p>
-                                  </>
-                                ) : (
-                                  // Legacy address format (single address field)
-                                  <p className="font-medium">{address.address || 'Address not available'}</p>
-                                )}
-                              </div>
-                              <div className="mt-2 flex items-center space-x-2">
-                                <div className="flex space-x-2">
-                                  <button 
-                                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                                    onClick={() => handleEditAddress(address)}
-                                  >
-                                    Edit
-                                  </button>
-                                  {!address.is_default && (
-                                    <>
-                                      <span className="text-gray-300">|</span>
-                                      <button 
-                                        className="text-xs text-red-600 hover:text-red-800 font-medium"
-                                        onClick={() => handleDeleteAddress(address)}
-                                      >
-                                        Delete
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Address Modal */}
-                {showAddressModal && (
-                  <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                    <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-medium text-gray-900">
-                            {editingAddress ? 'Edit Address' : 'Add New Address'}
-                          </h3>
-                          <button
-                            onClick={() => {
-                              setShowAddressModal(false);
-                              setEditingAddress(null);
-                              setAddressForm({
-                                type: 'Home',
-                                firstName: '',
-                                lastName: '',
-                                email: '',
-                                phone: '',
-                                street: '',
-                                city: '',
-                                state: '',
-                                zipCode: '',
-                                country: 'USA',
-                                is_default: false
-                              });
-                            }}
-                            className="text-gray-400 hover:text-gray-600"
-                          >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                        
-                        <div className="space-y-4">
-                          <div>
-                            <label htmlFor="addressType" className="block text-sm font-medium text-gray-700">
-                              Address Type
-                            </label>
-                            <select
-                              id="addressType"
-                              value={addressForm.type}
-                              onChange={(e) => setAddressForm(prev => ({ ...prev, type: e.target.value }))}
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                            >
-                              <option value="Home">Home</option>
-                              <option value="Work">Work</option>
-                              <option value="Other">Other</option>
-                            </select>
-                          </div>
-
-                          {/* Name Fields */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                                First Name *
-                              </label>
-                              <input
-                                type="text"
-                                id="firstName"
-                                value={addressForm.firstName}
-                                onChange={(e) => setAddressForm(prev => ({ ...prev, firstName: e.target.value }))}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                required
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                                Last Name *
-                              </label>
-                              <input
-                                type="text"
-                                id="lastName"
-                                value={addressForm.lastName}
-                                onChange={(e) => setAddressForm(prev => ({ ...prev, lastName: e.target.value }))}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                required
-                              />
-                            </div>
-                          </div>
-
-                          {/* Contact Fields */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                                Email Address *
-                              </label>
-                              <input
-                                type="email"
-                                id="email"
-                                value={addressForm.email}
-                                onChange={(e) => setAddressForm(prev => ({ ...prev, email: e.target.value }))}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                required
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                                Phone Number *
-                              </label>
-                              <input
-                                type="tel"
-                                id="phone"
-                                value={addressForm.phone}
-                                onChange={(e) => setAddressForm(prev => ({ ...prev, phone: e.target.value }))}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                required
-                              />
-                            </div>
-                          </div>
-
-                          {/* Address Fields */}
-                          <div>
-                            <label htmlFor="street" className="block text-sm font-medium text-gray-700">
-                              Street Address *
-                            </label>
-                            <input
-                              type="text"
-                              id="street"
-                              value={addressForm.street}
-                              onChange={(e) => setAddressForm(prev => ({ ...prev, street: e.target.value }))}
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                              required
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <label htmlFor="city" className="block text-sm font-medium text-gray-700">
-                                City *
-                              </label>
-                              <input
-                                type="text"
-                                id="city"
-                                value={addressForm.city}
-                                onChange={(e) => setAddressForm(prev => ({ ...prev, city: e.target.value }))}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                required
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor="state" className="block text-sm font-medium text-gray-700">
-                                State *
-                              </label>
-                              <input
-                                type="text"
-                                id="state"
-                                value={addressForm.state}
-                                onChange={(e) => setAddressForm(prev => ({ ...prev, state: e.target.value }))}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                required
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700">
-                                ZIP Code *
-                              </label>
-                              <input
-                                type="text"
-                                id="zipCode"
-                                value={addressForm.zipCode}
-                                onChange={(e) => setAddressForm(prev => ({ ...prev, zipCode: e.target.value }))}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                required
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex items-center">
-                            <input
-                              id="is_default"
-                              type="checkbox"
-                              checked={addressForm.is_default}
-                              onChange={(e) => setAddressForm(prev => ({ ...prev, is_default: e.target.checked }))}
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            />
-                            <label htmlFor="is_default" className="ml-2 block text-sm text-gray-900">
-                              Set as default address
-                            </label>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-end space-x-3 mt-6">
-                          <button
-                            onClick={() => {
-                              setShowAddressModal(false);
-                              setEditingAddress(null);
-                              setAddressForm({
-                                type: 'Home',
-                                firstName: '',
-                                lastName: '',
-                                email: '',
-                                phone: '',
-                                street: '',
-                                city: '',
-                                state: '',
-                                zipCode: '',
-                                country: 'USA',
-                                is_default: false
-                              });
-                            }}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={handleSaveAddress}
-                            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                          >
-                            Save Address
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
-};
-
-export default ProfilePage;
+}

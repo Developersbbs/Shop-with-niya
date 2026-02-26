@@ -1,83 +1,335 @@
-import React from 'react';
-import { useGetOffersQuery } from '../../redux/services/offers';
+import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import LazyImage from '../common/LazyImage';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Autoplay, Navigation } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/navigation';
 
-const OfferBanner = ({ offer }) => {
-    const {
-        title,
-        description,
-        image_url,
-        offer_type,
-        slug,
-        flash_config,
-        category_config,
-        bogo_config
-    } = offer;
+const banners = [
+  {
+    img: "/images/banner1.JPG",
+    tag: "New Collection",
+    title: "Summer\nKurtas",
+    subtitle: "Crafted for comfort, designed for elegance",
+    desc: "Explore our breathable cotton kurtas perfect for every occasion — from morning chai to evening outings.",
+    buttonText: "Shop Now",
+    buttonLink: "/products",
+    accent: "#082B27",
+    accentLight: "#f0fdf4",
+    imgLeft: true,
+  },
+  {
+    img: "/images/banner2.JPG",
+    tag: "Limited Offer",
+    title: "Flat 30%\nOff",
+    subtitle: "On all coord sets this week",
+    desc: "Mix, match, and slay. Our coord sets are flying off shelves — grab your favorite before it's gone.",
+    buttonText: "Grab the Deal",
+    buttonLink: "/offers",
+    accent: "#7c1d1d",
+    accentLight: "#fff5f5",
+    imgLeft: false,
+  },
+  {
+    img: "/images/banner3.webp",
+    tag: "Staff Picks",
+    title: "Festive\nWear",
+    subtitle: "Look your best this season",
+    desc: "From silk dupattas to mirror-work anarkalis — our festive collection is here to make every celebration unforgettable.",
+    buttonText: "Explore",
+    buttonLink: "/festive",
+    accent: "#713f12",
+    accentLight: "#fffbeb",
+    imgLeft: true,
+  },
+];
 
-    // Determine link target
-    let linkTarget = `/offers/${slug}`; // Default to offer details page if exists
-    // Or we could link to categories if it's a category discount
+const curatedLooks = [
+  { img: "/images/look1.jpg", label: "Everyday Wear", link: "/products?tag=everyday" },
+  { img: "/images/look2.webp", label: "Festive Looks", link: "/products?tag=festive" },
+  { img: "/images/look3.jpg", label: "Work Wear", link: "/products?tag=work" },
+  { img: "/images/look5.jpg", label: "Casual Chic", link: "/products?tag=casual" },
+  { img: "/images/look4.avif", label: "Party Wear", link: "/products?tag=party" },
+];
 
-    return (
-        <div className="relative overflow-hidden rounded-3xl bg-gray-900 shadow-xl group h-64 md:h-80 w-full flex-shrink-0">
-            {/* Background Image */}
-            <div className="absolute inset-0">
-                <LazyImage
-                    src={image_url || 'https://images.unsplash.com/photo-1607083206869-4c7672e72a8a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80'}
-                    alt={title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-60"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent"></div>
-            </div>
-
-            {/* Content */}
-            <div className="absolute inset-0 p-8 flex flex-col justify-center max-w-lg">
-                <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                    <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold text-white mb-4 uppercase tracking-wider border border-white/30">
-                        {offer_type?.replace('_', ' ') || 'Special Offer'}
-                    </span>
-                    <h3 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">
-                        {title}
-                    </h3>
-                    <p className="text-gray-200 mb-6 line-clamp-2 md:text-lg">
-                        {description}
-                    </p>
-                    <button className="px-8 py-3 bg-white text-gray-900 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-lg transform hover:scale-105 active:scale-95">
-                        Shop Now
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
+/* ── Scroll reveal hook ── */
+const useScrollReveal = (options = {}) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        el.style.opacity = '1';
+        el.style.transform = 'translate(0, 0)';
+        observer.unobserve(el);
+      }
+    }, { threshold: 0.2, ...options });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return ref;
 };
 
+/* ── Single split banner ── */
+const BannerCard = ({ banner }) => {
+  const imgRef = useScrollReveal();
+  const textRef = useScrollReveal();
+
+  const imgStyle = {
+    opacity: 0,
+    transform: banner.imgLeft ? 'translateX(-70px)' : 'translateX(70px)',
+    transition: 'opacity 0.9s ease, transform 0.9s cubic-bezier(0.22,1,0.36,1)',
+  };
+  const textStyle = {
+    opacity: 0,
+    transform: banner.imgLeft ? 'translateX(70px)' : 'translateX(-70px)',
+    transition: 'opacity 0.9s ease 0.18s, transform 0.9s cubic-bezier(0.22,1,0.36,1) 0.18s',
+  };
+
+  return (
+    <div
+      className={`flex flex-col ${banner.imgLeft ? 'md:flex-row' : 'md:flex-row-reverse'}
+                  items-stretch overflow-hidden rounded-3xl shadow-lg`}
+      style={{ background: banner.accentLight }}
+    >
+      {/* Image */}
+      <div ref={imgRef} style={imgStyle}
+           className="w-full md:w-1/2 h-96 md:h-[600px] overflow-hidden flex-shrink-0">
+        <img
+          src={banner.img}
+          alt={banner.title}
+          className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+        />
+      </div>
+
+      {/* Text */}
+      <div ref={textRef} style={textStyle}
+           className="w-full md:w-1/2 flex flex-col justify-center px-8 md:px-16 py-12 md:py-0">
+
+        <span
+          className="inline-block w-fit px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.18em] mb-5"
+          style={{ background: banner.accent, color: '#fff' }}
+        >
+          {banner.tag}
+        </span>
+
+        <h2
+          className="font-black leading-[1.05] mb-4 whitespace-pre-line"
+          style={{
+            fontSize: 'clamp(2.8rem, 5vw, 4.5rem)',
+            color: banner.accent,
+            fontFamily: '"Playfair Display", Georgia, serif',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          {banner.title}
+        </h2>
+
+        <p
+          className="font-semibold mb-3"
+          style={{ color: banner.accent, opacity: 0.75, fontSize: '1.05rem' }}
+        >
+          {banner.subtitle}
+        </p>
+
+        <div className="w-10 h-[3px] rounded-full mb-5"
+             style={{ background: banner.accent }} />
+
+        <p className="text-gray-500 leading-relaxed mb-9 max-w-xs text-sm">
+          {banner.desc}
+        </p>
+
+        <Link
+          to={banner.buttonLink}
+          className="inline-flex items-center gap-2.5 w-fit px-7 py-3.5 rounded-full
+                     font-semibold text-sm text-white
+                     transition-all duration-300 hover:scale-105 active:scale-95"
+          style={{
+            background: banner.accent,
+            boxShadow: `0 6px 22px ${banner.accent}45`,
+            fontFamily: '"Inter", sans-serif',
+          }}
+        >
+          {banner.buttonText}
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                  d="M13 7l5 5-5 5M6 12h12" />
+          </svg>
+        </Link>
+      </div>
+    </div>
+  );
+};
+
+/* ── Curated Looks card ── */
+const LookCard = ({ look, index }) => {
+  const ref = useScrollReveal();
+  return (
+    <div
+      ref={ref}
+      style={{
+        opacity: 0,
+        transform: 'translateY(50px)',
+        transition: `opacity 0.7s ease ${index * 0.1}s, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${index * 0.1}s`,
+      }}
+    >
+      <Link to={look.link} className="group block relative overflow-hidden rounded-2xl">
+        {/* Image */}
+        <div className="overflow-hidden" style={{ aspectRatio: '3/4' }}>
+          <img
+            src={look.img}
+            alt={look.label}
+            className="w-full h-full object-cover object-top
+                       group-hover:scale-105 transition-transform duration-700"
+          />
+        </div>
+
+        {/* Overlay on hover */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25
+                        transition-all duration-300 rounded-2xl" />
+
+        {/* Shop All button */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2
+                        translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100
+                        transition-all duration-300">
+          <span
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full
+                       bg-white text-[#082B27] font-bold text-xs shadow-xl whitespace-nowrap"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+            Shop All
+          </span>
+        </div>
+      </Link>
+
+      {/* Label */}
+      <p
+        className="text-center mt-3 font-semibold text-gray-700 text-sm"
+        style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+      >
+        {look.label}
+      </p>
+    </div>
+  );
+};
+
+/* ── Main export ── */
 const OffersSection = () => {
-    // Fetch active offers with high priority
-    const { data: response, isLoading } = useGetOffersQuery({
-        limit: 3,
-        status: 'active',
-        sort: 'priority',
-        order: 'desc'
-    });
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&display=swap');
 
-    const offers = response?.data || [];
+        .looks-swiper .swiper-button-next,
+        .looks-swiper .swiper-button-prev {
+          width: 38px; height: 38px;
+          background: white;
+          border-radius: 50%;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+          color: #082B27;
+          transition: all 0.2s ease;
+        }
+        .looks-swiper .swiper-button-next:hover,
+        .looks-swiper .swiper-button-prev:hover {
+          background: #082B27;
+          color: white;
+          border-color: #082B27;
+        }
+        .looks-swiper .swiper-button-next::after,
+        .looks-swiper .swiper-button-prev::after {
+          font-size: 12px; font-weight: 800;
+        }
+      `}</style>
 
-    if (isLoading || offers.length === 0) return null;
+      {/* ── Split Banners ── */}
+      <section className="container mx-auto px-4 py-12 space-y-8">
+        <div className="text-center mb-10">
+          <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Collections</span>
+          <h2
+            className="text-4xl md:text-5xl font-black text-gray-900 mt-2"
+            style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+          >
+            Explore Our <span style={{ color: "#082B27" }}>Latest Drops</span>
+          </h2>
+        </div>
 
-    return (
-        <section className="py-12 bg-white">
-            <div className="container mx-auto px-4">
-                <div className={`grid grid-cols-1 ${offers.length === 1 ? 'md:grid-cols-1' : offers.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-6`}>
-                    {offers.map((offer) => (
-                        <Link key={offer._id} to={`/offers`} className="block">
-                            <OfferBanner offer={offer} />
-                        </Link>
-                    ))}
-                </div>
-            </div>
-        </section>
-    );
+        {banners.map((banner, i) => (
+          <BannerCard key={i} banner={banner} />
+        ))}
+      </section>
+
+      {/* ── Curated Looks ── */}
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+
+          <div className="text-center mb-12">
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-400">
+              Styled For You
+            </span>
+            <h2
+              className="text-4xl md:text-5xl font-black text-gray-900 mt-2"
+              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+            >
+              Curated <span style={{ color: "#082B27" }}>Looks</span>
+            </h2>
+            <p className="text-gray-500 mt-3 max-w-xl mx-auto text-sm leading-relaxed">
+              Handpicked outfits for every occasion — because every woman deserves to feel her best.
+            </p>
+          </div>
+
+          <div className="relative">
+            <Swiper
+              modules={[Autoplay, Navigation]}
+              navigation
+              autoplay={{ delay: 3000, disableOnInteraction: false }}
+              loop
+              spaceBetween={20}
+              slidesPerView={2}
+              breakpoints={{
+                640:  { slidesPerView: 2 },
+                768:  { slidesPerView: 3 },
+                1024: { slidesPerView: 4 },
+                1280: { slidesPerView: 5 },
+              }}
+              className="looks-swiper"
+            >
+              {curatedLooks.map((look, i) => (
+                <SwiperSlide key={i}>
+                  <LookCard look={look} index={i} />
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          </div>
+
+          <div className="text-center mt-10">
+            <Link
+              to="/products"
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full
+                         font-semibold text-sm text-white transition-all duration-300
+                         hover:scale-105 active:scale-95"
+              style={{
+                background: '#082B27',
+                boxShadow: '0 6px 22px rgba(8,43,39,0.35)',
+                fontFamily: '"Inter", sans-serif',
+              }}
+            >
+              View All Looks
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                      d="M13 7l5 5-5 5M6 12h12" />
+              </svg>
+            </Link>
+          </div>
+
+        </div>
+      </section>
+    </>
+  );
 };
 
 export default OffersSection;

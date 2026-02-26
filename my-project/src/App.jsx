@@ -247,7 +247,7 @@ const App = () => {
         <CartProvider>
           <WishlistProvider>
             <Helmet>
-              <title>SBBS E-commerce - Your One Stop Shop</title>
+              <title>Shop With Niya</title>
               <meta name="description" content="Shop the latest products at the best prices" />
             </Helmet>
             
@@ -310,7 +310,7 @@ const App = () => {
           </WishlistProvider>
         </CartProvider>
       </Suspense>
-      <Toaster position="bottom-right" />
+     
     </>
   );
 };
