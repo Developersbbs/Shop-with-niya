@@ -12,9 +12,9 @@ import { setUser, clearError, serializeUser, setInitializationComplete, setBacke
 import { setupAuthListener } from './services/authService';
 import authInitService from './services/authInitService';
 
-// Context Providers - Load these lazily to reduce initial bundle
-const CartProvider = lazy(() => import('./context/CartContext').then(module => ({ default: module.CartProvider })));
-const WishlistProvider = lazy(() => import('./context/WishlistContext').then(module => ({ default: module.WishlistProvider })));
+// Context Providers - Must be imported eagerly (providers cannot be lazy loaded)
+import CartProvider from './context/CartContext';
+import WishlistProvider from './context/WishlistContext';
 
 // Lazy load pages for code splitting
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -256,7 +256,7 @@ const App = () => {
                 <Route index element={<HomePage />} />
                 <Route path="products" element={<ProductListPage />} />
                 <Route path="products/category/:slug" element={<ProductListPage />} />
-                <Route path="product/:id" element={<ProductDetailPage />} />
+                <Route path="product/:slug" element={<ProductDetailPage />} />
                 <Route path="cart" element={<CartPage />} />
                 
                 {/* Protected Routes */}

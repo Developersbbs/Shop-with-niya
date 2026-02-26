@@ -78,7 +78,7 @@ const CartItem = ({
       <div className="flex items-start space-x-4">
         {/* Product Image */}
         <Link
-          to={`/product/${item.id}`}
+          to={`/product/${item.slug || item.id}`}
           className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-lg overflow-hidden group"
         >
           <img
@@ -96,7 +96,7 @@ const CartItem = ({
         {/* Product Details */}
         <div className="flex-1 min-w-0">
           <Link
-            to={`/product/${item.id}`}
+            to={`/product/${item.slug || item.id}`}
             className="block group"
           >
             <h3 className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">

@@ -181,7 +181,8 @@ export const CartProvider = ({ children }) => {
           quantity: item.quantity || 1,
           image: (item.product_id.image_url && item.product_id.image_url[0]) || item.image || null,
           variant: item.variant_attributes || {},
-          stock: item.product_id.stock || 999
+          stock: item.product_id.stock || 999,
+           slug: item.product_id.slug || null 
         }));
         
         dispatch({ type: CART_ACTIONS.SET_CART, payload: transformedItems });
@@ -291,7 +292,8 @@ export const CartProvider = ({ children }) => {
               quantity: item.quantity || 1,
               image: (item.product_id.image_url && item.product_id.image_url[0]) || item.image || null,
               variant: item.variant_attributes || {},
-              stock: item.product_id.stock || 999
+              stock: item.product_id.stock || 999,
+               slug: item.product_id.slug || null 
             }));
             console.log('Setting cart with transformed items:', transformedItems);
             dispatch({ type: CART_ACTIONS.SET_CART, payload: transformedItems });
@@ -380,7 +382,8 @@ export const CartProvider = ({ children }) => {
             quantity: item.quantity || 1,
             image: (item.product_id.image_url && item.product_id.image_url[0]) || item.image || null,
             variant: item.variant_attributes || {},
-            stock: item.product_id.stock || 999
+            stock: item.product_id.stock || 999,
+             slug: item.product_id.slug || null 
           }));
           
           dispatch({ type: CART_ACTIONS.SET_CART, payload: backendCartItems });
@@ -568,4 +571,5 @@ export const useCart = () => {
   return context;
 };
 
-export default CartContext;
+// Export CartProvider as default for import in App
+export default CartProvider;

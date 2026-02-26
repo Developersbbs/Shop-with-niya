@@ -18,8 +18,9 @@ const allowedOrigins = [
   'http://localhost:3003',
   'http://127.0.0.1:3003',
   'http://localhost:5173', // Vite default port
-  'http://localhost:5175', // Vite alternate port
-  'http://127.0.0.1:5175',  // Vite default port
+  'http://localhost:5174', // Vite alternate port
+  'http://127.0.0.1:5175',
+    // Vite default port
 ];
 
 // Simple CORS middleware

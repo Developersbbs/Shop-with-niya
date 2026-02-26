@@ -5,52 +5,49 @@ import ProductDetails from '../components/product/ProductDetails';
 
 const ProductDetailPage = () => {
   const [cartUpdated, setCartUpdated] = useState(false);
-  const { id } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
   
-  // Validate the ID/slug
-  const isValidId = useMemo(() => {
-    // Check if ID exists and is not empty string
-    if (!id || typeof id !== 'string' || id.trim() === '') {
+  // Validate the slug
+  const isValidSlug = useMemo(() => {
+    if (!slug || typeof slug !== 'string' || slug.trim() === '') {
       return false;
     }
     return true;
-  }, [id]);
+  }, [slug]);
   
-  // Try to fetch by slug first if the ID is not a valid MongoDB ID
+  // Check if it's a MongoDB ID (fallback support)
   const isMongoId = useMemo(() => {
-    if (!isValidId) return false;
-    // Simple check for MongoDB ID format (24 hex characters)
-    return /^[0-9a-fA-F]{24}$/.test(id);
-  }, [id, isValidId]);
+    if (!isValidSlug) return false;
+    return /^[0-9a-fA-F]{24}$/.test(slug);
+  }, [slug, isValidSlug]);
   
+  // Fetch by slug first (skip if it looks like a MongoDB ID)
   const { 
     data: productBySlug, 
     isError: slugError,
     isSuccess: slugSuccess,
     isLoading: isLoadingSlug
-  } = useGetProductBySlugQuery(id, { 
-    skip: !isValidId || isMongoId // Skip if ID is a MongoDB ID
+  } = useGetProductBySlugQuery(slug, { 
+    skip: !isValidSlug || isMongoId
   });
   
-  // If slug fetch fails or if it's a MongoDB ID, try by ID
+  // Fetch by ID if it's a MongoDB ID or slug fetch failed
   const { 
     data: productById, 
     isError: idError,
     isSuccess: idSuccess,
     isLoading: isLoadingId
-  } = useGetProductByIdQuery(id, { 
-    skip: !isValidId || (!isMongoId && !slugError) // Skip if not a MongoDB ID and slug didn't error
+  } = useGetProductByIdQuery(slug, { 
+    skip: !isValidSlug || (!isMongoId && !slugError)
   });
 
   useEffect(() => {
-    // If ID is invalid or both fetches fail, redirect to 404
-    if (!isValidId || (slugError && (idError || !isMongoId))) {
+    if (!isValidSlug || (slugError && (idError || !isMongoId))) {
       navigate('/404');
     }
-  }, [slugError, idError, id, navigate, isValidId, isMongoId]);
+  }, [slugError, idError, slug, navigate, isValidSlug, isMongoId]);
 
-  // Determine which product data to use
   const product = productBySlug?.data || productById?.data;
   const isLoading = (isLoadingSlug && !isMongoId) || (isLoadingId && (isMongoId || slugError));
   const isError = (!isMongoId && slugError && (idError || !isMongoId)) || (isMongoId && idError);

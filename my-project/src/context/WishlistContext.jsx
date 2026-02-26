@@ -159,7 +159,8 @@ export const WishlistProvider = ({ children }) => {
           name: item.product_name,
           price: item.discounted_price,
           image: item.product_image,
-          wishlistItemId: item._id
+          wishlistItemId: item._id,
+            slug: item.product_id.slug || null
         }));
 
         dispatch({ type: WISHLIST_ACTIONS.SET_WISHLIST, payload: backendWishlistItems });
@@ -228,6 +229,7 @@ export const WishlistProvider = ({ children }) => {
             product_image: guestItem.image,
             price: guestItem.price,
             discounted_price: guestItem.price // Use same price as discounted for guest items
+            
           };
 
           console.log('Sending wishlist item to backend:', wishlistItem);
@@ -262,7 +264,8 @@ export const WishlistProvider = ({ children }) => {
               name: item.product_name,
               price: item.discounted_price,
               image: item.product_image,
-              wishlistItemId: item._id
+              wishlistItemId: item._id,
+                slug: item.product_id.slug || null
             }));
             console.log('Setting wishlist with transformed items:', backendWishlistItems);
             dispatch({ type: WISHLIST_ACTIONS.SET_WISHLIST, payload: backendWishlistItems });
@@ -358,7 +361,8 @@ export const WishlistProvider = ({ children }) => {
             name: item.product_name,
             price: item.discounted_price,
             image: item.product_image,
-            wishlistItemId: item._id
+            wishlistItemId: item._id,
+             slug: item.product_id.slug || null 
           }));
 
           dispatch({ type: WISHLIST_ACTIONS.SET_WISHLIST, payload: backendWishlistItems });
@@ -533,4 +537,5 @@ export const useWishlist = () => {
   return context;
 };
 
-export default WishlistContext;
+// Export WishlistProvider as default for import in App
+export default WishlistProvider;

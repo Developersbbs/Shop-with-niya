@@ -80,7 +80,7 @@ const WishlistItem = ({
             
             {/* Product Image */}
             <div className="flex-shrink-0">
-              <Link to={`/product/${item._id || item.id}`} className="block">
+              <Link to={`/product/${item.slug || item._id || item.id}`} className="block">
                 <img 
                   src={item.image || defaultImage} 
                   alt={item.name} 
@@ -96,7 +96,7 @@ const WishlistItem = ({
             
             {/* Product Details */}
             <div className="flex-1 min-w-0">
-              <Link to={`/product/${item._id || item.id}`} className="block group">
+              <Link to={`/product/${item.slug || item._id || item.id}`} className="block group">
                 <h3 className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors truncate">
                   {item.name}
                 </h3>
@@ -172,7 +172,7 @@ const WishlistItem = ({
       
       {/* Product Image */}
       <div className="relative">
-        <Link to={`/product/${item._id || item.id}`} className="block">
+        <Link to={`/product/${item.slug || item._id || item.id}`} className="block">
           <img 
             src={item.image || defaultImage} 
             alt={item.name} 
@@ -188,7 +188,7 @@ const WishlistItem = ({
         {/* Quick Actions Overlay */}
         <div className="absolute top-3 right-3 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <Link
-            to={`/product/${item._id || item.id}`}
+            to={`/product/${item.slug || item._id || item.id}`}
             className="p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-colors"
             aria-label="View product"
           >
@@ -223,7 +223,7 @@ const WishlistItem = ({
 
       {/* Product Details */}
       <div className="p-4">
-        <Link to={`/product/${item._id || item.id}`} className="block group">
+        <Link to={`/product/${item.slug || item._id || item.id}`} className="block group">
           <h3 className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2 mb-2 text-sm">
             {item.name}
           </h3>
