@@ -51,7 +51,7 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
   const [variantData, setVariantData] = useState<ProductVariantData>({
     attributes: DEFAULT_VARIANT_ATTRIBUTES.map(attr => ({
       ...attr,
-      id: `attr-${attr.name.toLowerCase()}`, // Use consistent ID generation
+      id: `attr-${attr.name.toLowerCase()}`,
     })),
     combinations: [],
     autoGenerateSKU: true,
@@ -68,23 +68,20 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
     control,
   });
 
-  // Refs to prevent infinite loops
   const isInitializing = useRef(true);
   const lastFormUpdateRef = useRef<string>('');
 
-  // Memoize the transformed data to avoid recomputing unnecessarily
   const transformedData = useMemo(() => ({
     attributes: variantData.attributes.map(attr => ({
       id: attr.id,
       name: attr.name,
       values: selectedValues[attr.id] || [],
-      // Don't include options in the final form data (schema doesn't expect it)
     })),
     combinations: variantData.combinations.map(combo => ({
       id: combo.id,
       name: combo.name,
       sku: combo.sku,
-      slug: combo.slug || '', // Ensure slug is always included
+      slug: combo.slug || '',
       costPrice: combo.costPrice,
       salesPrice: combo.salesPrice,
       stock: combo.stock,
@@ -96,55 +93,37 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
     autoGenerateSKU: variantData.autoGenerateSKU,
   }), [variantData.attributes, variantData.combinations, variantData.autoGenerateSKU, selectedValues, variantData.combinations.map(c => c.name).join(',')]);
 
-  // Debug logging for transformed data
   useEffect(() => {
     console.log('🔄 TRANSFORMED DATA FOR FORM:', {
       attributesCount: transformedData.attributes.length,
       combinationsCount: transformedData.combinations.length,
       firstComboAttributes: transformedData.combinations[0]?.attributes,
-      firstCombo: transformedData.combinations[0] // Add this to see the full first combo
+      firstCombo: transformedData.combinations[0]
     });
   }, [transformedData]);
 
-  // Helper function to get default options for common attributes
   const getDefaultOptionsForAttribute = (attrName: string): string[] => {
     const normalizedName = attrName.toLowerCase();
-
-    if (normalizedName === 'size') {
-      return ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-    } else if (normalizedName === 'color') {
-      return ['Red', 'Blue', 'Green', 'Black', 'White', 'Yellow', 'Purple', 'Orange'];
-    } else if (normalizedName === 'material') {
-      return ['Cotton', 'Polyester', 'Wool', 'Silk', 'Linen', 'Leather', 'Denim'];
-    }
-
+    if (normalizedName === 'size') return ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+    if (normalizedName === 'color') return ['Red', 'Blue', 'Green', 'Black', 'White', 'Yellow', 'Purple', 'Orange'];
+    if (normalizedName === 'material') return ['Cotton', 'Polyester', 'Wool', 'Silk', 'Linen', 'Leather', 'Denim'];
     return [];
   };
 
-  // Initialize variant data from form value when it exists (ONLY ONCE)
+  // Initialize variant data from form value (ONLY ONCE)
   useEffect(() => {
     if (isInitializing.current) {
       if (value && typeof value === 'object') {
         console.log('🔄 INITIALIZING variant data from form value:', value);
-        console.log('🔄 Form value type:', typeof value);
-        console.log('🔄 Form value keys:', Object.keys(value));
-        console.log('🔄 Form value attributes:', value.attributes);
-        console.log('🔄 Form value combinations:', value.combinations);
-        console.log('🔄 Form value selectedValues:', value.selectedValues);
 
-        // Map combinations to ensure proper field structure
         const mappedCombinations = (value.combinations || []).map((combo: any) => ({
           ...combo,
           costPrice: combo.costPrice ?? combo.cost_price ?? 0,
           salesPrice: combo.salesPrice ?? combo.selling_price ?? combo.sellingPrice ?? 0,
         }));
 
-        console.log('🔄 MAPPED COMBINATIONS:', mappedCombinations);
-
-        // Map attributes and ENSURE options are included for UI display
         const mappedAttributes = value.attributes && value.attributes.length > 0
           ? value.attributes.map((attribute: any) => {
-              // Ensure each attribute has options for UI display
               const defaultOptions = getDefaultOptionsForAttribute(attribute.name);
               return {
                 ...attribute,
@@ -157,16 +136,10 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
             })
           : DEFAULT_VARIANT_ATTRIBUTES.map(attr => ({
               ...attr,
-              id: `attr-${attr.name.toLowerCase()}`, // Use consistent ID generation
+              id: `attr-${attr.name.toLowerCase()}`,
             }));
 
-        console.log('🔄 MAPPED ATTRIBUTES WITH OPTIONS:', mappedAttributes);
-
-        // Initialize selected values from combinations
-        const initialSelectedValues: Record<string, string[]> = {};
-
         if (mappedCombinations.length > 0) {
-          // First, collect all unique attribute names from combinations
           const allAttributeNames = new Set<string>();
           mappedCombinations.forEach((combo: ProductVariantCombination) => {
             if (combo.attributes) {
@@ -174,76 +147,49 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
             }
           });
 
-          // Ensure all attributes from combinations exist in mappedAttributes
           const finalAttributes = [...mappedAttributes];
           allAttributeNames.forEach(attrName => {
             const existingAttr = finalAttributes.find(attr => attr.name.toLowerCase() === attrName.toLowerCase());
             if (!existingAttr) {
-              // Add missing attribute with default options
               const defaultOptions = getDefaultOptionsForAttribute(attrName);
               finalAttributes.push({
-                id: `attr-${attrName.toLowerCase()}`, // Use consistent ID generation
+                id: `attr-${attrName.toLowerCase()}`,
                 name: attrName,
                 type: 'select',
                 required: false,
                 allowCustom: true,
-                options: defaultOptions.length > 0 ? defaultOptions : [attrName], // Fallback option
+                options: defaultOptions.length > 0 ? defaultOptions : [attrName],
               });
             }
           });
 
-          console.log('🔄 FINAL ATTRIBUTES AFTER COMBINATION ANALYSIS:', finalAttributes);
-          console.log('🔄 FINAL ATTRIBUTES WITH IDS:', finalAttributes.map(attr => ({ id: attr.id, name: attr.name })));
-
-          // Initialize selected values - use from form data if available, otherwise extract from combinations
           let initialSelectedValues: Record<string, string[]> = {};
 
-          // Check if selectedValues were provided in the form data
-          console.log('🔄 FORM VARIANT: Checking for selectedValues...');
-          console.log('🔄 FORM VARIANT: value.selectedValues exists?', !!value.selectedValues);
-          console.log('🔄 FORM VARIANT: value.selectedValues type:', typeof value.selectedValues);
-          console.log('🔄 FORM VARIANT: value.selectedValues keys:', value.selectedValues ? Object.keys(value.selectedValues) : 'N/A');
-          console.log('🔄 FORM VARIANT: value.selectedValues content:', value.selectedValues);
-          
           if (value.selectedValues && typeof value.selectedValues === 'object' && Object.keys(value.selectedValues).length > 0) {
-            console.log('✅ USING SELECTED VALUES FROM TOP LEVEL:', value.selectedValues);
             initialSelectedValues = value.selectedValues;
           } else if (value.product_variants?.selectedValues && typeof value.product_variants.selectedValues === 'object' && Object.keys(value.product_variants.selectedValues).length > 0) {
-            console.log('✅ USING SELECTED VALUES FROM PRODUCT_VARIANTS:', value.product_variants.selectedValues);
             initialSelectedValues = value.product_variants.selectedValues;
           } else {
-            console.log('⚠️ NO SELECTED VALUES FOUND, extracting from combinations');
-
-            // Extract selected values from combinations using final attributes
             mappedCombinations.forEach((combo: ProductVariantCombination) => {
               if (combo.attributes) {
-                Object.entries(combo.attributes).forEach(([key, value]: [string, any]) => {
-                  // Find the attribute in the final attributes by name first
+                Object.entries(combo.attributes).forEach(([key, val]: [string, any]) => {
                   const attrByName = finalAttributes.find((a: ProductVariantAttribute) =>
                     a.name?.toLowerCase() === key.toLowerCase()
                   );
-
                   if (attrByName && attrByName.id) {
-                    const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+                    const stringValue = typeof val === 'string' ? val : JSON.stringify(val);
                     if (!initialSelectedValues[attrByName.id]) {
                       initialSelectedValues[attrByName.id] = [];
                     }
                     if (!initialSelectedValues[attrByName.id].includes(stringValue)) {
                       initialSelectedValues[attrByName.id].push(stringValue);
                     }
-                    console.log(`🔄 SETTING SELECTED VALUE: ${attrByName.id} -> ${stringValue}`);
-                  } else {
-                    console.warn(`🔄 ATTRIBUTE NOT FOUND: ${key} (value: ${value})`);
-                    console.log('🔄 Available attributes:', finalAttributes.map(a => ({ id: a.id, name: a.name })));
                   }
                 });
               }
             });
-
-            console.log('🔄 EXTRACTED SELECTED VALUES FROM COMBINATIONS:', initialSelectedValues);
           }
 
-          // Update variantData with final attributes and set selected values together
           setVariantData({
             attributes: finalAttributes,
             combinations: mappedCombinations,
@@ -252,14 +198,7 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
           });
 
           setSelectedValues(initialSelectedValues);
-
-          console.log('✅ VARIANT DATA AND SELECTED VALUES INITIALIZED:', {
-            attributesCount: finalAttributes.length,
-            combinationsCount: mappedCombinations.length,
-            selectedValuesCount: Object.keys(initialSelectedValues).length
-          });
         } else {
-          // No combinations, just set the mapped attributes
           setVariantData({
             attributes: mappedAttributes,
             combinations: mappedCombinations,
@@ -279,24 +218,15 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
     if (variantData.combinations.length > 0 && productName) {
       const combinationsNeedingNames = variantData.combinations.filter(combo => !combo.name);
       if (combinationsNeedingNames.length > 0) {
-        console.log('🔄 REGENERATING NAMES: Found', combinationsNeedingNames.length, 'combinations without names');
-
         const updatedCombinations = variantData.combinations.map(combo => {
           if (!combo.name) {
             const generatedName = VariantManager.generateVariantName(productName, combo);
-            console.log('🔄 REGENERATING NAME: combo attributes:', combo.attributes, '-> name:', generatedName);
-            return {
-              ...combo,
-              name: generatedName,
-            };
+            return { ...combo, name: generatedName };
           }
           return combo;
         });
 
-        setVariantData(prev => ({
-          ...prev,
-          combinations: updatedCombinations,
-        }));
+        setVariantData(prev => ({ ...prev, combinations: updatedCombinations }));
       }
     }
   }, [productName, variantData.combinations]);
@@ -310,7 +240,7 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
       attributeIds: data.attributes.map((a: any) => a.id),
       combinationValues: data.combinations.map((c: any) => ({
         id: c.id,
-        name: c.name, // ✅ Add name to signature calculation
+        name: c.name,
         costPrice: c.costPrice,
         salesPrice: c.salesPrice,
         stock: c.stock,
@@ -318,6 +248,10 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
         sku: c.sku,
         slug: c.slug,
         imagesCount: c.images?.length || 0,
+        // ✅ FIX 1: Track actual image references so changes are detected
+        imageRefs: (c.images || []).map((img: any) =>
+          img instanceof File ? img.name + img.size : img
+        ).join(','),
       })),
     });
 
@@ -346,8 +280,6 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
 
   // Generate combinations when selected values change
   useEffect(() => {
-    console.log('🔄 COMBINATION GENERATION: productName =', productName, 'selectedValues =', selectedValues);
-
     const validSelectedValues: Record<string, string[]> = {};
     Object.entries(selectedValues).forEach(([attrId, values]) => {
       if (values && values.length > 0) {
@@ -363,7 +295,6 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
         return Object.entries(comboAttributes).every(([attrName, attrValue]) => {
           const attr = variantData.attributes.find(a => a.name.toLowerCase() === attrName.toLowerCase());
           if (!attr) return false;
-
           const selectedValuesForAttr = validSelectedValues[attr.id] || [];
           return selectedValuesForAttr.includes(String(attrValue));
         });
@@ -378,58 +309,59 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
 
         const generatedSKU = variantData.autoGenerateSKU ? VariantManager.generateSKU(baseSKU, combo) : combo.sku;
         const generatedName = VariantManager.generateVariantName(productName || "Product", combo);
-        console.log('🔄 COMBINATION: generating name for combo with attributes:', combo.attributes, '-> name:', generatedName);
 
         if (existing) {
           return {
             ...existing,
             ...combo,
             sku: variantData.autoGenerateSKU ? generatedSKU : existing.sku,
-            name: existing.name || generatedName, // Keep existing name or generate new one
+            name: existing.name || generatedName,
             costPrice: existing.costPrice ?? combo.costPrice,
             salesPrice: existing.salesPrice ?? combo.salesPrice,
             stock: existing.stock ?? combo.stock,
             minStock: existing.minStock ?? combo.minStock,
-            images: existing.images || combo.images || [],
+            // ✅ FIX 2: Always preserve existing images, never overwrite with empty
+            images: (existing.images && existing.images.length > 0)
+              ? existing.images
+              : (combo.images || []),
           };
         }
 
         return {
           ...combo,
           sku: generatedSKU,
-          name: generatedName, // Auto-generate name for new combinations
+          name: generatedName,
           slug: VariantManager.generateVariantSlug(combo),
           costPrice: combo.costPrice,
           salesPrice: combo.salesPrice,
         };
       });
 
-      const combinationsStr = JSON.stringify(variantData.combinations.map(c => ({ id: c.id, attrs: c.attributes })));
-      const newCombinationsStr = JSON.stringify(newCombinations.map(c => ({ id: c.id, attrs: c.attributes })));
+      // ✅ FIX 3: Include image count in comparison so image changes trigger update
+      const combinationsStr = JSON.stringify(variantData.combinations.map(c => ({
+        id: c.id,
+        attrs: c.attributes,
+        imgCount: c.images?.length || 0,
+      })));
+      const newCombinationsStr = JSON.stringify(newCombinations.map(c => ({
+        id: c.id,
+        attrs: c.attributes,
+        imgCount: c.images?.length || 0,
+      })));
 
       if (combinationsStr !== newCombinationsStr) {
         console.log('🔄 COMBINATION: Updating combinations, new count:', newCombinations.length);
-        setVariantData(prev => ({
-          ...prev,
-          combinations: newCombinations,
-        }));
+        setVariantData(prev => ({ ...prev, combinations: newCombinations }));
       }
     } else {
-      // Only clear combinations if this is NOT an editing scenario with existing combinations
-      // When editing, we should preserve existing combinations even if selectedValues is temporarily empty
       const hasExistingCombinations = variantData.combinations.length > 0;
       const hasUserSelectedValues = Object.values(selectedValues).some(values => values.length > 0);
 
       if (hasExistingCombinations && !hasUserSelectedValues) {
-        // This might be an editing scenario where selectedValues hasn't been initialized yet
-        // Don't clear combinations in this case
         console.log('🔄 COMBINATION: Preserving existing combinations during editing initialization');
       } else if (hasExistingCombinations) {
         console.log('🔄 COMBINATION: Clearing combinations - no selected values');
-        setVariantData(prev => ({
-          ...prev,
-          combinations: [],
-        }));
+        setVariantData(prev => ({ ...prev, combinations: [] }));
       }
     }
   }, [selectedValues, variantData.attributes.length, variantData.autoGenerateSKU, baseSKU, productName]);
@@ -442,8 +374,8 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
         const newName = VariantManager.generateVariantName(productName || "Product", combo);
         return {
           ...combo,
-          slug: combo.slug || newSlug, // Keep existing slug if present, otherwise generate new one
-          name: combo.name || newName, // Keep existing name if present, otherwise generate new one
+          slug: combo.slug || newSlug,
+          name: combo.name || newName,
         };
       });
 
@@ -451,31 +383,19 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
       const updatedCombinationsStr = JSON.stringify(updatedCombinations.map(c => ({ id: c.id, slug: c.slug, name: c.name })));
 
       if (combinationsStr !== updatedCombinationsStr) {
-        console.log('Regenerating variant slugs and names');
-        setVariantData(prev => ({
-          ...prev,
-          combinations: updatedCombinations,
-        }));
+        setVariantData(prev => ({ ...prev, combinations: updatedCombinations }));
       }
     }
   }, [productName, variantData.combinations]);
 
   const addAttribute = () => {
     if (!newAttributeName.trim()) return;
-
     if (!VariantManager.validateAttributeName(newAttributeName, variantData.attributes)) {
       alert("Attribute name already exists!");
       return;
     }
-
-    console.log('➕ ADDING ATTRIBUTE:', newAttributeName);
-
     const newAttribute = VariantManager.createAttribute(newAttributeName, 'select');
-    setVariantData(prev => ({
-      ...prev,
-      attributes: [...prev.attributes, newAttribute],
-    }));
-
+    setVariantData(prev => ({ ...prev, attributes: [...prev.attributes, newAttribute] }));
     setNewAttributeName("");
   };
 
@@ -484,7 +404,6 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
       ...prev,
       attributes: prev.attributes.filter(attr => attr.id !== attributeId),
     }));
-
     setSelectedValues(prev => {
       const { [attributeId]: removed, ...rest } = prev;
       return rest;
@@ -492,15 +411,11 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
   };
 
   const updateAttributeValues = (attributeId: string, values: string[]) => {
-    setSelectedValues(prev => ({
-      ...prev,
-      [attributeId]: values,
-    }));
+    setSelectedValues(prev => ({ ...prev, [attributeId]: values }));
   };
 
   const addCustomValue = (attributeId: string, value: string) => {
     if (!value.trim()) return;
-
     const currentValues = selectedValues[attributeId] || [];
     if (!currentValues.includes(value)) {
       updateAttributeValues(attributeId, [...currentValues, value]);
@@ -509,34 +424,19 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
 
   const updateCombination = (combinationId: string, updates: Partial<ProductVariantCombination>) => {
     console.log('🔄 UPDATING COMBINATION:', combinationId, updates);
-
     setVariantData(prev => {
       const updatedCombinations = prev.combinations.map(combo =>
         combo.id === combinationId ? { ...combo, ...updates } : combo
       );
-
-      console.log('🔄 UPDATED COMBINATIONS:', updatedCombinations);
-
-      return {
-        ...prev,
-        combinations: updatedCombinations,
-      };
+      return { ...prev, combinations: updatedCombinations };
     });
   };
 
   const removeCombination = (combinationId: string) => {
-    console.log('🔄 REMOVE COMBINATION: Removing combination with ID:', combinationId);
-    console.log('🔄 REMOVE COMBINATION: Current combinations count:', variantData.combinations.length);
-
-    setVariantData(prev => {
-      const updatedCombinations = prev.combinations.filter(combo => combo.id !== combinationId);
-      console.log('🔄 REMOVE COMBINATION: New combinations count:', updatedCombinations.length);
-
-      return {
-        ...prev,
-        combinations: updatedCombinations,
-      };
-    });
+    setVariantData(prev => ({
+      ...prev,
+      combinations: prev.combinations.filter(combo => combo.id !== combinationId),
+    }));
   };
 
   return (
@@ -558,11 +458,7 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
                 {variantData.combinations.length}
               </Badge>
             )}
-            {isOpen ? (
-              <ChevronUp className="h-3 w-3" />
-            ) : (
-              <ChevronDown className="h-3 w-3" />
-            )}
+            {isOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </div>
         </CollapsibleTrigger>
 
@@ -585,27 +481,24 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {variantData.attributes.map((attribute) => {
-                console.log(`🔄 RENDERING ATTRIBUTE: ${attribute.name} (${attribute.id}) with selectedValues:`, selectedValues[attribute.id]);
-                return (
-                  <VariantAttributeEditor
-                    key={attribute.id}
-                    attribute={attribute}
-                    selectedValues={selectedValues[attribute.id] || []}
-                    onValuesChange={(values) => updateAttributeValues(attribute.id, values)}
-                    onAddCustom={(value) => addCustomValue(attribute.id, value)}
-                    onRemove={() => removeAttribute(attribute.id)}
-                    onUpdateAttribute={(updates) => {
-                      setVariantData(prev => ({
-                        ...prev,
-                        attributes: prev.attributes.map(attr =>
-                          attr.id === attribute.id ? { ...attr, ...updates } : attr
-                        ),
-                      }));
-                    }}
-                  />
-                );
-              })}
+              {variantData.attributes.map((attribute) => (
+                <VariantAttributeEditor
+                  key={attribute.id}
+                  attribute={attribute}
+                  selectedValues={selectedValues[attribute.id] || []}
+                  onValuesChange={(values) => updateAttributeValues(attribute.id, values)}
+                  onAddCustom={(value) => addCustomValue(attribute.id, value)}
+                  onRemove={() => removeAttribute(attribute.id)}
+                  onUpdateAttribute={(updates) => {
+                    setVariantData(prev => ({
+                      ...prev,
+                      attributes: prev.attributes.map(attr =>
+                        attr.id === attribute.id ? { ...attr, ...updates } : attr
+                      ),
+                    }));
+                  }}
+                />
+              ))}
             </CardContent>
           </Card>
 
@@ -617,7 +510,6 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
                   {variantData.combinations.length > 0 && ` (${variantData.combinations.length})`}
                   {Object.values(selectedValues).some(values => values.length > 0) && variantData.combinations.length === 0 && " (Generating...)"}
                 </CardTitle>
-                
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4">
@@ -685,9 +577,7 @@ function VariantAttributeEditor({
     if (newOptionValue.trim() && onUpdateAttribute) {
       const currentOptions = attribute.options || [];
       if (!currentOptions.includes(newOptionValue.trim())) {
-        onUpdateAttribute({
-          options: [...currentOptions, newOptionValue.trim()]
-        });
+        onUpdateAttribute({ options: [...currentOptions, newOptionValue.trim()] });
         setNewOptionValue("");
       }
     }
@@ -698,9 +588,7 @@ function VariantAttributeEditor({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Label className="font-medium">{attribute.name}</Label>
-          <Badge variant="outline" className="text-xs">
-            {attribute.type}
-          </Badge>
+          <Badge variant="outline" className="text-xs">{attribute.type}</Badge>
         </div>
         <Button variant="ghost" size="sm" onClick={onRemove} type="button">
           <Trash2 className="h-4 w-4" />
@@ -741,7 +629,6 @@ function VariantAttributeEditor({
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            
           </div>
         )}
 
@@ -787,17 +674,13 @@ function VariantCombinationEditor({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // Use combination.images directly - no local state needed
   const variantImages = combination.images || [];
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-
     const newFiles = Array.from(files);
     const updatedImages = [...variantImages, ...newFiles];
-
-    // Directly update parent - no local state
     onUpdate({ images: updatedImages });
   }, [variantImages, onUpdate]);
 
@@ -817,37 +700,22 @@ function VariantCombinationEditor({
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
-
     const files = e.dataTransfer.files;
     if (!files || files.length === 0) return;
-
     const newFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
     if (newFiles.length === 0) return;
-
     const updatedImages = [...variantImages, ...newFiles];
     onUpdate({ images: updatedImages });
   }, [variantImages, onUpdate]);
 
   const removeImage = useCallback((index: number) => {
     const updatedImages = variantImages.filter((_, i) => i !== index);
-
-    // Clean up blob URLs if they exist
     const removedImage = variantImages[index];
     if (removedImage && typeof removedImage === 'string' && removedImage.startsWith('blob:')) {
       URL.revokeObjectURL(removedImage);
     }
-
-    // Directly update parent - no local state
     onUpdate({ images: updatedImages });
   }, [variantImages, onUpdate]);
-
-  const getAttributeDisplay = () => {
-    const attrs = combination.attributes || {};
-    return Object.entries(attrs)
-      .filter(([_, value]) => value)
-      .map(([key, value]) => `${key}: ${value}`)
-      .join(' / ');
-  };
 
   return (
     <Card className="border">
@@ -860,9 +728,7 @@ function VariantCombinationEditor({
                 {combination.name || combination.slug || 'Unnamed Variant'}
               </Badge>
               {!combination.published && (
-                <Badge variant="secondary" className="text-xs">
-                  Draft
-                </Badge>
+                <Badge variant="secondary" className="text-xs">Draft</Badge>
               )}
             </div>
           </div>
@@ -880,15 +746,9 @@ function VariantCombinationEditor({
               )}
             >
               {combination.published ? (
-                <>
-                  <Eye className="h-3 w-3 mr-1" />
-                  Published
-                </>
+                <><Eye className="h-3 w-3 mr-1" />Published</>
               ) : (
-                <>
-                  <EyeOff className="h-3 w-3 mr-1" />
-                  Draft
-                </>
+                <><EyeOff className="h-3 w-3 mr-1" />Draft</>
               )}
             </Button>
             <Button
@@ -897,7 +757,6 @@ function VariantCombinationEditor({
               onClick={onRemove}
               type="button"
               className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-              title="Delete variant combination"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -905,7 +764,6 @@ function VariantCombinationEditor({
         </div>
 
         <div className="space-y-4">
-          {/* Variant Name, SKU, and Slug in one row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor={`name-${combination.id}`} className="text-sm">Variant Name</Label>
@@ -926,7 +784,6 @@ function VariantCombinationEditor({
                     onUpdate({ name: newName });
                   }}
                   className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
-                  title="Generate name from product + variant attributes"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -954,7 +811,6 @@ function VariantCombinationEditor({
                     onUpdate({ sku: newSKU });
                   }}
                   className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
-                  title="Generate SKU from base SKU + variant attributes"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -982,7 +838,6 @@ function VariantCombinationEditor({
                     onUpdate({ slug: newSlug });
                   }}
                   className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
-                  title="Generate slug from variant attributes"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -1023,21 +878,20 @@ function VariantCombinationEditor({
                   <span>₹</span>
                 </div>
                 <Input
-                id={`salesPrice-${combination.id}`}
-                type="number"
-                step="1"
-                min="0"
-                className="h-10 pl-14"
-                value={combination.salesPrice ?? ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  const numValue = value === '' ? undefined : parseFloat(value) || 0;
-                  onUpdate({ salesPrice: numValue });
-                }}
-                placeholder="0"
-              />
+                  id={`salesPrice-${combination.id}`}
+                  type="number"
+                  step="1"
+                  min="0"
+                  className="h-10 pl-14"
+                  value={combination.salesPrice ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const numValue = value === '' ? undefined : parseFloat(value) || 0;
+                    onUpdate({ salesPrice: numValue });
+                  }}
+                  placeholder="0"
+                />
               </div>
-              
             </div>
 
             <div>
@@ -1065,16 +919,11 @@ function VariantCombinationEditor({
             </div>
           </div>
 
-
           <Separator />
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Variant Images</Label>
-              
-            </div>
+            <Label className="text-sm font-medium">Variant Images</Label>
 
-            {/* Hidden File Input */}
             <input
               ref={fileInputRef}
               type="file"
@@ -1084,7 +933,6 @@ function VariantCombinationEditor({
               onChange={handleImageUpload}
             />
 
-            {/* Drag and Drop Zone */}
             <div
               className={cn(
                 "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
@@ -1117,10 +965,8 @@ function VariantCombinationEditor({
                 <div className="max-h-64 overflow-y-auto border rounded-lg p-3 bg-muted/20">
                   <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
                     {variantImages.map((img, index) => {
-                      // Handle both File objects and string URLs
                       const imageSrc = img instanceof File ? URL.createObjectURL(img) : img;
                       const imageAlt = img instanceof File ? img.name : `Variant ${index + 1}`;
-
                       return (
                         <div key={index} className="relative group aspect-square">
                           <img

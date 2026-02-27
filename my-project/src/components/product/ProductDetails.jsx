@@ -459,8 +459,8 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
             {/* Perks */}
             <div className="grid grid-cols-3 gap-3 mb-6">
               {[
-                { icon: '🚚', label: 'Free Delivery', sub: 'On orders over ₹500' },
-                { icon: '↩️', label: 'Easy Returns', sub: '30-day return policy' },
+                { icon: '🚚', label: 'Free Delivery', sub: 'On orders over ₹1000' },
+                { icon: '↩️', label: 'Easy Returns', sub: '7-days return policy' },
                 { icon: '✅', label: 'Genuine', sub: '100% authentic' },
               ].map(({ icon, label, sub }) => (
                 <div key={label} className="text-center p-3 bg-gray-50 rounded-xl border border-gray-100">
