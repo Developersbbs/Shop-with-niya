@@ -1,17 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-
 import { productFormSchema } from "@/app/(dashboard)/products/_components/form/schema";
 import { formatValidationErrors } from "@/helpers/formatValidationErrors";
 import { ProductServerActionResponse } from "@/types/server-action";
+import { storage } from "@/firebase/config";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export async function editProduct(
   productId: string,
   formData: FormData
 ): Promise<ProductServerActionResponse> {
 
-  // Parse categories from form data
   const categoriesJson = formData.get("categories");
   let categories = [];
   try {
@@ -20,18 +20,29 @@ export async function editProduct(
     console.error("Failed to parse categories:", e);
   }
 
-  // Get images directly from FormData (they're already File objects)
-  const images: File[] = [];
+  // Read new file uploads
+  const newImageFiles: File[] = [];
+  const existingImageUrls: string[] = [];
   let imageIndex = 0;
   while (formData.has(`images[${imageIndex}]`)) {
     const imageFile = formData.get(`images[${imageIndex}]`);
-    if (imageFile instanceof File) {
-      images.push(imageFile);
+    if (imageFile instanceof File && imageFile.size > 0) {
+      newImageFiles.push(imageFile);
     }
     imageIndex++;
   }
 
-  // Parse tags and SEO keywords
+  // Read existing URLs from image_url field (sent by ProductFormSheet)
+  const imageUrlJson = formData.get("image_url");
+  if (imageUrlJson && typeof imageUrlJson === 'string') {
+    try {
+      const parsed = JSON.parse(imageUrlJson);
+      if (Array.isArray(parsed)) {
+        existingImageUrls.push(...parsed);
+      }
+    } catch (e) {}
+  }
+
   const tagsJson = formData.get("tags");
   let tags = [];
   try {
@@ -44,20 +55,17 @@ export async function editProduct(
   let seoKeywords = [];
   try {
     seoKeywords = seoKeywordsJson ? JSON.parse(seoKeywordsJson as string) : [];
-  } catch (e) {
-  }
+  } catch (e) {}
 
-  // Parse variants
   const variantsJson = formData.get("product_variants");
   let variants = null;
   try {
     variants = variantsJson ? JSON.parse(variantsJson as string) : null;
-    console.log('Parsed variants from FormData:', variants);
   } catch (e) {
     console.error("Failed to parse variants:", e);
   }
 
-  // Extract variant image files from FormData (for all combinations)
+  // Extract variant image files from FormData
   const variantImageFiles: { [key: string]: File[] } = {};
   let comboIndex = 0;
   let fileIndex = 0;
@@ -65,15 +73,11 @@ export async function editProduct(
   while (true) {
     const file = formData.get(`variantImages[${comboIndex}][${fileIndex}]`);
     if (!file || !(file instanceof File)) {
-      // Check if there are more combinations
-      if (fileIndex === 0) {
-        break; // No more combinations
-      }
+      if (fileIndex === 0) break;
       comboIndex++;
       fileIndex = 0;
       continue;
     }
-
     if (!variantImageFiles[comboIndex.toString()]) {
       variantImageFiles[comboIndex.toString()] = [];
     }
@@ -81,14 +85,12 @@ export async function editProduct(
     fileIndex++;
   }
 
-  console.log('Found variant image files:', variantImageFiles);
-
   const parsedData = productFormSchema.safeParse({
     productType: formData.get("productType"),
-    productStructure: formData.get("product_structure"), // Use snake_case as sent by objectToFormData
+    productStructure: formData.get("product_structure"),
     name: formData.get("name"),
     description: formData.get("description"),
-    images: images,
+    images: newImageFiles,
     sku: formData.get("sku"),
     categories: categories,
     costPrice: formData.get("costPrice"),
@@ -123,119 +125,117 @@ export async function editProduct(
   }
 
   try {
-    // Prepare form data for backend - send categories in the nested format expected by backend
+    // Firebase upload helper
+    const uploadImageToFirebase = async (file: File, folder: string) => {
+      const sanitizedName = file.name.replace(/\s+/g, "_");
+      const fileExtension = sanitizedName.split('.').pop();
+      const fileName = `${folder}_${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExtension}`;
+      const storageRef = ref(storage, `${folder}/${fileName}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      return getDownloadURL(snapshot.ref);
+    };
+
+    // Upload new images to Firebase and get URLs
+    const newFirebaseUrls = await Promise.all(
+      newImageFiles.map((file) => uploadImageToFirebase(file, "products"))
+    );
+
+    // Merge existing URLs + new Firebase URLs
+    const allImageUrls = [...existingImageUrls, ...newFirebaseUrls];
+
+    console.log('🔥 existingImageUrls:', existingImageUrls);
+    console.log('🔥 newFirebaseUrls:', newFirebaseUrls);
+    console.log('🔥 allImageUrls:', allImageUrls);
+
+    // Upload variant images to Firebase
+    const variantImageUrls: Record<string, string[]> = {};
+    await Promise.all(
+      Object.entries(variantImageFiles).map(async ([comboIdx, files]) => {
+        const urls = await Promise.all(
+          files.map((file) => uploadImageToFirebase(file, "product-variants"))
+        );
+        variantImageUrls[comboIdx] = urls;
+      })
+    );
+
+    // Merge variant Firebase URLs into variants data
+    if (variants && variants.combinations && variants.combinations.length > 0) {
+      variants.combinations = variants.combinations.map((combination: any, index: number) => {
+        const newUrls = variantImageUrls[index.toString()] || [];
+        const existingUrls = (combination.images || []).filter((img: any) => typeof img === "string");
+        return {
+          ...combination,
+          images: [...existingUrls, ...newUrls],
+        };
+      });
+    }
+
     const backendFormData = new FormData();
     backendFormData.append("product_type", parsedData.data.productType);
     backendFormData.append("name", parsedData.data.name);
     backendFormData.append("description", parsedData.data.description);
     backendFormData.append("sku", parsedData.data.sku);
 
-    // Send categories in the nested format: [{ categoryId: "...", subcategoryIds: [...] }]
     if (parsedData.data.categories && parsedData.data.categories.length > 0) {
       backendFormData.append("categories", JSON.stringify(parsedData.data.categories));
     }
 
     backendFormData.append("cost_price", parsedData.data.costPrice?.toString() || "0");
     backendFormData.append("selling_price", parsedData.data.salesPrice?.toString() || "0");
-    // Send inventory fields using backend's expected keys
+
     if (parsedData.data.stock !== undefined) {
       backendFormData.append("stock", parsedData.data.stock.toString());
     }
     if (parsedData.data.minStockThreshold !== undefined) {
       backendFormData.append("min_stock_threshold", parsedData.data.minStockThreshold.toString());
     }
+    if (parsedData.data.color) backendFormData.append("color", parsedData.data.color);
+    if (parsedData.data.size) backendFormData.append("size", parsedData.data.size);
+    if (parsedData.data.material) backendFormData.append("material", parsedData.data.material);
+    if (parsedData.data.brand) backendFormData.append("brand", parsedData.data.brand);
+    if (parsedData.data.warranty) backendFormData.append("warranty", parsedData.data.warranty);
+    if (parsedData.data.fileSize) backendFormData.append("file_size", parsedData.data.fileSize.toString());
+    if (parsedData.data.downloadFormat) backendFormData.append("download_format", parsedData.data.downloadFormat);
+    if (parsedData.data.licenseType) backendFormData.append("license_type", parsedData.data.licenseType);
+    if (parsedData.data.downloadLimit) backendFormData.append("download_limit", parsedData.data.downloadLimit.toString());
+    if (parsedData.data.tags !== undefined) backendFormData.append("tags", JSON.stringify(parsedData.data.tags || []));
 
-    if (parsedData.data.color) {
-      backendFormData.append("color", parsedData.data.color);
-    }
-    if (parsedData.data.size) {
-      backendFormData.append("size", parsedData.data.size);
-    }
-    if (parsedData.data.material) {
-      backendFormData.append("material", parsedData.data.material);
-    }
-    if (parsedData.data.brand) {
-      backendFormData.append("brand", parsedData.data.brand);
-    }
-    if (parsedData.data.warranty) {
-      backendFormData.append("warranty", parsedData.data.warranty);
-    }
-    if (parsedData.data.fileSize) {
-      backendFormData.append("file_size", parsedData.data.fileSize.toString());
-    }
-    if (parsedData.data.downloadFormat) {
-      backendFormData.append("download_format", parsedData.data.downloadFormat);
-    }
-    if (parsedData.data.licenseType) {
-      backendFormData.append("license_type", parsedData.data.licenseType);
-    }
-    if (parsedData.data.downloadLimit) {
-      backendFormData.append("download_limit", parsedData.data.downloadLimit.toString());
-    }
-    if (parsedData.data.tags !== undefined) {
-      backendFormData.append("tags", JSON.stringify(parsedData.data.tags || []));
-    }
     backendFormData.append("published", "true");
-    // SEO fields as individual fields
-    if (parsedData.data.seoTitle) {
-      backendFormData.append("seo_title", parsedData.data.seoTitle);
-    }
-    if (parsedData.data.seoDescription) {
-      backendFormData.append("seo_description", parsedData.data.seoDescription);
-    }
+
+    if (parsedData.data.seoTitle) backendFormData.append("seo_title", parsedData.data.seoTitle);
+    if (parsedData.data.seoDescription) backendFormData.append("seo_description", parsedData.data.seoDescription);
     if (parsedData.data.seoKeywords && parsedData.data.seoKeywords.length > 0) {
       backendFormData.append("seo_keywords", JSON.stringify(parsedData.data.seoKeywords));
     }
-    if (parsedData.data.seoCanonical) {
-      backendFormData.append("seo_canonical", parsedData.data.seoCanonical);
-    }
-    if (parsedData.data.seoRobots) {
-      backendFormData.append("seo_robots", parsedData.data.seoRobots);
-    }
-    if (parsedData.data.seoOgTitle) {
-      backendFormData.append("seo_og_title", parsedData.data.seoOgTitle);
-    }
-    if (parsedData.data.seoOgDescription) {
-      backendFormData.append("seo_og_description", parsedData.data.seoOgDescription);
-    }
-    if (parsedData.data.seoOgImage) {
-      backendFormData.append("seo_og_image", parsedData.data.seoOgImage);
-    }
+    if (parsedData.data.seoCanonical) backendFormData.append("seo_canonical", parsedData.data.seoCanonical);
+    if (parsedData.data.seoRobots) backendFormData.append("seo_robots", parsedData.data.seoRobots);
+    if (parsedData.data.seoOgTitle) backendFormData.append("seo_og_title", parsedData.data.seoOgTitle);
+    if (parsedData.data.seoOgDescription) backendFormData.append("seo_og_description", parsedData.data.seoOgDescription);
+    if (parsedData.data.seoOgImage) backendFormData.append("seo_og_image", parsedData.data.seoOgImage);
+
     if (parsedData.data.product_variants) {
-      backendFormData.append("product_variants", JSON.stringify(parsedData.data.product_variants));
+      backendFormData.append("product_variants", JSON.stringify(variants));
     }
 
-    // Add variant image files if provided
-    Object.entries(variantImageFiles).forEach(([comboIndex, files]) => {
-      files.forEach((file, fileIndex) => {
-        backendFormData.append(`variantImages[${comboIndex}][${fileIndex}]`, file);
-      });
-    });
+    // Send all image URLs (existing + new Firebase URLs)
+    backendFormData.append("image_url", JSON.stringify(allImageUrls));
 
-    // Add images if provided
-    if (parsedData.data.images && parsedData.data.images.length > 0) {
-      parsedData.data.images.forEach((imageFile, index) => {
-        if (imageFile instanceof File) {
-          backendFormData.append(`images[${index}]`, imageFile);
-        }
-      });
-    }
-
-    // Add digital file if provided
     if (parsedData.data.fileUpload instanceof File) {
       backendFormData.append("digital_file", parsedData.data.fileUpload);
     }
 
-    // Send to backend API
+    console.log('🔥 CALLING PUT:', `${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`);
+    console.log('🔥 productId:', productId);
+    console.log('🔥 image_url in formData:', backendFormData.get('image_url'));
+
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`, {
       method: "PUT",
-      body: backendFormData, // Send as FormData, not JSON
+      body: backendFormData,
     });
 
     const result = await response.json();
 
     if (!response.ok) {
-      // Handle specific validation errors
       if (result.error?.includes("slug")) {
         return {
           validationErrors: {
@@ -249,13 +249,11 @@ export async function editProduct(
           },
         };
       }
-
       console.error("Product update failed:", result);
       return { dbError: result.error || "Something went wrong. Please try again later." };
     }
 
     revalidatePath("/products");
-
     return { success: true, product: result.data };
   } catch (error: any) {
     console.error("Unexpected error in editProduct:", error);

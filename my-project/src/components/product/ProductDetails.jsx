@@ -32,6 +32,11 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
     }
   }, [displayProduct]);
 
+  // Reset quantity to 1 when variant changes
+  useEffect(() => {
+    setQuantity(1);
+  }, [selectedVariant]);
+
   const handleAttributeChange = (attribute, value) => {
     const newAttributes = { ...selectedAttributes, [attribute]: value };
     setSelectedAttributes(newAttributes);
@@ -93,9 +98,10 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
     ? displayProduct.selling_price
     : selectedVariant?.selling_price || 0;
 
+  // ✅ FIX 1: ?? instead of || so stock value of 0 is respected
   const displayStock = displayProduct.product_structure === 'simple'
-    ? displayProduct.baseStock
-    : selectedVariant?.stock || 0;
+    ? (displayProduct.baseStock ?? 0)
+    : (selectedVariant?.stock ?? 0);
 
   const originalPrice = displayProduct.price || displayProduct.cost_price || null;
   const discount = originalPrice && originalPrice > displayPrice
@@ -125,7 +131,7 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
       toast.success(`${quantity} item(s) added to cart!`);
       if (onCartUpdate) onCartUpdate();
     } catch (error) {
-      toast.error('Failed to add item to cart');
+      toast.error(error?.message || 'Failed to add item to cart');
     } finally {
       setIsAddingToCart(false);
     }
@@ -139,7 +145,7 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
       if (onCartUpdate) onCartUpdate();
       navigate('/checkout');
     } catch (error) {
-      toast.error('Failed to proceed to checkout');
+      toast.error(error?.message || 'Failed to proceed to checkout');
       setIsBuyingNow(false);
     }
   };
@@ -159,7 +165,15 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
   };
 
   const inWishlist = isInWishlist(displayProduct._id);
-  const isOutOfStock = displayProduct.product_type === 'physical' && displayStock <= 0;
+
+  // ✅ FIX 2: Comprehensive out-of-stock check
+  const isOutOfStock = displayProduct.product_type === 'physical' && (
+    displayProduct.status === 'out_of_stock' ||
+    displayStock <= 0 ||
+    (displayProduct.product_structure === 'variant' &&
+      (selectedVariant?.status === 'out_of_stock' || !selectedVariant?.published))
+  );
+
   const ratingValue = displayProduct?.averageRating || 0;
 
   return (
@@ -185,7 +199,6 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
 
           {/* ── Image Gallery ── */}
           <div>
-            {/* Main Image */}
             <div className="relative bg-white rounded-2xl shadow-sm overflow-hidden group aspect-square flex items-center justify-center border border-gray-100">
               <img
                 src={currentImage}
@@ -194,7 +207,6 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
                 onError={(e) => { e.target.src = '/images/products/placeholder-product.svg'; }}
               />
 
-              {/* Badges */}
               <div className="absolute top-4 left-4 flex flex-col gap-2">
                 {discount && (
                   <span className="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
@@ -208,7 +220,6 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
                 )}
               </div>
 
-              {/* Zoom button */}
               <button
                 onClick={() => setShowImageModal(true)}
                 className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-50"
@@ -216,7 +227,6 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
                 <EyeIcon className="h-4 w-4 text-gray-600" />
               </button>
 
-              {/* Nav arrows */}
               {allImages.length > 1 && (
                 <>
                   <button
@@ -235,7 +245,6 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
               )}
             </div>
 
-            {/* Thumbnails */}
             {allImages.length > 1 && (
               <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
                 {allImages.map((image, index) => (
@@ -263,12 +272,10 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
           {/* ── Product Info ── */}
           <div className="mt-10 lg:mt-0">
 
-            {/* Title */}
             <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 leading-tight">
               {displayProduct.name}
             </h1>
 
-            {/* Rating */}
             <div className="mt-3 flex items-center gap-3">
               <div className="flex items-center">
                 {[0,1,2,3,4].map(i => (
@@ -288,7 +295,6 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
               </span>
             </div>
 
-            {/* Price */}
             <div className="mt-5">
               <div className="flex items-baseline gap-3">
                 <span className="text-3xl font-bold text-gray-900">
@@ -308,7 +314,6 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
               <p className="mt-1 text-xs text-gray-500">Inclusive of all taxes</p>
             </div>
 
-            {/* Stock */}
             <div className="mt-3">
               {isOutOfStock ? (
                 <span className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600">
@@ -373,13 +378,26 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
                   <input
                     type="number"
                     min="1"
+                    max={displayStock || 1}
                     value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    onChange={(e) => {
+                      const val = Math.min(
+                        Math.max(1, parseInt(e.target.value) || 1),
+                        displayStock || 1
+                      );
+                      setQuantity(val);
+                    }}
                     className="w-14 py-2 text-center font-semibold text-sm border-x border-gray-300 focus:outline-none"
                   />
+                  {/* ✅ FIX 3: + button capped at displayStock */}
                   <button
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors font-bold text-lg"
+                    onClick={() => setQuantity(Math.min(quantity + 1, displayStock || 1))}
+                    disabled={quantity >= displayStock || isOutOfStock}
+                    className={`px-4 py-2 font-bold text-lg transition-colors ${
+                      quantity >= displayStock || isOutOfStock
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                   >
                     +
                   </button>
@@ -389,72 +407,75 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
                   <span className="font-bold text-gray-900">{formatCurrency(displayPrice * quantity)}</span>
                 </span>
               </div>
+              {/* Stock hint
+              {!isOutOfStock && displayStock > 0 && (
+                <p className="mt-1.5 text-xs text-gray-400">Max {displayStock} available</p>
+              )} */}
             </div>
 
-            {/* ── 3 Action Buttons ── */}
-{/* ── Action Buttons ── */}
-{/* Row 1: Wishlist + Add to Cart — equal width */}
-<div className="flex gap-3 mb-3">
-  <button
-    onClick={handleWishlistToggle}
-    className={`flex-1 flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
-      inWishlist
-        ? 'border-red-400 bg-red-50 text-red-600 hover:bg-red-100'
-        : 'border-gray-300 bg-white text-gray-600 hover:border-red-300 hover:text-red-500 hover:bg-red-50'
-    }`}
-  >
-    {inWishlist
-      ? <HeartSolidIcon className="h-5 w-5 text-red-500" />
-      : <HeartIcon className="h-5 w-5" />
-    }
-    {inWishlist ? 'Wishlisted' : 'Wishlist'}
-  </button>
+            {/* ── Action Buttons ── */}
+            <div className="flex gap-3 mb-3">
+              <button
+                onClick={handleWishlistToggle}
+                className={`flex-1 flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
+                  inWishlist
+                    ? 'border-red-400 bg-red-50 text-red-600 hover:bg-red-100'
+                    : 'border-gray-300 bg-white text-gray-600 hover:border-red-300 hover:text-red-500 hover:bg-red-50'
+                }`}
+              >
+                {inWishlist
+                  ? <HeartSolidIcon className="h-5 w-5 text-red-500" />
+                  : <HeartIcon className="h-5 w-5" />
+                }
+                {inWishlist ? 'Wishlisted' : 'Wishlist'}
+              </button>
 
-  <button
-    onClick={handleAddToCart}
-    disabled={isAddingToCart || isOutOfStock}
-    className={`flex-1 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 active:scale-95 ${
-      isOutOfStock
-        ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-        : 'border-blue-600 bg-white text-blue-600 hover:bg-blue-50'
-    }`}
-  >
-    {isAddingToCart ? (
-      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-      </svg>
-    ) : (
-      <ShoppingCartIcon className="h-5 w-5" />
-    )}
-    {isAddingToCart ? 'Adding...' : 'Add to Cart'}
-  </button>
-</div>
+              {/* ✅ FIX 4: Out of Stock label on button */}
+              <button
+                onClick={handleAddToCart}
+                disabled={isAddingToCart || isOutOfStock}
+                className={`flex-1 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 active:scale-95 ${
+                  isOutOfStock
+                    ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'border-blue-600 bg-white text-blue-600 hover:bg-blue-50'
+                }`}
+              >
+                {isAddingToCart ? (
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                ) : (
+                  <ShoppingCartIcon className="h-5 w-5" />
+                )}
+                {isAddingToCart ? 'Adding...' : isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+              </button>
+            </div>
 
-{/* Row 2: Buy Now — centered full width */}
-<div className="flex justify-center mb-6">
-  <button
-    onClick={handleBuyNow}
-    disabled={isBuyingNow || isOutOfStock}
-    className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-sm active:scale-95 ${
-      isOutOfStock
-        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
-    }`}
-  >
-    {isBuyingNow ? (
-      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-      </svg>
-    ) : (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-    )}
-    {isBuyingNow ? 'Processing...' : 'Buy Now'}
-  </button>
-</div>
+            <div className="flex justify-center mb-6">
+              {/* ✅ FIX 4: Out of Stock label on button */}
+              <button
+                onClick={handleBuyNow}
+                disabled={isBuyingNow || isOutOfStock}
+                className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-sm active:scale-95 ${
+                  isOutOfStock
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
+                }`}
+              >
+                {isBuyingNow ? (
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                )}
+                {isBuyingNow ? 'Processing...' : isOutOfStock ? 'Out of Stock' : 'Buy Now'}
+              </button>
+            </div>
 
             {/* Perks */}
             <div className="grid grid-cols-3 gap-3 mb-6">
@@ -482,7 +503,6 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
           </div>
         </div>
 
-        {/* Reviews */}
         <div id="ratings" className="mt-12">
           <RatingReview productId={displayProduct._id} />
         </div>

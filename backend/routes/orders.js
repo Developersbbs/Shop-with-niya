@@ -6,12 +6,15 @@ const Cart = require("../models/Cart.js");
 const { authenticateToken } = require('../middleware/auth');
 const { authenticateFirebaseToken } = require('../middleware/firebaseAuth');
 const { authenticateHybridToken } = require('../middleware/hybridAuth');
+const { deductStockForOrder } = require('../helpers/stockHelper');
+
+
 const router = express.Router();
 
 // Test route to verify orders routes are loading
 router.get("/test", (req, res) => {
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     message: "Orders routes are working",
     timestamp: new Date().toISOString()
   });
@@ -22,27 +25,27 @@ router.get("/check-purchase/:productId", authenticateToken, async (req, res) => 
   try {
     const { productId } = req.params;
     const Customer = require('../models/Customer');
-    
+
     // Use authenticated user's ID
     const customerId = req.user.id;
-    
+
     // For JWT auth, find customer by ID
     const customer = await Customer.findById(customerId);
-    
+
     if (!customer) {
       return res.json({
         success: true,
         hasPurchased: false
       });
     }
-    
+
     // Check if customer has purchased this product using new embedded items schema
     const hasPurchased = await Order.findOne({
       customer_id: customer._id,
       status: { $in: ['processing', 'shipped', 'delivered'] }, // Include processing orders for testing
       'items.product_id': productId
     });
-    
+
     res.json({
       success: true,
       hasPurchased: !!hasPurchased
@@ -59,23 +62,23 @@ router.get("/check-purchase/:productId", authenticateToken, async (req, res) => 
 // GET all orders with pagination and filtering
 router.get("/", async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      search, 
-      status, 
-      method, 
-      startDate, 
-      endDate 
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+      method,
+      startDate,
+      endDate
     } = req.query;
-    
+
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
-    
+
     // Build filter query
     let filter = {};
-    
+
     if (search) {
       filter.$or = [
         { invoice_no: { $regex: search, $options: "i" } },
@@ -83,15 +86,15 @@ router.get("/", async (req, res) => {
         { "shipping_address.email": { $regex: search, $options: "i" } }
       ];
     }
-    
+
     if (status) {
       filter.status = status;
     }
-    
+
     if (method) {
       filter.payment_method = method;
     }
-    
+
     if (startDate || endDate) {
       filter.order_time = {};
       if (startDate) {
@@ -101,7 +104,7 @@ router.get("/", async (req, res) => {
         filter.order_time.$lte = new Date(endDate);
       }
     }
-    
+
     // Execute queries
     const orders = await Order.find(filter)
       .populate({
@@ -113,10 +116,10 @@ router.get("/", async (req, res) => {
       .sort({ order_time: -1 })
       .skip(skip)
       .limit(limitNum);
-      
+
     const total = await Order.countDocuments(filter);
     const totalPages = Math.ceil(total / limitNum);
-    
+
     // Transform orders to match frontend structure
     const transformedOrders = orders.map(order => {
       const transformed = {
@@ -129,16 +132,16 @@ router.get("/", async (req, res) => {
         },
         customer: order.customer_id
       };
-      
+
       console.log('🔍 Transformed order:', {
         _id: order._id,
         id: transformed.id,
         invoice_no: order.invoice_no
       });
-      
+
       return transformed;
     });
-    
+
     res.json({
       success: true,
       items: transformedOrders,
@@ -153,9 +156,9 @@ router.get("/", async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching orders:', err);
-    res.status(500).json({ 
-      success: false, 
-      error: err.message 
+    res.status(500).json({
+      success: false,
+      error: err.message
     });
   }
 });
@@ -165,7 +168,7 @@ router.get("/customer/:customerId", authenticateHybridToken, async (req, res) =>
   try {
     const orders = await Order.find({ customer_id: req.params.customerId })
       .sort({ order_time: -1 });
-    
+
     // Get order items for each order
     const ordersWithItems = await Promise.all(
       orders.map(async (order) => {
@@ -176,7 +179,7 @@ router.get("/customer/:customerId", authenticateHybridToken, async (req, res) =>
         };
       })
     );
-    
+
     res.json(ordersWithItems);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -188,7 +191,7 @@ router.get("/customer/firebase/:firebaseUid", authenticateHybridToken, async (re
   console.log('Firebase orders route called with UID:', req.params.firebaseUid);
   try {
     const Customer = require('../models/Customer');
-    
+
     // Find customer by Firebase UID
     const customer = await Customer.findOne({ firebase_uid: req.params.firebaseUid });
     console.log('Customer found:', customer ? customer._id : 'Not found');
@@ -198,9 +201,9 @@ router.get("/customer/firebase/:firebaseUid", authenticateHybridToken, async (re
 
     const orders = await Order.find({ customer_id: customer._id.toString() })
       .sort({ order_time: -1 });
-    
+
     console.log('Orders found:', orders.length);
-    
+
     // Enhance items with product information (items are now embedded in order)
     const ordersWithItems = await Promise.all(
       orders.map(async (order) => {
@@ -213,9 +216,9 @@ router.get("/customer/firebase/:firebaseUid", authenticateHybridToken, async (re
                 ...item.toObject(),
                 id: item._id,
                 name: product ? product.name : 'Product Not Found',
-                  slug: product ? product.slug : null, 
-                image: product && product.image_url && product.image_url.length > 0 
-                  ? product.image_url[0] 
+                slug: product ? product.slug : null,
+                image: product && product.image_url && product.image_url.length > 0
+                  ? product.image_url[0]
                   : '/images/products/placeholder-product.svg',
                 sku: product ? product.sku : 'N/A',
                 price: item.price || 0 // Use price field from new schema
@@ -232,7 +235,7 @@ router.get("/customer/firebase/:firebaseUid", authenticateHybridToken, async (re
             }
           })
         );
-        
+
         return {
           ...order.toObject(),
           items: enhancedItems,
@@ -240,7 +243,7 @@ router.get("/customer/firebase/:firebaseUid", authenticateHybridToken, async (re
         };
       })
     );
-    
+
     res.json(ordersWithItems);
   } catch (err) {
     console.error('Error fetching orders by Firebase UID:', err);
@@ -252,10 +255,10 @@ router.get("/customer/firebase/:firebaseUid", authenticateHybridToken, async (re
 router.get("/export", async (req, res) => {
   try {
     const { search, status, method, startDate, endDate } = req.query;
-    
+
     // Build filter query
     let filter = {};
-    
+
     if (search) {
       filter.$or = [
         { invoice_no: { $regex: search, $options: "i" } },
@@ -263,15 +266,15 @@ router.get("/export", async (req, res) => {
         { "shipping_address.email": { $regex: search, $options: "i" } }
       ];
     }
-    
+
     if (status) {
       filter.status = status;
     }
-    
+
     if (method) {
       filter.payment_method = method;
     }
-    
+
     if (startDate || endDate) {
       filter.order_time = {};
       if (startDate) {
@@ -281,7 +284,7 @@ router.get("/export", async (req, res) => {
         filter.order_time.$lte = new Date(endDate);
       }
     }
-    
+
     // Fetch orders with customer data
     const orders = await Order.find(filter)
       .populate({
@@ -290,7 +293,7 @@ router.get("/export", async (req, res) => {
         model: "Customers",
       })
       .sort({ order_time: -1 });
-    
+
     // Transform orders for CSV
     const csvOrders = orders.map(order => ({
       'Invoice No': order.invoice_no,
@@ -304,20 +307,20 @@ router.get("/export", async (req, res) => {
       'Total Amount': order.total_amount,
       'Shipping Address': `${order.shipping_address?.street || ''}, ${order.shipping_address?.city || ''}, ${order.shipping_address?.state || ''} ${order.shipping_address?.zipCode || ''}`.trim()
     }));
-    
+
     // Convert to CSV
     const csv = convertToCSV(csvOrders);
-    
+
     // Set headers for CSV download
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename=orders_export_${new Date().toISOString().split('T')[0]}.csv`);
-    
+
     res.send(csv);
   } catch (err) {
     console.error('Error exporting orders:', err);
-    res.status(500).json({ 
-      success: false, 
-      error: err.message 
+    res.status(500).json({
+      success: false,
+      error: err.message
     });
   }
 });
@@ -325,10 +328,10 @@ router.get("/export", async (req, res) => {
 // Helper function to convert array of objects to CSV
 function convertToCSV(data) {
   if (!data || data.length === 0) return '';
-  
+
   const headers = Object.keys(data[0]);
   const csvHeaders = headers.join(',');
-  
+
   const csvRows = data.map(row => {
     return headers.map(header => {
       const value = row[header];
@@ -339,7 +342,7 @@ function convertToCSV(data) {
       return value || '';
     }).join(',');
   });
-  
+
   return csvHeaders + '\n' + csvRows.join('\n');
 }
 
@@ -348,7 +351,7 @@ router.get("/:id", async (req, res) => {
   try {
     const orderId = req.params.id;
     console.log('🔍 Fetching order with ID:', orderId);
-    
+
     const order = await Order.findOne({ _id: orderId })
       .populate({
         path: "customer_id",
@@ -356,21 +359,21 @@ router.get("/:id", async (req, res) => {
         model: "Customers",
       })
       .select('-__v');
-      
+
     if (!order) {
       console.log('❌ Order not found with ID:', orderId);
       return res.status(404).json({ error: "Order not found" });
     }
-    
+
     console.log('✅ Found order:', {
       _id: order._id,
       invoice_no: order.invoice_no,
       status: order.status
     });
-    
+
     // Get order items with product details
     const items = await OrderItem.find({ order_id: order.invoice_no });
-    
+
     // Enhance items with product information
     const enhancedItems = await Promise.all(
       items.map(async (item) => {
@@ -380,7 +383,7 @@ router.get("/:id", async (req, res) => {
           return {
             ...item.toObject(),
             id: item._id,
-              slug: product ? product.slug : null, 
+            slug: product ? product.slug : null,
             unit_price: item.unit_price || item.price || 0,
             quantity: item.quantity || 1,
             products: {
@@ -404,7 +407,7 @@ router.get("/:id", async (req, res) => {
         }
       })
     );
-    
+
     // Transform order to match frontend structure
     const transformedOrder = {
       ...order.toObject(),
@@ -419,13 +422,13 @@ router.get("/:id", async (req, res) => {
       order_items: enhancedItems,
       coupons: order.coupons || null
     };
-    
+
     console.log('🔍 Transformed single order:', {
       _id: order._id,
       id: transformedOrder.id,
       invoice_no: order.invoice_no
     });
-    
+
     res.json({
       success: true,
       data: transformedOrder
@@ -501,7 +504,26 @@ router.post("/place-order", authenticateHybridToken, async (req, res) => {
       status: 'processing' // Cash on delivery starts as processing
     });
 
+    // ✅ Validate stock availability before placing order
+const Stock = require('../models/Stock');
+for (const item of orderItems) {
+  const stockEntry = await Stock.findOne({
+    productId: item.product_id,
+    variantId: item.variant_id || null
+  });
+
+  if (stockEntry && item.quantity > stockEntry.quantity) {
+    return res.status(400).json({
+      error: `Insufficient stock for one or more items. Only ${stockEntry.quantity} available.`,
+      product_id: item.product_id
+    });
+  }
+}
+
     const savedOrder = await order.save();
+
+    // ✅ Deduct stock immediately after order is placed
+    await deductStockForOrder(orderItems, invoice_no);
 
     // Clear user's cart after successful order
     await Cart.deleteMany({ customer_id });
@@ -554,7 +576,7 @@ router.put("/:id/status", async (req, res) => {
   try {
     const { status } = req.body;
     const orderId = req.params.id;
-    
+
     // Validate status
     const validStatuses = ["delivered", "cancelled", "pending", "processing", "shipped", "dispatched"];
     if (!validStatuses.includes(status)) {
@@ -567,73 +589,12 @@ router.put("/:id/status", async (req, res) => {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    // If status is being changed to dispatched and it wasn't dispatched before
-    if (status === 'dispatched' && currentOrder.status !== 'dispatched') {
-      try {
-        const Product = require('../models/Product');
-        const Stock = require('../models/Stock');
-        
-        // Update stock for each item from the embedded items array
-        for (const item of currentOrder.items) {
-          // Update Product collection stock
-          const product = await Product.findById(item.product_id);
-          if (product) {
-            const originalStock = product.baseStock || 0;
-            const newStock = Math.max(0, originalStock - item.quantity);
-            
-            // Update product stock
-            product.baseStock = newStock;
-            
-            // Update product status based on new stock
-            const minStock = product.minStock || 5;
-            if (newStock <= 0) {
-              product.status = 'out_of_stock';
-              product.published = false;
-            } else if (newStock <= minStock) {
-              product.status = 'low_stock';
-            } else {
-              product.status = 'selling';
-            }
-            
-            await product.save();
-            console.log(`Updated product stock for ${item.product_id}: ${originalStock} → ${newStock} units remaining`);
-            
-            // Also update Stock collection for tracking
-            let stock = await Stock.findOne({ 
-              productId: item.product_id,
-              variantId: item.variant_id || null 
-            });
-            
-            if (stock) {
-              stock.quantity = newStock;
-              stock.notes = `Updated via order dispatch: ${originalStock} → ${newStock} (Order: ${currentOrder.invoice_no})`;
-              await stock.save();
-            } else {
-              // Create new stock record if none exists
-              const newStockRecord = new Stock({
-                productId: item.product_id,
-                variantId: item.variant_id || null,
-                quantity: newStock,
-                minStock: 5,
-                notes: `Created via order dispatch: ${originalStock} → ${newStock} (Order: ${currentOrder.invoice_no})`
-              });
-              await newStockRecord.save();
-              console.log(`Created new stock record for product ${item.product_id}`);
-            }
-          } else {
-            console.log(`Product not found: ${item.product_id}`);
-          }
-        }
-      } catch (stockError) {
-        console.error('Error updating stock:', stockError);
-        // Continue with status update even if stock update fails
-      }
-    }
+    // ✅ Stock deduction removed from here — it now happens at checkout/payment
 
     // Update the order status
-    const updateData = { 
-      status, 
-      updated_at: new Date() 
+    const updateData = {
+      status,
+      updated_at: new Date()
     };
 
     const order = await Order.findByIdAndUpdate(
@@ -657,22 +618,22 @@ router.put("/:id/status", async (req, res) => {
 router.patch("/:id/status", authenticateHybridToken, async (req, res) => {
   try {
     const { status, trackingNumber } = req.body;
-    
+
     // Validate status
     const validStatuses = ["delivered", "cancelled", "pending", "processing", "shipped"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: "Invalid status" });
     }
 
-    const updateData = { 
-      status, 
-      updated_at: new Date() 
+    const updateData = {
+      status,
+      updated_at: new Date()
     };
 
     // If status is shipped and tracking number provided, add tracking
     if (status === 'shipped' && trackingNumber) {
       updateData.tracking_number = trackingNumber;
-      
+
       // Set estimated delivery if not already set
       if (!updateData.estimated_delivery) {
         const estimatedDelivery = new Date();
@@ -688,7 +649,7 @@ router.patch("/:id/status", authenticateHybridToken, async (req, res) => {
     );
 
     if (!order) return res.status(404).json({ error: "Order not found" });
-    
+
     res.json({
       success: true,
       message: "Order status updated successfully",
@@ -730,14 +691,13 @@ router.get("/:id/invoice", authenticateHybridToken, async (req, res) => {
     const OrderItem = require('../models/OrderItem');
     const Customer = require('../models/Customer');
     const Product = require('../models/Product');
-    
+    const puppeteer = require('puppeteer');
+
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ error: "Order not found" });
 
-    // Get customer details
     const customer = await Customer.findById(order.customer_id);
-    
-    // Get order items with product details (items are now embedded in order)
+
     const enhancedItems = await Promise.all(
       order.items.map(async (item) => {
         try {
@@ -746,7 +706,7 @@ router.get("/:id/invoice", authenticateHybridToken, async (req, res) => {
             ...item.toObject(),
             name: product ? product.name : 'Product Not Found',
             sku: product ? product.sku : 'N/A',
-            unit_price: item.price || 0 // Use price field from new schema
+            unit_price: item.price || 0
           };
         } catch (error) {
           return {
@@ -759,13 +719,11 @@ router.get("/:id/invoice", authenticateHybridToken, async (req, res) => {
       })
     );
 
-    // Calculate totals
     const subtotal = enhancedItems.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
-    const tax = subtotal * 0.1; // 10% tax
+    const tax = subtotal * 0.1;
     const shipping = order.shipping_cost || 0;
     const total = order.total_amount;
 
-    // Generate HTML for invoice
     const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -773,114 +731,154 @@ router.get("/:id/invoice", authenticateHybridToken, async (req, res) => {
       <meta charset="utf-8">
       <title>Invoice ${order.invoice_no}</title>
       <style>
-        body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { color: #2563eb; margin: 0; }
-        .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
-        .section { margin-bottom: 20px; }
-        .section h3 { color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-        th { background-color: #f9fafb; font-weight: 600; }
-        .total-row { font-weight: 600; }
-        .footer { margin-top: 40px; text-align: center; color: #6b7280; font-size: 12px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; background: #fff; padding: 40px; }
+
+        .header { text-align: center; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 2px solid #f0f0f0; }
+        .brand { font-size: 26px; font-weight: 800; color: #1a3a2a; letter-spacing: 2px; text-transform: uppercase; }
+        .invoice-title { font-size: 13px; letter-spacing: 4px; text-transform: uppercase; color: #888; margin-top: 4px; }
+
+        .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
+        .meta-box { background: #f9f9f7; border: 1px solid #ebebeb; border-radius: 8px; padding: 16px 20px; }
+        .meta-box h4 { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #aaa; margin-bottom: 10px; }
+        .meta-box p { font-size: 13px; color: #333; line-height: 1.7; }
+        .meta-box p strong { color: #111; }
+
+        .section-title { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #aaa; margin-bottom: 10px; }
+
+        .address-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
+        .address-box { background: #f9f9f7; border: 1px solid #ebebeb; border-radius: 8px; padding: 16px 20px; }
+        .address-box h4 { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #aaa; margin-bottom: 10px; }
+        .address-box p { font-size: 13px; color: #444; line-height: 1.8; }
+        .address-box .name { font-weight: 700; color: #111; font-size: 14px; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+        thead tr { background: #1a3a2a; }
+        thead th { padding: 11px 14px; text-align: left; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #fff; font-weight: 600; }
+        tbody tr { border-bottom: 1px solid #f0f0f0; }
+        tbody tr:hover { background: #fafaf8; }
+        tbody td { padding: 12px 14px; font-size: 13px; color: #333; }
+
+        .totals { margin-left: auto; width: 280px; margin-top: 16px; }
+        .total-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; color: #555; }
+        .total-row.final { border-top: 2px solid #1a3a2a; margin-top: 8px; padding-top: 10px; font-size: 16px; font-weight: 800; color: #1a3a2a; }
+
+        .status-badge { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; text-transform: capitalize; background: #fef3c7; color: #92400e; }
+        .status-badge.delivered { background: #d1fae5; color: #065f46; }
+        .status-badge.cancelled { background: #fee2e2; color: #991b1b; }
+        .status-badge.shipped { background: #dbeafe; color: #1e40af; }
+
+        .footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid #f0f0f0; text-align: center; }
+        .footer p { font-size: 11px; color: #bbb; line-height: 1.8; }
       </style>
     </head>
     <body>
+
       <div class="header">
-        <h1>INVOICE</h1>
-        <p>Thank you for your order!</p>
+        <div class="brand">Shop with Niya</div>
+        <div class="invoice-title">Invoice</div>
       </div>
-      
-      <div class="invoice-info">
-        <div class="section">
-          <h3>Invoice Details</h3>
+
+      <div class="meta-grid">
+        <div class="meta-box">
+          <h4>Invoice Details</h4>
           <p><strong>Invoice No:</strong> ${order.invoice_no}</p>
-          <p><strong>Order Date:</strong> ${new Date(order.order_time).toLocaleDateString()}</p>
-          <p><strong>Status:</strong> ${order.status}</p>
-          <p><strong>Payment Method:</strong> ${order.payment_method}</p>
+          <p><strong>Order Date:</strong> ${new Date(order.order_time).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <p><strong>Status:</strong> <span class="status-badge ${order.status}">${order.status}</span></p>
+          <p><strong>Payment:</strong> ${order.payment_method === 'cash' ? 'Cash on Delivery' : order.payment_method}</p>
         </div>
-        
-        <div class="section">
-          <h3>Billing Address</h3>
-          <p><strong>Name:</strong> ${customer?.name || order.shipping_address?.name || 'N/A'}</p>
-          <p><strong>Email:</strong> ${customer?.email || order.shipping_address?.email || 'N/A'}</p>
-          <p><strong>Phone:</strong> ${customer?.phone || order.shipping_address?.phone || 'N/A'}</p>
+        <div class="meta-box">
+          <h4>Billing Details</h4>
+          <p><strong>${customer?.name || order.shipping_address?.name || 'N/A'}</strong></p>
+          <p>${customer?.email || order.shipping_address?.email || 'N/A'}</p>
+          <p>${customer?.phone || order.shipping_address?.phone || 'N/A'}</p>
         </div>
       </div>
-      
-      <div class="section">
-        <h3>Shipping Address</h3>
-        <p>${order.shipping_address?.name || 'N/A'}</p>
-        <p>${order.shipping_address?.street || 'N/A'}</p>
-        <p>${order.shipping_address?.city || 'N/A'}, ${order.shipping_address?.state || 'N/A'} ${order.shipping_address?.zipCode || ''}</p>
-        <p>${order.shipping_address?.country || 'N/A'}</p>
+
+      <div class="address-grid">
+        <div class="address-box">
+          <h4>Shipping Address</h4>
+          <p class="name">${order.shipping_address?.name || 'N/A'}</p>
+          <p>${order.shipping_address?.street || ''}</p>
+          <p>${order.shipping_address?.city || ''}, ${order.shipping_address?.state || ''} ${order.shipping_address?.zipCode || ''}</p>
+          <p>${order.shipping_address?.country || 'India'}</p>
+          ${order.shipping_address?.phone ? `<p>${order.shipping_address.phone}</p>` : ''}
+        </div>
+        <div class="address-box">
+          <h4>Delivery Info</h4>
+          ${order.estimated_delivery ? `<p><strong>Est. Delivery:</strong> ${new Date(order.estimated_delivery).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>` : ''}
+          ${order.tracking_number ? `<p><strong>Tracking No:</strong> ${order.tracking_number}</p>` : '<p>Tracking not available yet</p>'}
+        </div>
       </div>
-      
-      <div class="section">
-        <h3>Order Items</h3>
-        <table>
-          <thead>
+
+      <p class="section-title">Order Items</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>SKU</th>
+            <th style="text-align:center">Qty</th>
+            <th style="text-align:right">Unit Price</th>
+            <th style="text-align:right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${enhancedItems.map(item => `
             <tr>
-              <th>Product</th>
-              <th>SKU</th>
-              <th>Quantity</th>
-              <th>Unit Price</th>
-              <th>Total</th>
+              <td>${item.name}</td>
+              <td style="color:#999">${item.sku}</td>
+              <td style="text-align:center">${item.quantity}</td>
+              <td style="text-align:right">₹${item.unit_price.toFixed(2)}</td>
+              <td style="text-align:right">₹${(item.unit_price * item.quantity).toFixed(2)}</td>
             </tr>
-          </thead>
-          <tbody>
-            ${enhancedItems.map(item => `
-              <tr>
-                <td>${item.name}</td>
-                <td>${item.sku}</td>
-                <td>${item.quantity}</td>
-                <td>₹${item.unit_price.toFixed(2)}</td>
-                <td>₹${(item.unit_price * item.quantity).toFixed(2)}</td>
-              </tr>
-            `).join('')}
-            <tr class="total-row">
-              <td colspan="4">Subtotal:</td>
-              <td>₹${subtotal.toFixed(2)}</td>
-            </tr>
-            <tr class="total-row">
-              <td colspan="4">Tax (10%):</td>
-              <td>₹${tax.toFixed(2)}</td>
-            </tr>
-            <tr class="total-row">
-              <td colspan="4">Shipping:</td>
-              <td>₹${shipping.toFixed(2)}</td>
-            </tr>
-            <tr class="total-row" style="border-top: 2px solid #1f2937;">
-              <td colspan="4"><strong>Total:</strong></td>
-              <td><strong>₹${total.toFixed(2)}</strong></td>
-            </tr>
-          </tbody>
-        </table>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <div class="totals">
+        <div class="total-row"><span>Subtotal</span><span>₹${subtotal.toFixed(2)}</span></div>
+        <div class="total-row"><span>Tax (10%)</span><span>₹${tax.toFixed(2)}</span></div>
+        <div class="total-row"><span>Shipping</span><span>${shipping === 0 ? 'Free' : '₹' + shipping.toFixed(2)}</span></div>
+        <div class="total-row final"><span>Total</span><span>₹${total.toFixed(2)}</span></div>
       </div>
-      
+
       <div class="footer">
         <p>This is a computer-generated invoice. No signature required.</p>
-        <p>Generated on ${new Date().toLocaleDateString()}</p>
+        <p>Generated on ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} &nbsp;·&nbsp; Niya by Yuktha Fashion Studio</p>
       </div>
+
     </body>
     </html>
     `;
 
-    // Set headers for PDF download
+    // Launch puppeteer and convert HTML → real PDF
+    const browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
+    const page = await browser.newPage();
+    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' }
+    });
+
+    await browser.close();
+
+    // Send real PDF
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="invoice-${order.invoice_no}.pdf"`);
-    
-    // For now, send HTML as a simple solution
-    // In production, you would use puppeteer or similar to convert to PDF
-    res.send(htmlContent);
-    
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.end(pdfBuffer);
+
   } catch (err) {
     console.error('Error generating invoice:', err);
     res.status(500).json({ error: err.message });
   }
 });
-
 // DELETE order
 router.delete("/:id", async (req, res) => {
   try {

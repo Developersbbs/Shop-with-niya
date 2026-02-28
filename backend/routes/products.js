@@ -954,11 +954,11 @@ router.put("/:id", uploadDigitalFile, async (req, res) => {
     }
 
     // ─────────────────────────────────────────────────────────────────
-    // STEP 1: Process uploaded files (diskStorage — same as POST route)
+    // STEP 1: Process uploaded files
     // ─────────────────────────────────────────────────────────────────
-    let allImageUrls = [];
+    let newImageUrls = [];
     let digitalFile = null;
-    const newVariantImagePaths = {}; // { comboIdx: ['/uploads/products/filename', ...] }
+    const newVariantImagePaths = {};
 
     if (req.files && Array.isArray(req.files)) {
       const filesByField = {};
@@ -973,11 +973,11 @@ router.put("/:id", uploadDigitalFile, async (req, res) => {
       );
       imageFields.forEach(key => {
         filesByField[key].forEach(file => {
-          allImageUrls.push(`/uploads/products/${file.filename}`);
+          newImageUrls.push(`/uploads/products/${file.filename}`);
         });
       });
 
-      // ✅ New variant image files — save path to local disk (same as POST)
+      // Variant image files
       const variantImageFields = Object.keys(filesByField).filter(key =>
         key.startsWith('variantImages[')
       );
@@ -997,26 +997,46 @@ router.put("/:id", uploadDigitalFile, async (req, res) => {
       }
     }
 
-    // Fallback: preserve existing main product image URLs if no new ones uploaded
-    if (allImageUrls.length === 0 && req.body.image_url) {
-      try {
-        const providedImageUrls = typeof req.body.image_url === 'string'
-          ? JSON.parse(req.body.image_url)
-          : req.body.image_url;
-        if (Array.isArray(providedImageUrls) && providedImageUrls.length > 0) {
-          allImageUrls = providedImageUrls;
-        }
-      } catch (error) {
-        console.error('❌ PUT: Failed to parse image_url payload:', error);
-      }
+    // ─────────────────────────────────────────────────────────────────
+    // FIX 1: Determine final main product image URLs
+    // - If new images uploaded → use them (replace old ones)
+    // - If no new images → preserve existing images from DB
+    // ─────────────────────────────────────────────────────────────────
+    let allImageUrls = [];
+
+// Always start with existing URLs the client wants to keep
+let preservedUrls = [];
+if (req.body.image_url) {
+  try {
+    const provided = typeof req.body.image_url === 'string'
+      ? JSON.parse(req.body.image_url)
+      : req.body.image_url;
+    if (Array.isArray(provided)) {
+      preservedUrls = provided;
     }
+  } catch (error) {
+    console.error('❌ Failed to parse image_url payload:', error);
+  }
+}
+
+if (newImageUrls.length > 0) {
+  // New images uploaded — merge: keep existing preserved URLs + add new ones
+  allImageUrls = [...preservedUrls, ...newImageUrls];
+  console.log(`✅ Merged: ${preservedUrls.length} existing + ${newImageUrls.length} new = ${allImageUrls.length} total`);
+} else if (preservedUrls.length > 0) {
+  // No new uploads — use what client sent
+  allImageUrls = preservedUrls;
+  console.log(`✅ Preserving ${preservedUrls.length} client-provided image URL(s)`);
+} else {
+  // Final fallback — preserve DB images
+  allImageUrls = currentProduct.image_url || [];
+  console.log(`✅ Falling back to ${allImageUrls.length} existing DB image(s)`);
+}
 
     // ─────────────────────────────────────────────────────────────────
-    // STEP 2: Read existingVariantImages from req.body
-    // Admin sends these as existingVariantImages[comboIdx][urlIdx] = 'https://...'
-    // These are the Firebase URLs already saved in DB — must be preserved
+    // STEP 2: Read existingVariantImages sent from admin (URLs to keep)
     // ─────────────────────────────────────────────────────────────────
-    const existingVariantImageUrls = {}; // { comboIdx: [url, ...] }
+    const existingVariantImageUrls = {};
 
     for (const [key, val] of Object.entries(req.body)) {
       const match = key.match(/existingVariantImages\[(\d+)\]\[(\d+)\]/);
@@ -1034,16 +1054,25 @@ router.put("/:id", uploadDigitalFile, async (req, res) => {
     );
 
     // ─────────────────────────────────────────────────────────────────
-    // STEP 3: Merge existing Firebase URLs + new local paths per variant
-    // Result: each combo.images = [...existingFirebaseUrls, ...newLocalPaths]
+    // FIX 2: Merge variant images — existing URLs + new files + DB fallback
     // ─────────────────────────────────────────────────────────────────
     if (variantsData?.combinations) {
       variantsData.combinations = variantsData.combinations.map((combo, idx) => {
         const existing = existingVariantImageUrls[idx] || [];
         const newFiles = newVariantImagePaths[idx] || [];
-        const merged = [...existing, ...newFiles];
 
-        console.log(`✅ Variant ${idx} (${combo.name}): ${existing.length} existing + ${newFiles.length} new = ${merged.length} total`);
+        let merged = [...existing, ...newFiles];
+
+        // If nothing was provided at all for this variant, fall back to DB images
+        if (merged.length === 0) {
+          const dbVariant = currentProduct.product_variants?.[idx];
+          if (dbVariant?.images?.length > 0) {
+            merged = [...dbVariant.images];
+            console.log(`✅ Variant ${idx} (${combo.name}): falling back to ${merged.length} DB image(s)`);
+          }
+        } else {
+          console.log(`✅ Variant ${idx} (${combo.name}): ${existing.length} existing + ${newFiles.length} new = ${merged.length} total`);
+        }
 
         return { ...combo, images: merged };
       });
@@ -1094,7 +1123,9 @@ router.put("/:id", uploadDigitalFile, async (req, res) => {
       updateData.product_structure = 'simple';
     }
 
-    if (allImageUrls.length > 0) updateData.image_url = allImageUrls;
+    // FIX 1 applied here — always set image_url (never skip it)
+    updateData.image_url = allImageUrls;
+
     if (tags.length > 0) updateData.tags = tags;
 
     if (req.body.weight !== undefined) updateData.weight = parseFloat(req.body.weight);
@@ -1133,14 +1164,13 @@ router.put("/:id", uploadDigitalFile, async (req, res) => {
     }
 
     // ─── Transform and save variants ───────────────────────────────
-    // Images are already merged onto each combo above — pass empty map
     if (variantsData?.combinations?.length > 0) {
       const transformedVariants = transformVariantsForDB(
         variantsData,
         req.body.sku || 'PROD',
         updateData.cost_price,
         updateData.selling_price,
-        {} // ✅ empty — images already set on combinations in STEP 3
+        {} // images already merged onto combinations in FIX 2
       );
 
       console.log('=== Transformed variants ===');
@@ -1206,6 +1236,7 @@ router.put("/:id", uploadDigitalFile, async (req, res) => {
     }
 
     console.log('=== AFTER UPDATE ===');
+    console.log(`Main images saved: ${product.image_url?.length || 0} → ${JSON.stringify(product.image_url)}`);
     product.product_variants?.forEach((v, i) => {
       console.log(`Variant ${i} (${v.name}) images saved: ${v.images?.length || 0} → ${JSON.stringify(v.images)}`);
     });

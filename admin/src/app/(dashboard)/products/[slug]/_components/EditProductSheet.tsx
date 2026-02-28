@@ -157,7 +157,7 @@ export function EditProductSheet({ product, children }: Props) {
   console.log("EditProductSheet - Initial data being passed to form:", {
     name: product.name,
     description: product.description ?? "",
-    images: [],
+    images: product.image_url || [],
     sku: product.sku,
     productType: (product.product_type as "physical" | "digital") || "physical",
     productStructure: product.product_variants && product.product_variants.length > 0 ? "variant" : "simple",
@@ -189,6 +189,9 @@ export function EditProductSheet({ product, children }: Props) {
     seoKeywords: product.seo?.keywords || [],
     product_variants: formVariants,
   });
+  console.log("🖼️ product.image_url:", product.image_url);
+console.log("🖼️ image_url type:", typeof product.image_url);
+console.log("🖼️ image_url isArray:", Array.isArray(product.image_url));
 
   return (
     <ProductFormSheet
@@ -199,7 +202,7 @@ export function EditProductSheet({ product, children }: Props) {
       initialData={{
         name: product.name,
         description: product.description ?? "",
-        images: [],
+        images: product.image_url || [],
         sku: product.sku,
         productType: (product.product_type as "physical" | "digital") || "physical",
         productStructure: product.product_variants && product.product_variants.length > 0 ? "variant" : "simple",

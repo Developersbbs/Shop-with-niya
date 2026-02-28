@@ -85,28 +85,29 @@ const orderService = {
   },
 
   // Download order invoice
-  downloadInvoice: async (orderId) => {
-    try {
-      const response = await api.get(API_ENDPOINTS.ORDER_INVOICE(orderId), {
-        responseType: 'blob',
-      });
-      
-      // Create blob link to download
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `invoice-${orderId}.html`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      
-      return { success: true };
-    } catch (error) {
-      console.error('Error downloading invoice:', error);
-      throw error;
-    }
-  },
+
+downloadInvoice: async (orderId) => {
+  try {
+    const response = await api.get(API_ENDPOINTS.ORDER_INVOICE(orderId), {
+      responseType: 'blob',
+    });
+
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `invoice-${orderId}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error downloading invoice:', error);
+    throw error;
+  }
+},
 
   // Cancel order
   cancelOrder: async (orderId, reason = '') => {

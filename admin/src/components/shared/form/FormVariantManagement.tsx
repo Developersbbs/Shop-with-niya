@@ -111,107 +111,107 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
   };
 
   // Initialize variant data from form value (ONLY ONCE)
-  useEffect(() => {
-    if (isInitializing.current) {
-      if (value && typeof value === 'object') {
-        console.log('🔄 INITIALIZING variant data from form value:', value);
+ // Initialize variant data from form value (ONLY ONCE)
+useEffect(() => {
+  if (isInitializing.current) {
+    if (value && typeof value === 'object') {
+      console.log('🔄 INITIALIZING variant data from form value:', value);
 
-        const mappedCombinations = (value.combinations || []).map((combo: any) => ({
-          ...combo,
-          costPrice: combo.costPrice ?? combo.cost_price ?? 0,
-          salesPrice: combo.salesPrice ?? combo.selling_price ?? combo.sellingPrice ?? 0,
-        }));
+      const mappedCombinations = (value.combinations || []).map((combo: any) => ({
+        ...combo,
+        costPrice: combo.costPrice ?? combo.cost_price ?? 0,
+        salesPrice: combo.salesPrice ?? combo.selling_price ?? combo.sellingPrice ?? 0,
+        // ✅ FIX: Preserve existing image URLs from DB — keep them as strings in the images array
+        images: combo.images || [],
+      }));
 
-        const mappedAttributes = value.attributes && value.attributes.length > 0
-          ? value.attributes.map((attribute: any) => {
-              const defaultOptions = getDefaultOptionsForAttribute(attribute.name);
-              return {
-                ...attribute,
-                id: attribute.id || `attr-${attribute.name.toLowerCase()}`,
-                options: attribute.options || defaultOptions || [],
-                type: attribute.type || 'select',
-                required: attribute.required ?? false,
-                allowCustom: attribute.allowCustom ?? true,
-              };
-            })
-          : DEFAULT_VARIANT_ATTRIBUTES.map(attr => ({
-              ...attr,
-              id: `attr-${attr.name.toLowerCase()}`,
-            }));
+      const mappedAttributes = value.attributes && value.attributes.length > 0
+        ? value.attributes.map((attribute: any) => {
+            const defaultOptions = getDefaultOptionsForAttribute(attribute.name);
+            return {
+              ...attribute,
+              id: attribute.id || `attr-${attribute.name.toLowerCase()}`,
+              options: attribute.options || defaultOptions || [],
+              type: attribute.type || 'select',
+              required: attribute.required ?? false,
+              allowCustom: attribute.allowCustom ?? true,
+            };
+          })
+        : DEFAULT_VARIANT_ATTRIBUTES.map(attr => ({
+            ...attr,
+            id: `attr-${attr.name.toLowerCase()}`,
+          }));
 
-        if (mappedCombinations.length > 0) {
-          const allAttributeNames = new Set<string>();
+      if (mappedCombinations.length > 0) {
+        const allAttributeNames = new Set<string>();
+        mappedCombinations.forEach((combo: ProductVariantCombination) => {
+          if (combo.attributes) {
+            Object.keys(combo.attributes).forEach(attrName => allAttributeNames.add(attrName));
+          }
+        });
+
+        const finalAttributes = [...mappedAttributes];
+        allAttributeNames.forEach(attrName => {
+          const existingAttr = finalAttributes.find(attr => attr.name.toLowerCase() === attrName.toLowerCase());
+          if (!existingAttr) {
+            const defaultOptions = getDefaultOptionsForAttribute(attrName);
+            finalAttributes.push({
+              id: `attr-${attrName.toLowerCase()}`,
+              name: attrName,
+              type: 'select',
+              required: false,
+              allowCustom: true,
+              options: defaultOptions.length > 0 ? defaultOptions : [attrName],
+            });
+          }
+        });
+
+        let initialSelectedValues: Record<string, string[]> = {};
+
+        if (value.selectedValues && typeof value.selectedValues === 'object' && Object.keys(value.selectedValues).length > 0) {
+          initialSelectedValues = value.selectedValues;
+        } else {
           mappedCombinations.forEach((combo: ProductVariantCombination) => {
             if (combo.attributes) {
-              Object.keys(combo.attributes).forEach(attrName => allAttributeNames.add(attrName));
-            }
-          });
-
-          const finalAttributes = [...mappedAttributes];
-          allAttributeNames.forEach(attrName => {
-            const existingAttr = finalAttributes.find(attr => attr.name.toLowerCase() === attrName.toLowerCase());
-            if (!existingAttr) {
-              const defaultOptions = getDefaultOptionsForAttribute(attrName);
-              finalAttributes.push({
-                id: `attr-${attrName.toLowerCase()}`,
-                name: attrName,
-                type: 'select',
-                required: false,
-                allowCustom: true,
-                options: defaultOptions.length > 0 ? defaultOptions : [attrName],
+              Object.entries(combo.attributes).forEach(([key, val]: [string, any]) => {
+                const attrByName = finalAttributes.find((a: ProductVariantAttribute) =>
+                  a.name?.toLowerCase() === key.toLowerCase()
+                );
+                if (attrByName && attrByName.id) {
+                  const stringValue = typeof val === 'string' ? val : JSON.stringify(val);
+                  if (!initialSelectedValues[attrByName.id]) {
+                    initialSelectedValues[attrByName.id] = [];
+                  }
+                  if (!initialSelectedValues[attrByName.id].includes(stringValue)) {
+                    initialSelectedValues[attrByName.id].push(stringValue);
+                  }
+                }
               });
             }
           });
-
-          let initialSelectedValues: Record<string, string[]> = {};
-
-          if (value.selectedValues && typeof value.selectedValues === 'object' && Object.keys(value.selectedValues).length > 0) {
-            initialSelectedValues = value.selectedValues;
-          } else if (value.product_variants?.selectedValues && typeof value.product_variants.selectedValues === 'object' && Object.keys(value.product_variants.selectedValues).length > 0) {
-            initialSelectedValues = value.product_variants.selectedValues;
-          } else {
-            mappedCombinations.forEach((combo: ProductVariantCombination) => {
-              if (combo.attributes) {
-                Object.entries(combo.attributes).forEach(([key, val]: [string, any]) => {
-                  const attrByName = finalAttributes.find((a: ProductVariantAttribute) =>
-                    a.name?.toLowerCase() === key.toLowerCase()
-                  );
-                  if (attrByName && attrByName.id) {
-                    const stringValue = typeof val === 'string' ? val : JSON.stringify(val);
-                    if (!initialSelectedValues[attrByName.id]) {
-                      initialSelectedValues[attrByName.id] = [];
-                    }
-                    if (!initialSelectedValues[attrByName.id].includes(stringValue)) {
-                      initialSelectedValues[attrByName.id].push(stringValue);
-                    }
-                  }
-                });
-              }
-            });
-          }
-
-          setVariantData({
-            attributes: finalAttributes,
-            combinations: mappedCombinations,
-            autoGenerateSKU: value.autoGenerateSKU ?? true,
-            autoGenerateStock: value.autoGenerateStock ?? true,
-          });
-
-          setSelectedValues(initialSelectedValues);
-        } else {
-          setVariantData({
-            attributes: mappedAttributes,
-            combinations: mappedCombinations,
-            autoGenerateSKU: value.autoGenerateSKU ?? true,
-            autoGenerateStock: value.autoGenerateStock ?? true,
-          });
-          setSelectedValues({});
         }
+
+        setVariantData({
+          attributes: finalAttributes,
+          combinations: mappedCombinations, // ✅ images are preserved inside each combo
+          autoGenerateSKU: value.autoGenerateSKU ?? true,
+          autoGenerateStock: value.autoGenerateStock ?? true,
+        });
+
+        setSelectedValues(initialSelectedValues);
+      } else {
+        setVariantData({
+          attributes: mappedAttributes,
+          combinations: [],
+          autoGenerateSKU: value.autoGenerateSKU ?? true,
+          autoGenerateStock: value.autoGenerateStock ?? true,
+        });
+        setSelectedValues({});
       }
-      isInitializing.current = false;
-      console.log('✅ INITIALIZATION COMPLETE');
     }
-  }, [value]);
+    isInitializing.current = false;
+  }
+}, [value]);
 
   // Regenerate names for existing combinations that don't have them
   useEffect(() => {

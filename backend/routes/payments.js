@@ -4,6 +4,8 @@ const Order = require("../models/Order.js");
 const OrderItem = require("../models/OrderItem.js");
 const Cart = require("../models/Cart.js");
 const { authenticateHybridToken } = require('../middleware/hybridAuth');
+const { deductStockForOrder } = require('../helpers/stockHelper');
+
 const router = express.Router();
 
 // Initialize Razorpay
@@ -237,6 +239,9 @@ router.post("/verify-payment", authenticateHybridToken, async (req, res) => {
     order.estimated_delivery = estimatedDelivery;
 
     await order.save();
+
+    // ✅ Deduct stock immediately after payment is verified
+    await deductStockForOrder(order.items, order.invoice_no);
 
     // Clear user's cart after successful payment
     await Cart.deleteMany({ customer_id: req.user.id });
