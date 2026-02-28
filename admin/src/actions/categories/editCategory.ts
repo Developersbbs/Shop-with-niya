@@ -12,13 +12,12 @@ export async function editCategory(
   categoryId: string,
   formData: FormData
 ): Promise<CategoryServerActionResponse> {
+
   // Parse subcategories from FormData
   const subcategoriesData: any[] = [];
-  let subcategoryIndex = 0;
 
-  // First, try to get subcategories as a JSON string (for direct API calls)
+  // Try JSON first
   const subcategoriesJson = formData.get('subcategories');
-  
   if (subcategoriesJson && typeof subcategoriesJson === 'string') {
     try {
       const parsed = JSON.parse(subcategoriesJson);
@@ -39,14 +38,14 @@ export async function editCategory(
     }
   }
 
-  // If no subcategories from JSON, try the form data approach
+  // Fallback: read individual form fields
   if (subcategoriesData.length === 0) {
+    let subcategoryIndex = 0;
     while (formData.has(`subcategories.${subcategoryIndex}.name`)) {
       const name = formData.get(`subcategories.${subcategoryIndex}.name`);
       const description = formData.get(`subcategories.${subcategoryIndex}.description`);
       const slug = formData.get(`subcategories.${subcategoryIndex}.slug`);
       const published = formData.get(`subcategories.${subcategoryIndex}.published`);
-
       if (name) {
         subcategoriesData.push({
           name: String(name),
@@ -61,13 +60,7 @@ export async function editCategory(
 
   console.log('Edit parsed subcategories data:', subcategoriesData);
 
-  console.log('Edit FormData entries:');
-  const entries = Array.from(formData.entries());
-  entries.forEach(([key, value]) => {
-    console.log(key, value);
-  });
-
-  // Validate input with Zod
+  // Validate
   const parsedData = categoryFormSchema.safeParse({
     name: formData.get("name"),
     description: formData.get("description"),
@@ -85,50 +78,48 @@ export async function editCategory(
   }
 
   try {
-    // Prepare the request body as JSON
     const requestBody: any = {
       name: parsedData.data.name,
       description: parsedData.data.description || "",
       slug: parsedData.data.slug,
     };
 
-    // Add subcategories as individual fields in the format expected by the backend
-    subcategoriesData.forEach((subcat, index) => {
-      requestBody[`subcategories.${index}.name`] = subcat.name;
-      requestBody[`subcategories.${index}.description`] = subcat.description || '';
-      requestBody[`subcategories.${index}.slug`] = subcat.slug || '';
-      requestBody[`subcategories.${index}.published`] = subcat.published;
-    });
+    // ✅ FIX: ALWAYS send subcategory fields to backend
+    // Even if subcategoriesData is empty, we send subcategories.delete = true
+    // so backend knows to delete all existing subcategories
+    if (subcategoriesData.length > 0) {
+      subcategoriesData.forEach((subcat, index) => {
+        requestBody[`subcategories.${index}.name`] = subcat.name;
+        requestBody[`subcategories.${index}.description`] = subcat.description || '';
+        requestBody[`subcategories.${index}.slug`] = subcat.slug || '';
+        requestBody[`subcategories.${index}.published`] = subcat.published;
+      });
+    } else {
+      // ✅ FIX: Send a sentinel key so backend knows subcategories were explicitly cleared
+      requestBody['subcategories.cleared'] = 'true';
+    }
 
-    // Handle image - either use the existing URL or upload the new file
+    // Handle image
     if (parsedData.data.image) {
       if (parsedData.data.image instanceof File && parsedData.data.image.size > 0) {
-        // Upload the new image to Firebase Storage
         const fileExtension = parsedData.data.image.name.split('.').pop();
         const fileName = `category_${Date.now()}.${fileExtension}`;
         const storageRef = ref(storage, `categories/${fileName}`);
-        
         try {
-          // Upload the file
           const snapshot = await uploadBytes(storageRef, parsedData.data.image);
-          // Get the download URL
           const imageUrl = await getDownloadURL(snapshot.ref);
           requestBody.image = imageUrl;
         } catch (error) {
           console.error("Error uploading image:", error);
-          return {
-            dbError: "Failed to upload image. Please try again."
-          };
+          return { dbError: "Failed to upload image. Please try again." };
         }
       } else if (typeof parsedData.data.image === 'string') {
-        // If it's already a string (URL), use it as is
         requestBody.image = parsedData.data.image;
       }
     }
 
     console.log('Sending update request with data:', requestBody);
 
-    // Call backend API with JSON data
     const response = await apiPut<{ success: boolean; data: any }>(
       `/api/categories/${categoryId}`,
       requestBody
@@ -139,28 +130,17 @@ export async function editCategory(
     }
 
     revalidatePath("/categories");
-
     return { success: true, category: response.data };
+
   } catch (error: any) {
     console.error("Category update failed:", error);
-
-    // Handle specific error types
     if (error.message?.includes("duplicate") || error.message?.includes("already exists")) {
       if (error.message.toLowerCase().includes("slug")) {
-        return {
-          validationErrors: {
-            slug: "This category slug is already in use. Please choose a different one.",
-          },
-        };
+        return { validationErrors: { slug: "This category slug is already in use. Please choose a different one." } };
       } else if (error.message.toLowerCase().includes("name")) {
-        return {
-          validationErrors: {
-            name: "A category with this name already exists. Please enter a unique name.",
-          },
-        };
+        return { validationErrors: { name: "A category with this name already exists. Please enter a unique name." } };
       }
     }
-
     return { dbError: error.message || "Something went wrong." };
   }
 }
