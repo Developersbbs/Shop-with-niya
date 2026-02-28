@@ -213,6 +213,7 @@ router.get("/customer/firebase/:firebaseUid", authenticateHybridToken, async (re
                 ...item.toObject(),
                 id: item._id,
                 name: product ? product.name : 'Product Not Found',
+                  slug: product ? product.slug : null, 
                 image: product && product.image_url && product.image_url.length > 0 
                   ? product.image_url[0] 
                   : '/images/products/placeholder-product.svg',
@@ -379,6 +380,7 @@ router.get("/:id", async (req, res) => {
           return {
             ...item.toObject(),
             id: item._id,
+              slug: product ? product.slug : null, 
             unit_price: item.unit_price || item.price || 0,
             quantity: item.quantity || 1,
             products: {

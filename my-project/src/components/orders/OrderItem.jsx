@@ -1,58 +1,41 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
-import { formatCurrency } from '../../utils/format';
+import { useState, useEffect } from 'react';
+import orderService from '../../services/orderService'; // use existing service
 
-const OrderItem = ({ item, showQuantity = true, showPrice = true }) => {
-  const defaultImage = '/images/products/placeholder-product.svg';
+const OrderItem = ({ item }) => {
+  const [slug, setSlug] = useState(item.slug || item.product_slug || null);
+
+  useEffect(() => {
+    if (!slug && (item.product_id || item._id)) {
+      const id = item.product_id || item._id;
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/products/${id}`)
+        .then(res => res.json())
+        .then(data => {
+          const product = data.data || data.product || data;
+          if (product?.slug) setSlug(product.slug);
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   return (
-    <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-      {/* Product Image */}
-      <div className="flex-shrink-0">
-        <Link to={`/product/${item.id}`} className="block">
-          <img
-            src={item.image || defaultImage}
-            alt={item.name}
-            className="w-16 h-16 object-cover rounded-lg border border-gray-200"
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = defaultImage;
-            }}
-          />
-        </Link>
-      </div>
-
-      {/* Product Details */}
+    <Link 
+      to={`/product/${slug || item.product_id || item._id}`}
+      className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+    >
+      <img
+        src={item.image || item.product_image}
+        alt={item.name || item.product_name}
+        className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+      />
       <div className="flex-1 min-w-0">
-        <Link 
-          to={`/product/${item.id}`}
-          className="block group"
-        >
-          <h4 className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
-            {item.name}
-          </h4>
-        </Link>
-        
-        {item.sku && (
-          <p className="text-xs text-gray-500 mt-1">
-            SKU: {item.sku}
-          </p>
-        )}
-        
-        <div className="flex items-center justify-between mt-2">
-          {showQuantity && (
-            <span className="text-xs text-gray-600">
-              Qty: {item.quantity}
-            </span>
-          )}
-          {showPrice && (
-            <span className="text-sm font-semibold text-gray-900">
-              {formatCurrency(item.price)}
-            </span>
-          )}
-        </div>
+        <p className="text-sm font-medium text-gray-900 truncate">
+          {item.name || item.product_name}
+        </p>
+        <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+        <p className="text-sm font-semibold text-gray-900">₹{item.price}</p>
       </div>
-    </div>
+    </Link>
   );
 };
 

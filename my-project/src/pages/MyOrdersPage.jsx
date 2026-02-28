@@ -34,41 +34,49 @@ const MyOrdersPage = () => {
     fetchOrders();
   }, []);
 
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const response = await orderService.getMyOrders(user.uid);
-      if (response && response.length > 0) {
-        // Transform backend order data to match our UI format
-        const transformedOrders = response.map(order => ({
-          id: order._id,
-          orderNumber: order.invoice_no,
-          date: order.order_time,
-          status: order.status,
-          total: order.total_amount,
-          itemCount: order.items ? order.items.length : 0,
-          estimatedDelivery: order.estimated_delivery,
-          trackingNumber: order.tracking_number,
-          shippingAddress: order.shipping_address || {},
-          items: order.items || [],
-          paymentMethod: order.payment_method === 'cash' ? 'Cash on Delivery' : order.payment_method,
-          subtotal: order.total_amount * 0.9, // Approximate (total - tax)
-          shipping: order.shipping_cost,
-          tax: order.total_amount * 0.1 // Approximate
-        }));
-        setOrders(transformedOrders);
-      } else {
-        // No orders found
-        setOrders([]);
-      }
-    } catch (error) {
-      console.error('Error fetching orders:', error);
+const fetchOrders = async () => {
+  setLoading(true);
+  try {
+    const response = await orderService.getMyOrders(user.uid);
+    console.log('ITEM FIELDS:', JSON.stringify(response[0]?.items[0], null, 2));
+    
+    if (response && response.length > 0) {
+      const transformedOrders = response.map(order => ({
+        id: order._id,
+        orderNumber: order.invoice_no,
+        date: order.order_time,
+        status: order.status,
+        total: order.total_amount,
+        itemCount: order.items ? order.items.length : 0,
+        estimatedDelivery: order.estimated_delivery,
+        trackingNumber: order.tracking_number,
+        shippingAddress: order.shipping_address || {},
+        items: (order.items || []).map(item => ({
+          ...item,
+          id: item._id || item.product_id,
+          name: item.product_name || item.name,
+          image: item.product_image || item.image,
+          price: item.price || item.product_price,
+          quantity: item.quantity,
+          slug: item.slug || item.product_slug || item.product_id || item.productId,
+        })),
+        paymentMethod: order.payment_method === 'cash' ? 'Cash on Delivery' : order.payment_method,
+        subtotal: order.total_amount * 0.9,
+        shipping: order.shipping_cost,
+        tax: order.total_amount * 0.1
+      }));
+      setOrders(transformedOrders);
+    } else {
       setOrders([]);
-      toast.error('Failed to load orders. Please try again.');
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    setOrders([]);
+    toast.error('Failed to load orders. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -189,7 +197,7 @@ const MyOrdersPage = () => {
               <p className="text-gray-600 mt-2">
                 Track and manage your orders
               </p>
-            </div>
+            </div>Track and manage your orders
             <button
               onClick={fetchOrders}
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
