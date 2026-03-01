@@ -41,7 +41,7 @@ export const API_BASE_URL = getApiBaseUrl();
 export const API_ENDPOINTS = {
   // Cart endpoints
   CART: '/cart',
-  CART_ADD: '/cart/add',
+  CART_ADD: '/cart',
   CART_UPDATE: (itemId) => `/cart/update/${itemId}`,
   CART_REMOVE: (itemId) => `/cart/remove/${itemId}`,
   CART_CLEAR: '/cart/clear',

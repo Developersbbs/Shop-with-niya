@@ -40,7 +40,7 @@ export async function editProduct(
       if (Array.isArray(parsed)) {
         existingImageUrls.push(...parsed);
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   const tagsJson = formData.get("tags");
@@ -55,7 +55,7 @@ export async function editProduct(
   let seoKeywords = [];
   try {
     seoKeywords = seoKeywordsJson ? JSON.parse(seoKeywordsJson as string) : [];
-  } catch (e) {}
+  } catch (e) { }
 
   const variantsJson = formData.get("product_variants");
   let variants = null;
@@ -65,7 +65,8 @@ export async function editProduct(
     console.error("Failed to parse variants:", e);
   }
 
-  // Extract variant image files from FormData
+ 
+ // Extract NEW variant image files from FormData
   const variantImageFiles: { [key: string]: File[] } = {};
   let comboIndex = 0;
   let fileIndex = 0;
@@ -84,6 +85,21 @@ export async function editProduct(
     variantImageFiles[comboIndex.toString()].push(file);
     fileIndex++;
   }
+
+  // Extract EXISTING variant image URLs from FormData
+  const existingVariantImages: { [key: string]: string[] } = {};
+  const allFormEntries = Array.from(formData.entries());
+  allFormEntries.forEach(([key, val]) => {
+    const match = key.match(/existingVariantImages\[(\d+)\]\[(\d+)\]/);
+    if (match && typeof val === 'string') {
+      const idx = match[1];
+      if (!existingVariantImages[idx]) existingVariantImages[idx] = [];
+      existingVariantImages[idx].push(val);
+    }
+  });
+
+  console.log('🔥 existingVariantImages:', existingVariantImages);
+  console.log('🔥 variantImageFiles keys:', Object.keys(variantImageFiles));
 
   const parsedData = productFormSchema.safeParse({
     productType: formData.get("productType"),
@@ -158,19 +174,38 @@ export async function editProduct(
       })
     );
 
-    // Merge variant Firebase URLs into variants data
+  
+    const backendFormData = new FormData()
+// Merge variant images: existing URLs + new Firebase URLs
     if (variants && variants.combinations && variants.combinations.length > 0) {
       variants.combinations = variants.combinations.map((combination: any, index: number) => {
-        const newUrls = variantImageUrls[index.toString()] || [];
-        const existingUrls = (combination.images || []).filter((img: any) => typeof img === "string");
+        const idx = index.toString();
+        // New files uploaded to Firebase
+        const newUrls = variantImageUrls[idx] || [];
+        // Existing URLs sent from frontend as existingVariantImages[x][y]
+        const preservedUrls = existingVariantImages[idx] || [];
+        // Final merge: preserved + new
+        const mergedImages = [...preservedUrls, ...newUrls];
+
+        console.log(`🔥 Variant ${idx} images: ${preservedUrls.length} existing + ${newUrls.length} new = ${mergedImages.length} total`);
+
         return {
           ...combination,
-          images: [...existingUrls, ...newUrls],
+          images: mergedImages,
         };
       });
     }
-
-    const backendFormData = new FormData();
+    // Send all variant image URLs (existing + new Firebase) as existingVariantImages
+// so backend knows to preserve them — no raw files sent, all are Firebase URLs
+if (variants && variants.combinations) {
+  variants.combinations.forEach((combination: any, index: number) => {
+    const images: string[] = (combination.images || []).filter((img: any) => typeof img === 'string');
+    images.forEach((url, urlIdx) => {
+      backendFormData.append(`existingVariantImages[${index}][${urlIdx}]`, url);
+    });
+  });
+}
+;
     backendFormData.append("product_type", parsedData.data.productType);
     backendFormData.append("name", parsedData.data.name);
     backendFormData.append("description", parsedData.data.description);

@@ -69,7 +69,6 @@ export default function ProductFormSheet({
   const imageDropzoneRef = useRef<HTMLDivElement>(null);
   const categoryRef = useRef<HTMLButtonElement>(null);
 
-  // Handle both previewImage (legacy) and previewImages (new) props
   const displayPreviewImages = previewImages || (previewImage ? [previewImage] : []);
 
   const form = useForm<ProductFormData>({
@@ -108,38 +107,21 @@ export default function ProductFormSheet({
       seoOgDescription: "",
       seoOgImage: "",
       slug: "",
-      // Set default variant structure with default attributes for new products
       product_variants: {
         attributes: [
-          {
-            id: "attr-size",
-            name: "size",
-            values: [],
-          },
-          {
-            id: "attr-color",
-            name: "color",
-            values: [],
-          },
-          {
-            id: "attr-material",
-            name: "material",
-            values: [],
-          },
+          { id: "attr-size", name: "size", values: [] },
+          { id: "attr-color", name: "color", values: [] },
+          { id: "attr-material", name: "material", values: [] },
         ],
         combinations: [],
-        autoGenerateSKU: true, // Enable auto-generation of SKUs
+        autoGenerateSKU: true,
       },
       ...initialData,
     },
   });
 
-  // Reset form with initialData after mount to ensure variant data is properly loaded
   useEffect(() => {
     if (initialData) {
-      console.log('🔄 FORM RESET: Resetting form with initialData');
-      console.log('Initial product_variants:', initialData.product_variants);
-
       form.reset({
         productType: "physical",
         productStructure: "simple",
@@ -176,21 +158,9 @@ export default function ProductFormSheet({
         slug: "",
         product_variants: {
           attributes: [
-            {
-              id: "attr-size",
-              name: "size",
-              values: [],
-            },
-            {
-              id: "attr-color",
-              name: "color",
-              values: [],
-            },
-            {
-              id: "attr-material",
-              name: "material",
-              values: [],
-            },
+            { id: "attr-size", name: "size", values: [] },
+            { id: "attr-color", name: "color", values: [] },
+            { id: "attr-material", name: "material", values: [] },
           ],
           combinations: [],
           autoGenerateSKU: true,
@@ -200,157 +170,52 @@ export default function ProductFormSheet({
     }
   }, [initialData, form]);
 
-  // Handle file upload and auto-calculate size and format
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
-
-      // Calculate file size in MB with better precision handling
       const fileSizeMB = file.size / (1024 * 1024);
-      const roundedSize = Math.round(fileSizeMB * 10000) / 10000; // Round to 4 decimal places
-
-      // Get file extension as download format
+      const roundedSize = Math.round(fileSizeMB * 10000) / 10000;
       const fileExtension = file.name.split('.').pop()?.toUpperCase() || '';
-      console.log('File name:', file.name);
-      console.log('File extension:', fileExtension);
-
-      // Update form fields with explicit type conversion
       const numericFileSize = Number(roundedSize.toFixed(4));
 
-      console.log('Setting fileSize to:', numericFileSize, 'Type:', typeof numericFileSize);
-      console.log('roundedSize.toFixed(4):', roundedSize.toFixed(4));
-      console.log('Number conversion:', Number(roundedSize.toFixed(4)));
-
-      // Try different approaches for setting the value
-      console.log('Before setValue - current fileSize:', form.getValues('fileSize'));
-
-      form.setValue('fileSize', numericFileSize, {
-        shouldValidate: true,
-        shouldDirty: true,
-        shouldTouch: true
-      });
-
-      console.log('After setValue - current fileSize:', form.getValues('fileSize'));
-
-      // Set download format - ensure it's never empty
-      const formatToSet = fileExtension || 'PDF';
-      console.log('Setting downloadFormat to:', formatToSet);
-      console.log('Current downloadFormat before setValue:', form.getValues('downloadFormat'));
-
-      form.setValue('downloadFormat', formatToSet, {
-        shouldValidate: true,
-        shouldDirty: true,
-        shouldTouch: true
-      });
-
-      console.log('After setValue - current downloadFormat:', form.getValues('downloadFormat'));
-
-      // Trigger validation immediately after setting values
+      form.setValue('fileSize', numericFileSize, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+      form.setValue('downloadFormat', fileExtension || 'PDF', { shouldValidate: true, shouldDirty: true, shouldTouch: true });
       form.trigger(['fileSize', 'downloadFormat']);
-
-      console.log('Form values updated');
-      console.log('Current fileSize value:', form.getValues('fileSize'));
-      console.log('Current downloadFormat value:', form.getValues('downloadFormat'));
-    } else {
-      console.log('No file selected');
     }
   };
 
-  // Auto-determine status based on product structure
   const productStructure = form.watch("productStructure");
 
   useEffect(() => {
-    console.log('=== PRODUCT STRUCTURE CHANGED ===');
-    console.log('New productStructure value:', productStructure);
-    console.log('Current form values BEFORE update:');
-    console.log('  productStructure:', form.getValues('productStructure'));
-    console.log('  costPrice:', form.getValues('costPrice'));
-    console.log('  salesPrice:', form.getValues('salesPrice'));
-
     if (productStructure === "simple") {
-      form.setValue('status', 'selling', {
-        shouldValidate: false,
-        shouldDirty: false,
-        shouldTouch: false
-      });
+      form.setValue('status', 'selling', { shouldValidate: false, shouldDirty: false, shouldTouch: false });
     } else if (productStructure === "variant") {
-      form.setValue('status', 'draft', {
-        shouldValidate: false,
-        shouldDirty: false,
-        shouldTouch: false
-      });
-
-      // Force immediate clearing of pricing and stock fields to prevent validation race condition
-      form.setValue('costPrice', undefined, {
-        shouldValidate: false, // Don't trigger validation yet
-        shouldDirty: false,
-        shouldTouch: false
-      });
-      form.setValue('salesPrice', undefined, {
-        shouldValidate: false, // Don't trigger validation yet
-        shouldDirty: false,
-        shouldTouch: false
-      });
-      form.setValue('stock', undefined, {
-        shouldValidate: false, // Don't trigger validation yet
-        shouldDirty: false,
-        shouldTouch: false
-      });
-      form.setValue('minStockThreshold', undefined, {
-        shouldValidate: false, // Don't trigger validation yet
-        shouldDirty: false,
-        shouldTouch: false
-      });
-
-      // Force a manual validation trigger after state updates
-      setTimeout(() => {
-        form.trigger(['costPrice', 'salesPrice', 'stock', 'minStockThreshold']);
-      }, 0);
+      form.setValue('status', 'draft', { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+      form.setValue('costPrice', undefined, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+      form.setValue('salesPrice', undefined, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+      form.setValue('stock', undefined, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+      form.setValue('minStockThreshold', undefined, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+      setTimeout(() => { form.trigger(['costPrice', 'salesPrice', 'stock', 'minStockThreshold']); }, 0);
     }
-
-    console.log('Current form values AFTER update:');
-    console.log('  productStructure:', form.getValues('productStructure'));
-    console.log('  costPrice:', form.getValues('costPrice'));
-    console.log('  salesPrice:', form.getValues('salesPrice'));
   }, [productStructure, form]);
 
-  // Auto-set productStructure when productType changes
   const productType = form.watch("productType");
 
   useEffect(() => {
-    console.log('=== PRODUCT TYPE CHANGED ===');
-    console.log('New productType value:', productType);
-
     if (productType === "digital") {
-      // Digital products are always simple structure
-      form.setValue('productStructure', 'simple', {
-        shouldValidate: false,
-        shouldDirty: false,
-        shouldTouch: false
-      });
-      console.log('Set productStructure to "simple" for digital product');
+      form.setValue('productStructure', 'simple', { shouldValidate: false, shouldDirty: false, shouldTouch: false });
     }
-
-    console.log('Current productStructure after type change:', form.getValues('productStructure'));
   }, [productType, form]);
 
-  // Auto-generate canonical URL when slug changes
   const slug = form.watch("slug");
 
   useEffect(() => {
     if (slug) {
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-      const canonicalUrl = `${baseUrl}/products/${slug}`;
-      form.setValue('seoCanonical', canonicalUrl, {
-        shouldValidate: false,
-        shouldDirty: false,
-        shouldTouch: false
-      });
+      form.setValue('seoCanonical', `${baseUrl}/products/${slug}`, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
     }
   }, [slug, form]);
 
-  // Auto-generate Open Graph image from first product image or variant image
   const images = form.watch("images");
   const variants = form.watch("product_variants");
   const currentOgImage = form.watch("seoOgImage");
@@ -358,88 +223,50 @@ export default function ProductFormSheet({
   useEffect(() => {
     const productStructure = form.watch("productStructure");
 
-    // For variant products, prioritize variant images for OG image
     if (productStructure === "variant" && variants?.combinations && variants.combinations.length > 0) {
       for (const variant of variants.combinations) {
         if (variant.images && variant.images.length > 0) {
           const firstVariantImage = variant.images[0];
-
-          // For string URLs (when editing existing products), we can show them
           if (typeof firstVariantImage === 'string') {
             if (firstVariantImage.startsWith('http')) {
-              console.log('Setting OG image from variant:', firstVariantImage);
-              form.setValue('seoOgImage', firstVariantImage, {
-                shouldValidate: false,
-                shouldDirty: false,
-                shouldTouch: false
-              });
+              form.setValue('seoOgImage', firstVariantImage, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
             } else {
-              // Convert relative path to full URL for OG image
               const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-              const fullUrl = `${baseUrl}${firstVariantImage}`;
-              console.log('Setting OG image from variant (relative path):', fullUrl);
-              form.setValue('seoOgImage', fullUrl, {
-                shouldValidate: false,
-                shouldDirty: false,
-                shouldTouch: false
-              });
+              form.setValue('seoOgImage', `${baseUrl}${firstVariantImage}`, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
             }
-            return; // Found a variant image, stop looking
+            return;
           }
         }
       }
     }
 
-    // Fall back to main product images for simple products or if no variant images found
     if (images && images.length > 0) {
       const firstImage = images[0];
-      console.log('First image for OG:', firstImage);
-
-      // For string URLs (when editing existing products), convert to full URL
       if (typeof firstImage === 'string') {
         if (firstImage.startsWith('http')) {
-          form.setValue('seoOgImage', firstImage, {
-            shouldValidate: false,
-            shouldDirty: false,
-            shouldTouch: false
-          });
+          form.setValue('seoOgImage', firstImage, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
         } else {
           const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-          const fullUrl = `${baseUrl}${firstImage}`;
-          console.log('Setting OG image from main image (relative path):', fullUrl);
-          form.setValue('seoOgImage', fullUrl, {
-            shouldValidate: false,
-            shouldDirty: false,
-            shouldTouch: false
-          });
+          form.setValue('seoOgImage', `${baseUrl}${firstImage}`, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
         }
       }
     }
   }, [images, variants, form]);
 
-  // Helper function to get OG image preview text
   const getOgImagePreview = () => {
     if (currentOgImage) {
-      // If currentOgImage already has a full URL, return it
-      if (typeof currentOgImage === 'string' && currentOgImage.startsWith('http')) {
-        return currentOgImage;
-      }
-      // Otherwise, prepend the base URL
+      if (typeof currentOgImage === 'string' && currentOgImage.startsWith('http')) return currentOgImage;
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:5000';
       return `${baseUrl}${currentOgImage}`;
     }
 
     const productStructure = form.watch("productStructure");
-
-    // Check variant images first (for variant-specific OG image)
     if (productStructure === "variant" && variants?.combinations && variants.combinations.length > 0) {
       for (const variant of variants.combinations) {
         if (variant.images && variant.images.length > 0) {
           const firstVariantImage = variant.images[0];
           if (typeof firstVariantImage === 'string') {
-            if (firstVariantImage.startsWith('http')) {
-              return firstVariantImage;
-            }
+            if (firstVariantImage.startsWith('http')) return firstVariantImage;
             const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:5000';
             return `${baseUrl}${firstVariantImage}`;
           }
@@ -448,13 +275,10 @@ export default function ProductFormSheet({
       }
     }
 
-    // Fall back to main product images
     if (images && images.length > 0) {
       const firstImage = images[0];
       if (typeof firstImage === 'string') {
-        if (firstImage.startsWith('http')) {
-          return firstImage;
-        }
+        if (firstImage.startsWith('http')) return firstImage;
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:5000';
         return `${baseUrl}${firstImage}`;
       }
@@ -464,7 +288,6 @@ export default function ProductFormSheet({
     return "No images uploaded yet";
   };
 
-  // Debug: Watch form values for fileSize and downloadFormat
   const fileSize = form.watch("fileSize");
   const downloadFormat = form.watch("downloadFormat");
 
@@ -520,41 +343,40 @@ export default function ProductFormSheet({
 
     form.setValue('seoRobots', robotsValue, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
 
-    // ✅ FIX: Properly separate images/variants from rest of data
-    const { images: formImages, product_variants, ...dataWithoutFiles } = finalData;
+    // ✅ KEY FIX: Always get product_variants fresh from form.getValues()
+    // This ensures we get the latest state including all images from FormVariantManagement
+    const product_variants = form.getValues('product_variants');
+
+    const { images: formImages, product_variants: _unused, ...dataWithoutFiles } = finalData;
     const formData = objectToFormData(dataWithoutFiles);
 
-    // ✅ FIX: Separate new File uploads from existing URL strings for main images
-  const newImageFiles: File[] = [];
-const existingImageUrls: string[] = [];
+    // Handle main product images
+    const newImageFiles: File[] = [];
+    const existingImageUrls: string[] = [];
 
-if (formImages && formImages.length > 0) {
-  formImages.forEach((img: any) => {
-    if (img instanceof File) {
-      newImageFiles.push(img);
-    } else if (typeof img === 'string') {
-      existingImageUrls.push(img);
+    if (formImages && formImages.length > 0) {
+      formImages.forEach((img: any) => {
+        if (img instanceof File) {
+          newImageFiles.push(img);
+        } else if (typeof img === 'string') {
+          existingImageUrls.push(img);
+        }
+      });
     }
-  });
-}
 
-// If the form has no images at all, preserve the original previewImages
-if (existingImageUrls.length === 0 && displayPreviewImages.length > 0) {
-  existingImageUrls.push(...displayPreviewImages);
-}
+    if (existingImageUrls.length === 0 && displayPreviewImages.length > 0) {
+      existingImageUrls.push(...displayPreviewImages);
+    }
 
-// Append new file uploads
-newImageFiles.forEach((file, index) => {
-  formData.append(`images[${index}]`, file);
-});
+    newImageFiles.forEach((file, index) => {
+      formData.append(`images[${index}]`, file);
+    });
 
-// ALWAYS send existing URLs — backend needs them to know which old images to keep
-// Even when new images are uploaded, send existing ones so backend can merge if needed
-if (existingImageUrls.length > 0) {
-  formData.append('image_url', JSON.stringify(existingImageUrls));
-}
+    if (existingImageUrls.length > 0) {
+      formData.append('image_url', JSON.stringify(existingImageUrls));
+    }
 
-    // ✅ FIX: Handle variants — strip images from JSON, send files and existing URLs separately
+    // ✅ Handle variants with fresh data from form.getValues()
     if (product_variants) {
       const variantsForJson = {
         ...product_variants,
@@ -565,31 +387,41 @@ if (existingImageUrls.length > 0) {
       };
       formData.append('product_variants', JSON.stringify(variantsForJson));
 
-      // Send variant images (Files as uploads, strings as existing URLs)
+      // Send variant images separately
       product_variants.combinations?.forEach((combo: any, comboIdx: number) => {
-        if (combo.images && combo.images.length > 0) {
-          let newFileIdx = 0;
-          let existingUrlIdx = 0;
-          combo.images.forEach((img: any) => {
-            if (img instanceof File) {
-              formData.append(`variantImages[${comboIdx}][${newFileIdx}]`, img);
-              newFileIdx++;
-            } else if (typeof img === 'string') {
-              formData.append(`existingVariantImages[${comboIdx}][${existingUrlIdx}]`, img);
-              existingUrlIdx++;
-            }
-          });
-        }
+        let newFileIdx = 0;
+        let existingUrlIdx = 0;
+
+        const comboImages = combo.images || [];
+
+        console.log(`🔥 Combo ${comboIdx} images at submit:`, comboImages);
+
+        comboImages.forEach((img: any) => {
+          if (img instanceof File) {
+            formData.append(`variantImages[${comboIdx}][${newFileIdx}]`, img);
+            newFileIdx++;
+          } else if (typeof img === 'string' && img.length > 0) {
+            formData.append(`existingVariantImages[${comboIdx}][${existingUrlIdx}]`, img);
+            existingUrlIdx++;
+          }
+        });
       });
+    }
+
+    console.log('=== VARIANT IMAGE DEBUG ===');
+    product_variants?.combinations?.forEach((combo: any, i: number) => {
+      console.log(`Combo ${i} images:`, combo.images);
+    });
+
+    console.log('=== FORMDATA KEYS ===');
+    for (const [key, val] of formData.entries()) {
+      if (key.includes('ariant') || key.includes('mage')) {
+        console.log(key, ':', val instanceof File ? `File(${val.name})` : val);
+      }
     }
 
     setTimeout(() => {
       startTransition(async () => {
-
-        console.log('🔥 ACTION BEING CALLED:', action.toString().substring(0, 100));
-        console.log('🔥 product_structure in FormData:', formData.get('product_structure'));
-        console.log('🔥 productId check:', formData.get('productId'));
-
         try {
           const result = await action(formData);
 
@@ -664,17 +496,13 @@ if (existingImageUrls.length > 0) {
   const onInvalid = (errors: FieldErrors<ProductFormData>) => {
     console.log('=== FORM VALIDATION FAILED ===');
     console.log('Validation errors:', errors);
-    console.log('Error fields:', Object.keys(errors));
 
     if (errors.images) {
-      console.log('Images error:', errors.images);
       imageDropzoneRef.current?.focus();
     } else if (errors.categories) {
-      console.log('Categories error:', errors.categories);
       categoryRef.current?.focus();
     }
 
-    // Show toast for first error
     const firstErrorKey = Object.keys(errors)[0];
     const firstError = errors[firstErrorKey as keyof ProductFormData];
     if (firstError && 'message' in firstError) {
@@ -701,10 +529,7 @@ if (existingImageUrls.length > 0) {
               </FormSheetHeader>
 
               <FormSheetBody>
-                <div
-                  className="space-y-6"
-                  ref={setContainer as LegacyRef<HTMLDivElement>}
-                >
+                <div className="space-y-6" ref={setContainer as LegacyRef<HTMLDivElement>}>
                   <FormTextInput
                     control={form.control}
                     name="name"
@@ -719,7 +544,6 @@ if (existingImageUrls.length > 0) {
                     placeholder="Select product type"
                   />
 
-                  {/* Show product structure only for physical products */}
                   {form.watch("productType") === "physical" && (
                     <FormProductStructureSelect
                       control={form.control}
@@ -745,7 +569,6 @@ if (existingImageUrls.length > 0) {
                     placeholder="Product Description"
                   />
 
-                  {/* Show images only for simple products */}
                   {form.watch("productStructure") === "simple" && (
                     <FormMultipleImageInput
                       control={form.control}
@@ -779,7 +602,6 @@ if (existingImageUrls.length > 0) {
                     setValue={form.setValue}
                   />
 
-                  {/* Show pricing only for simple products */}
                   {form.watch("productStructure") === "simple" && (
                     <>
                       <FormPriceInput
@@ -789,7 +611,6 @@ if (existingImageUrls.length > 0) {
                         placeholder="Cost Price"
                         min="0"
                       />
-
                       <FormPriceInput
                         control={form.control}
                         name="salesPrice"
@@ -800,7 +621,6 @@ if (existingImageUrls.length > 0) {
                     </>
                   )}
 
-                  {/* Show stock fields only for simple physical products */}
                   {form.watch("productStructure") === "simple" && form.watch("productType") === "physical" && (
                     <>
                       <FormTextInput
@@ -811,7 +631,6 @@ if (existingImageUrls.length > 0) {
                         type="number"
                         min="0"
                       />
-
                       <FormTextInput
                         control={form.control}
                         name="minStockThreshold"
@@ -820,9 +639,9 @@ if (existingImageUrls.length > 0) {
                         type="number"
                         min="0"
                       />
-
                     </>
                   )}
+
                   {form.watch("productType") === "physical" && form.watch("productStructure") === "variant" && (
                     <FormVariantManagement
                       control={form.control}
@@ -833,7 +652,7 @@ if (existingImageUrls.length > 0) {
                       productName={form.watch("name") || ""}
                     />
                   )}
-                  {/* Digital Product Fields */}
+
                   {form.watch("productType") === "digital" && (
                     <div className="mt-4 space-y-6">
                       <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
@@ -844,7 +663,6 @@ if (existingImageUrls.length > 0) {
                           Digital Product Configuration
                         </h3>
 
-                        {/* File Upload Section */}
                         <div className="mb-6">
                           <h4 className="text-sm font-medium text-gray-700 mb-3">File Information</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -852,12 +670,11 @@ if (existingImageUrls.length > 0) {
                               control={form.control}
                               name="fileUpload"
                               label="Digital File"
-                              placeholder="Upload digital file (PDF, MP4, ZIP, CSV, JSON, etc.)"
+                              placeholder="Upload digital file"
                               type="file"
                               accept=".pdf,.doc,.docx,.txt,.csv,.json,.xml,.zip,.rar,.7z,.tar,.gz,.mp3,.mp4,.avi,.mov,.wmv,.flv,.webm,.jpg,.jpeg,.png,.gif,.svg,.webp"
                               onChange={handleFileUpload}
                             />
-
                             <FormTextInput
                               control={form.control}
                               name="fileSize"
@@ -868,7 +685,6 @@ if (existingImageUrls.length > 0) {
                               className="bg-gray-100"
                             />
                           </div>
-
                           <div className="mt-4">
                             <FormTextInput
                               control={form.control}
@@ -881,7 +697,6 @@ if (existingImageUrls.length > 0) {
                           </div>
                         </div>
 
-                        {/* Licensing Section */}
                         <div className="pt-4 border-t border-gray-200">
                           <h4 className="text-sm font-medium text-gray-700 mb-3">Licensing & Access</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -891,7 +706,6 @@ if (existingImageUrls.length > 0) {
                               label="License Type"
                               placeholder="e.g., Single Use, Commercial, etc."
                             />
-
                             <FormTextInput
                               control={form.control}
                               name="downloadLimit"
@@ -966,13 +780,11 @@ if (existingImageUrls.length > 0) {
                       try {
                         return getOgImagePreview() || "Auto-generated from product/variant images";
                       } catch (error) {
-                        console.error('Error getting OG image preview:', error);
                         return "Auto-generated from product/variant images";
                       }
                     })()}
                     readOnly
                   />
-
                 </div>
               </FormSheetBody>
 
