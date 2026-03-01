@@ -93,9 +93,7 @@ const Newsletter = () => {
               </form>
             )}
 
-            <p className="text-white/25 text-xs mt-4">
-              No spam, ever. Unsubscribe at any time.
-            </p>
+
 
           </div>
         </div>

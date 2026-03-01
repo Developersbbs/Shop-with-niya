@@ -14,7 +14,7 @@ const slides = [
     subheading: "Now",
     description: "Discover our latest summer collection",
     buttonText: "Shop Now",
-    buttonLink: "/shop",
+    buttonLink: "/products",
     accent: "#f59e0b",
   },
   {
@@ -24,7 +24,7 @@ const slides = [
     subheading: "Arrivals",
     description: "Check out what's trending this season",
     buttonText: "Explore More",
-    buttonLink: "/collections/new",
+    buttonLink: "/products",
     accent: "#d4a853",
   },
   {
@@ -34,7 +34,7 @@ const slides = [
     subheading: "Offer",
     description: "Grab your favorites before they run out",
     buttonText: "Shop Deals",
-    buttonLink: "/offers",
+    buttonLink: "/products",
     accent: "#ef4444",
   },
 ];
@@ -161,10 +161,10 @@ export default function HeroSlider() {
         <div
           key={animKey}
           className="absolute inset-0 z-10 pointer-events-none
-                     flex flex-col justify-center items-end
-                     px-10 md:px-16 lg:px-24 pb-16 md:pb-0"
+           flex flex-col justify-center items-end
+           px-10 md:px-16 lg:px-24 pb-16 md:pb-0"
         >
-          <div className="flex flex-col items-start" style={{ maxWidth: "520px" }}>
+          <div className="flex flex-col items-start" style={{ maxWidth: "520px", marginRight: '9vw' }}>
 
             {/* Tag */}
             <div

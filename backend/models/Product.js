@@ -241,34 +241,39 @@ const productSchema = new mongoose.Schema(
     download_limit: { type: Number },
 
     // Variants - only for normal variant products
-    product_variants: {
-      type: [variantSchema],
-      validate: {
-        validator: function (value) {
-          const nature = this.product_nature || (this.getUpdate && (this.getUpdate().product_nature || (this.getUpdate().$set && this.getUpdate().$set.product_nature)));
-          const structure = this.product_structure || (this.getUpdate && (this.getUpdate().product_structure || (this.getUpdate().$set && this.getUpdate().$set.product_structure)));
+product_variants: {
+  type: [variantSchema],
+  validate: {
+    validator: function (value) {
+      const update = this.getUpdate ? this.getUpdate() : null;
+      const updateSet = update?.$set || update || {};
 
-          // Only normal variant products can have variants
-          if (nature === 'normal' && structure === 'variant') {
-            return value && value.length > 0;
-          }
-          // Combo products and simple products should not have variants
-          return !value || value.length === 0;
-        },
-        message: function () {
-          const nature = this.product_nature || (this.getUpdate && (this.getUpdate().product_nature || (this.getUpdate().$set && this.getUpdate().$set.product_nature)));
-          const structure = this.product_structure || (this.getUpdate && (this.getUpdate().product_structure || (this.getUpdate().$set && this.getUpdate().$set.product_structure)));
+      const nature = this.product_nature 
+        || updateSet.product_nature 
+        || update?.product_nature
+        || 'normal'; // default to normal
 
-          if (nature === 'combo') {
-            return 'Combo products cannot have variants';
-          } else if (structure === 'simple') {
-            return 'Simple products cannot have variants';
-          } else {
-            return 'Normal variant products must have at least one variant';
-          }
-        }
+      const structure = this.product_structure 
+        || updateSet.product_structure 
+        || update?.product_structure
+        || 'simple'; // default to simple
+
+      // Normal variant products must have at least one variant
+      if (nature === 'normal' && structure === 'variant') {
+        return value && value.length > 0;
       }
+      // Combo and simple products should not have variants
+      if (nature === 'combo' || structure === 'simple') {
+        return !value || value.length === 0;
+      }
+      // If we can't determine — don't block the update
+      return true;
     },
+    message: function () {
+      return 'Normal variant products must have at least one variant';
+    }
+  }
+},
 
     // SEO & metadata
     tags: [{ type: String }],

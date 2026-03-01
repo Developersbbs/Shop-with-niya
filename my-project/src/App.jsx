@@ -30,6 +30,7 @@ const WishlistPage = lazy(() => import('./pages/WishlistPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const TestCartWishlistPage = lazy(() => import('./pages/TestCartWishlistPage'));
 const LoadingDemoPage = lazy(() => import('./pages/LoadingDemoPage'));
+const PolicyPage = lazy(() => import('./pages/PolicyPage'));
 
 // Debug components - only load in development
 const CartWishlistDebug = lazy(() => import('./components/debug/CartWishlistDebug'));
@@ -258,6 +259,8 @@ const App = () => {
                 <Route path="products/category/:slug" element={<ProductListPage />} />
                 <Route path="product/:slug" element={<ProductDetailPage />} />
                 <Route path="cart" element={<CartPage />} />
+                <Route path="privacy" element={<PolicyPage />} />
+<Route path="terms" element={<PolicyPage />} />
                 
                 {/* Protected Routes */}
                 {/* Public Routes */}

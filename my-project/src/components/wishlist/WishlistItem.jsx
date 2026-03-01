@@ -56,45 +56,27 @@ useEffect(() => {
     }
   };
 
-  const handleAddToCart = async () => {
-    if (isAddingToCart || isOutOfStock) return;
-    setIsAddingToCart(true);
-    try {
-      const productId = item._id || item.id || item.productId;
-      const price = item.price || item.selling_price || 0;
-      const images = item.image_url
-        ? item.image_url
-        : item.image
-        ? [item.image]
-        : [];
-
-      await addToCart({
-        _id: productId,
-        name: item.name,
-        selling_price: price,
-        image_url: images,
-        quantity: 1,
-      });
-      toast.success('Added to cart!');
-    } catch (error) {
-      console.error('Add to cart error:', error, 'Item:', item);
-
-      // ✅ Check if backend said out of stock
-      const msg = error?.response?.data?.message || '';
-      if (
-        msg.toLowerCase().includes('stock') ||
-        msg.toLowerCase().includes('maximum') ||
-        msg.toLowerCase().includes('out of stock')
-      ) {
-        setIsOutOfStock(true);
-        toast.error(msg || 'This item is out of stock');
-      } else {
-        toast.error('Failed to add to cart');
-      }
-    } finally {
-      setIsAddingToCart(false);
-    }
-  };
+const handleAddToCart = async () => {
+  if (isAddingToCart) return;
+  setIsAddingToCart(true);
+  try {
+    const productId = item._id || item.id;
+    await addToCart({
+      _id: productId,
+      name: item.name,
+      selling_price: item.price || 1,
+      price: item.price || 1,
+      image_url: item.image ? [item.image] : [],
+    });
+    toast.success('Added to cart!');  // ✅ keep for individual button click
+  } catch (error) {
+    // ❌ REMOVE toast.error here — no toast on failure for individual items
+    // The "Add All" function handles the summary
+    console.error('Add to cart error:', error.message);
+  } finally {
+    setIsAddingToCart(false);
+  }
+};
 
   const defaultImage = '/images/products/placeholder-product.svg';
   const productLink = `/product/${item.slug || item._id || item.id}`;

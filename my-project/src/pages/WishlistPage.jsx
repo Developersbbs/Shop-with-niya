@@ -58,33 +58,41 @@ export default function WishlistPage() {
   }, [wishlistItems, searchQuery, priceRange, sortBy]);
 
   // ✅ FIXED: handleAddAllToCart is now properly defined
-  const handleAddAllToCart = async (itemsToAdd = filteredAndSortedItems) => {
-    if (isAddingAllToCart || itemsToAdd.length === 0) return;
-    setIsAddingAllToCart(true);
-    let successCount = 0;
-    let failCount = 0;
+const handleAddAllToCart = async (items = filteredAndSortedItems) => {
+  if (items.length === 0) return;
+  setIsAddingAllToCart(true);
+  let successCount = 0;
+  let failCount = 0;
 
-    for (const item of itemsToAdd) {
-      try {
-        await addToCart({
-          _id: item._id || item.id,
-          name: item.name,
-          selling_price: item.price || item.selling_price || 1,
-          price: item.price || item.selling_price || 1,
-          image_url: item.image ? [item.image] : (item.image_url || []),
-        });
-        successCount++;
-      } catch (error) {
-        console.error('Failed to add item to cart:', item.name, error);
-        failCount++;
-      }
+  for (const item of items) {
+    try {
+      const productId = item._id || item.id;
+      await addToCart({
+        _id: productId,
+        name: item.name,
+        selling_price: item.price || 1,
+        price: item.price || 1,
+        image_url: item.image ? [item.image] : [],
+      });
+      successCount++;
+    } catch (err) {
+      failCount++;
+      console.error('Failed item:', item.name, err.message);
     }
+  }
 
-    setIsAddingAllToCart(false);
+  // ✅ Only ONE summary toast at the end
+  if (successCount > 0 && failCount === 0) {
+    toast.success(`${successCount} item${successCount > 1 ? 's' : ''} added to cart!`);
+  } else if (successCount > 0 && failCount > 0) {
+    toast.success(`${successCount} item${successCount > 1 ? 's' : ''} added to cart`);
+    toast.error(`${failCount} item${failCount > 1 ? 's' : ''} could not be added`);
+  } else {
+    toast.error('Failed to add items to cart');
+  }
 
-    if (successCount > 0) toast.success(`${successCount} item(s) added to cart!`);
-    if (failCount > 0) toast.error(`${failCount} item(s) failed to add`);
-  };
+  setIsAddingAllToCart(false);
+};
 
   const handleAddSelectedToCart = async () => {
     const selected = filteredAndSortedItems.filter(item => selectedItems.has(item._id || item.id));

@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { 
-  MagnifyingGlassIcon, 
+import {
+  MagnifyingGlassIcon,
   EyeIcon,
   TruckIcon,
   ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
   ArrowDownTrayIcon,
-  ArrowPathIcon,
   MapPinIcon
 } from '@heroicons/react/24/outline';
 import { formatCurrency } from '../utils/format';
@@ -31,35 +30,40 @@ const STATUS_TABS = [
 const STATUS_CONFIG = {
   processing: {
     icon: ClockIcon,
-    badge: 'bg-amber-50 text-amber-600 ring-1 ring-amber-200',
+    badge: 'bg-amber-50 text-amber-600 border border-amber-200',
     bar: 'bg-gradient-to-r from-amber-300 to-amber-400',
     dot: 'bg-amber-400',
+    pill: 'bg-amber-50 text-amber-600 border-amber-200',
   },
   shipped: {
     icon: TruckIcon,
-    badge: 'bg-sky-50 text-sky-600 ring-1 ring-sky-200',
+    badge: 'bg-sky-50 text-sky-600 border border-sky-200',
     bar: 'bg-gradient-to-r from-sky-300 to-sky-500',
     dot: 'bg-sky-400',
+    pill: 'bg-sky-50 text-sky-600 border-sky-200',
   },
   delivered: {
     icon: CheckCircleIcon,
-    badge: 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200',
+    badge: 'bg-emerald-50 text-emerald-600 border border-emerald-200',
     bar: 'bg-gradient-to-r from-emerald-300 to-emerald-500',
     dot: 'bg-emerald-400',
+    pill: 'bg-emerald-50 text-emerald-600 border-emerald-200',
   },
   cancelled: {
     icon: XCircleIcon,
-    badge: 'bg-rose-50 text-rose-500 ring-1 ring-rose-200',
+    badge: 'bg-rose-50 text-rose-500 border border-rose-200',
     bar: 'bg-gradient-to-r from-rose-300 to-rose-400',
     dot: 'bg-rose-400',
+    pill: 'bg-rose-50 text-rose-500 border-rose-200',
   },
 };
 
 const DEFAULT_CONFIG = {
   icon: ClockIcon,
-  badge: 'bg-gray-100 text-gray-500 ring-1 ring-gray-200',
+  badge: 'bg-gray-100 text-gray-500 border border-gray-200',
   bar: 'bg-gray-200',
   dot: 'bg-gray-300',
+  pill: 'bg-gray-100 text-gray-500 border-gray-200',
 };
 
 export default function MyOrdersPage() {
@@ -149,14 +153,24 @@ export default function MyOrdersPage() {
   };
 
   if (!isAuthenticated) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7f5f2' }}>
-      <div className="bg-white border border-gray-100 rounded-2xl shadow-xl p-12 text-center max-w-sm w-full">
-        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-5">
-          <ClockIcon className="w-7 h-7 text-gray-400" />
+    <div className="min-h-screen bg-[#faf8f5] flex items-center justify-center px-4">
+      <div className="bg-white border border-[#1a3c2e]/10 p-12 text-center max-w-sm w-full">
+        <div className="flex items-center gap-3 justify-center mb-6">
+          <div className="h-px w-10 bg-[#1a3c2e]/20" />
+          <span className="text-[#1a3c2e]/30">✦</span>
+          <div className="h-px w-10 bg-[#1a3c2e]/20" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2 tracking-tight">Sign in to continue</h2>
-        <p className="text-sm text-gray-400 mb-7 leading-relaxed">View and track all your orders in one place.</p>
-        <Link to="/login" className="inline-block w-full py-3 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors tracking-wide">
+        <div className="w-12 h-12 rounded-full bg-[#1a3c2e]/6 flex items-center justify-center mx-auto mb-5">
+          <ClockIcon className="w-6 h-6 text-[#1a3c2e]/40" />
+        </div>
+        <h2
+          className="text-[#1a3c2e] mb-2"
+          style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '22px', fontWeight: 700 }}
+        >
+          Sign in to continue
+        </h2>
+        <p className="text-sm text-[#1a3c2e]/40 mb-7 leading-relaxed">View and track all your orders in one place.</p>
+        <Link to="/login" className="inline-block w-full py-3 bg-[#1a3c2e] text-white text-xs tracking-widest uppercase font-medium hover:bg-[#2d5a42] transition-colors">
           Sign In
         </Link>
       </div>
@@ -164,145 +178,172 @@ export default function MyOrdersPage() {
   );
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7f5f2' }}>
-      <div className="bg-white rounded-2xl shadow-xl p-12 text-center max-w-sm w-full">
+    <div className="min-h-screen bg-[#faf8f5] flex items-center justify-center">
+      <div className="text-center">
         <LoadingSpinner size="lg" />
-        <p className="text-sm text-gray-400 mt-5 tracking-wide">Fetching your orders…</p>
+        <p className="text-xs text-[#1a3c2e]/40 mt-4 tracking-widest uppercase">Fetching your orders…</p>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen" style={{ background: '#f7f5f2' }}>
+    <div className="min-h-screen bg-[#faf8f5]">
 
-      {/* ── Top Header Banner ── */}
-      <div className="bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-4xl mx-auto px-5 sm:px-8 py-7 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            {/* <p className="text-[10px] font-semibold tracking-[0.2em] text-gray-400 uppercase mb-1.5">My Account</p> */}
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Order History</h1>
-            <p className="text-xs text-gray-400 mt-1 tracking-wide">
-              {orders.length} order{orders.length !== 1 ? 's' : ''} placed
-            </p>
+      {/* ── Header ── */}
+      <div className="bg-white border-b border-[#1a3c2e]/10">
+        <div className="max-w-4xl mx-auto px-5 sm:px-8 py-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-px w-8 bg-[#1a3c2e]/20" />
+            <span className="text-[#1a3c2e]/30 text-xs">✦</span>
+            <div className="h-px w-8 bg-[#1a3c2e]/20" />
           </div>
-
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs tracking-[0.25em] uppercase text-[#1a3c2e]/40 mb-1 font-medium">My Account</p>
+              <h1
+                className="text-[#1a3c2e] leading-tight"
+                style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 700 }}
+              >
+                Order History
+              </h1>
+              <p className="text-xs text-[#1a3c2e]/40 mt-1 tracking-wide">
+                {orders.length} order{orders.length !== 1 ? 's' : ''} placed
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 mt-5">
+            <div className="h-px flex-1 bg-[#1a3c2e]/8" />
+            <span className="text-[#1a3c2e]/20 text-base">❧</span>
+            <div className="h-px flex-1 bg-[#1a3c2e]/8" />
+          </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-5 sm:px-8 py-7 space-y-5">
 
-        {/* ── Search + Filter Row ── */}
-{/* ── Search + Filter Row ── */}
-<div className="bg-white rounded-2xl shadow-sm border border-stone-100 px-5 py-4 flex flex-wrap gap-3 items-center justify-between">
-  <div className="relative flex-1 min-w-[200px] max-w-xs">
-    <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300" />
-    <input
-      type="text"
-      placeholder="Search orders…"
-      value={searchQuery}
-      onChange={e => setSearchQuery(e.target.value)}
-      className="w-full pl-10 pr-4 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-stone-300 focus:border-stone-400 text-stone-700 placeholder-stone-300 transition"
-    />
-  </div>
+        {/* ── Search + Filter ── */}
+        <div className="bg-white border border-[#1a3c2e]/10 px-5 py-4 flex flex-wrap gap-3 items-center justify-between">
+          <div className="relative flex-1 min-w-[200px] max-w-xs">
+            <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1a3c2e]/25" />
+            <input
+              type="text"
+              placeholder="Search orders…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 text-xs bg-[#faf8f5] border border-[#1a3c2e]/10 focus:outline-none focus:border-[#1a3c2e]/30 text-[#1a3c2e] placeholder-[#1a3c2e]/25 transition-all"
+            />
+          </div>
 
-  {/* Status Pills */}
-  <div className="flex flex-wrap gap-2">
-    {STATUS_TABS.map(tab => {
-      const isActive = statusFilter === tab.key;
-      const cfg = STATUS_CONFIG[tab.key];
-      const count = tab.key === 'all' ? orders.length : (countByStatus[tab.key] || 0);
-      return (
-        <button
-          key={tab.key}
-          onClick={() => setStatusFilter(tab.key)}
-          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide border transition-all
-            ${isActive
-              ? tab.key === 'all'
-                ? 'bg-stone-800 text-white border-stone-800 shadow-sm'
-                : `${cfg.badge} shadow-sm scale-105`
-              : 'bg-white text-stone-400 border-stone-200 hover:border-stone-300 hover:text-stone-600 hover:bg-stone-50'
-            }`}
-        >
-          {cfg && (
-            <span className={`w-1.5 h-1.5 rounded-full ${isActive ? cfg.dot : 'bg-stone-300'}`} />
-          )}
-          {tab.label}
-          {count > 0 && (
-            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full
-              ${isActive && tab.key !== 'all'
-                ? 'bg-white/70 text-current'
-                : isActive
-                  ? 'bg-stone-600 text-white'
-                  : 'bg-stone-100 text-stone-400'
-              }`}
-            >
-              {count}
-            </span>
-          )}
-        </button>
-      );
-    })}
-  </div>
-</div>
+          {/* Status Pills */}
+          <div className="flex flex-wrap gap-2">
+            {STATUS_TABS.map(tab => {
+              const isActive = statusFilter === tab.key;
+              const cfg = STATUS_CONFIG[tab.key];
+              const count = tab.key === 'all' ? orders.length : (countByStatus[tab.key] || 0);
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setStatusFilter(tab.key)}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium tracking-wide border transition-all
+                    ${isActive
+                      ? tab.key === 'all'
+                        ? 'bg-[#1a3c2e] text-white border-[#1a3c2e]'
+                        : `${cfg?.pill || 'bg-gray-100 text-gray-500 border-gray-200'}`
+                      : 'bg-white text-[#1a3c2e]/40 border-[#1a3c2e]/10 hover:border-[#1a3c2e]/25 hover:text-[#1a3c2e]/60'
+                    }`}
+                >
+                  {cfg && <span className={`w-1.5 h-1.5 rounded-full ${isActive ? cfg.dot : 'bg-[#1a3c2e]/20'}`} />}
+                  {tab.label}
+                  {count > 0 && (
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5
+                      ${isActive && tab.key !== 'all'
+                        ? 'bg-white/70 text-current rounded-full'
+                        : isActive
+                          ? 'bg-white/20 text-white rounded-full'
+                          : 'bg-[#1a3c2e]/6 text-[#1a3c2e]/40 rounded-full'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* ── Orders List ── */}
         {filteredOrders.length === 0 ? (
-          <EmptyState
-            icon={ClockIcon}
-            title="No orders found"
-            description={searchQuery || statusFilter !== 'all'
-              ? 'Try adjusting your search or filter.'
-              : "You haven't placed any orders yet."}
-            actionText="Start Shopping"
-            actionLink="/products"
-          />
+          <div className="bg-white border border-[#1a3c2e]/10 p-16 text-center">
+            <div className="w-14 h-14 rounded-full bg-[#1a3c2e]/5 flex items-center justify-center mx-auto mb-5">
+              <ClockIcon className="w-7 h-7 text-[#1a3c2e]/25" />
+            </div>
+            <h3
+              className="text-[#1a3c2e] mb-2"
+              style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '20px', fontWeight: 700 }}
+            >
+              No orders found
+            </h3>
+            <p className="text-xs text-[#1a3c2e]/40 mb-7">
+              {searchQuery || statusFilter !== 'all' ? 'Try adjusting your search or filter.' : "You haven't placed any orders yet."}
+            </p>
+            <Link to="/products" className="inline-block px-8 py-3 bg-[#1a3c2e] text-white text-xs tracking-widest uppercase hover:bg-[#2d5a42] transition-colors">
+              Start Shopping
+            </Link>
+          </div>
         ) : (
           <div className="space-y-4">
             {filteredOrders.map(order => {
               const cfg = STATUS_CONFIG[order.status] || DEFAULT_CONFIG;
               const Icon = cfg.icon;
               return (
-                <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300">
+                <div key={order.id} className="bg-white border border-[#1a3c2e]/8 overflow-hidden hover:border-[#1a3c2e]/20 transition-all">
 
-                  {/* Colored accent bar */}
+                  {/* Accent bar */}
                   <div className={`h-[3px] w-full ${cfg.bar}`} />
 
                   {/* Card Header */}
-                  <div className="px-6 pt-5 pb-4 flex flex-wrap items-start justify-between gap-3 border-b border-gray-50">
+                  <div className="px-6 pt-5 pb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[#1a3c2e]/6">
                     <div>
-                      <p className="text-[11px] font-semibold tracking-[0.15em] text-gray-400 uppercase mb-0.5">Order</p>
-                      <p className="text-sm font-bold text-gray-900 tracking-tight">{order.orderNumber}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{formatDate(order.date)}</p>
+                      <p className="text-[10px] font-medium tracking-[0.2em] text-[#1a3c2e]/35 uppercase mb-0.5">Order</p>
+                      <p className="text-sm font-bold text-[#1a3c2e] tracking-tight">{order.orderNumber}</p>
+                      <p className="text-xs text-[#1a3c2e]/40 mt-0.5">{formatDate(order.date)}</p>
                     </div>
                     <div className="flex items-center gap-4 flex-wrap">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${cfg.badge}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium ${cfg.badge}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                         <Icon className="w-3.5 h-3.5" />
                         <span className="capitalize">{order.status}</span>
                       </span>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900 tracking-tight">{formatCurrency(order.total)}</p>
-                        <p className="text-[11px] text-gray-400 tracking-wide">{order.itemCount} {order.itemCount === 1 ? 'item' : 'items'}</p>
+                        <p
+                          className="text-lg font-bold text-[#1a3c2e]"
+                          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                        >
+                          {formatCurrency(order.total)}
+                        </p>
+                        <p className="text-[11px] text-[#1a3c2e]/35 tracking-wide">{order.itemCount} {order.itemCount === 1 ? 'item' : 'items'}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Items */}
-                  <div className="px-6 py-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 border-b border-gray-50">
+                  <div className="px-6 py-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 border-b border-[#1a3c2e]/6">
                     {order.items.slice(0, 3).map(item => (
                       <OrderItem key={item.id} item={item} />
                     ))}
                     {order.items.length > 3 && (
-                      <div className="flex items-center justify-center border-2 border-dashed border-gray-100 rounded-xl p-4 text-xs font-medium text-gray-400 tracking-wide">
+                      <div className="flex items-center justify-center border border-dashed border-[#1a3c2e]/15 p-4 text-xs font-medium text-[#1a3c2e]/35 tracking-wide">
                         +{order.items.length - 3} more
                       </div>
                     )}
                   </div>
 
                   {/* Shipping */}
-                  <div className="px-6 py-3 flex items-center gap-2.5 bg-gray-50 border-b border-gray-100">
-                    <MapPinIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                    <p className="text-[10px] font-bold tracking-[0.15em] text-gray-400 uppercase mr-1">Ship to</p>
-                    <p className="text-xs text-gray-600 truncate">
+                  <div className="px-6 py-3 flex items-center gap-2.5 bg-[#faf8f5] border-b border-[#1a3c2e]/6">
+                    <MapPinIcon className="w-3.5 h-3.5 text-[#1a3c2e]/30 flex-shrink-0" />
+                    <p className="text-[10px] font-bold tracking-[0.15em] text-[#1a3c2e]/30 uppercase mr-1">Ship to</p>
+                    <p className="text-xs text-[#1a3c2e]/60 truncate">
                       {order.shippingAddress?.name
                         ? `${order.shippingAddress.name} · ${order.shippingAddress.city}, ${order.shippingAddress.state}`
                         : typeof order.shippingAddress === 'string'
@@ -316,7 +357,7 @@ export default function MyOrdersPage() {
                     <div className="flex gap-2 flex-wrap">
                       <button
                         onClick={() => handleViewOrder(order)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-xs font-semibold rounded-xl hover:bg-gray-700 transition-colors tracking-wide"
+                        className="inline-flex items-center gap-2 px-5 py-2 bg-[#1a3c2e] text-white text-xs tracking-widest uppercase font-medium hover:bg-[#2d5a42] transition-colors"
                       >
                         <EyeIcon className="w-3.5 h-3.5" />
                         View Details
@@ -324,7 +365,7 @@ export default function MyOrdersPage() {
                       {order.trackingNumber && (
                         <button
                           onClick={() => handleTrackOrder(order.trackingNumber)}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-white text-emerald-600 text-xs font-semibold rounded-xl border border-emerald-100 hover:bg-emerald-50 transition-colors tracking-wide"
+                          className="inline-flex items-center gap-2 px-5 py-2 border border-[#1a3c2e]/20 text-[#1a3c2e] text-xs tracking-widest uppercase font-medium hover:bg-[#1a3c2e]/5 transition-colors"
                         >
                           <TruckIcon className="w-3.5 h-3.5" />
                           Track
@@ -333,7 +374,7 @@ export default function MyOrdersPage() {
                     </div>
                     <button
                       onClick={() => handleDownloadInvoice(order.id)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-400 text-xs font-semibold rounded-xl border border-gray-100 hover:border-gray-200 hover:text-gray-600 transition-colors tracking-wide"
+                      className="inline-flex items-center gap-2 px-5 py-2 border border-[#1a3c2e]/10 text-[#1a3c2e]/40 text-xs tracking-widest uppercase font-medium hover:border-[#1a3c2e]/25 hover:text-[#1a3c2e]/60 transition-colors"
                     >
                       <ArrowDownTrayIcon className="w-3.5 h-3.5" />
                       Invoice
@@ -355,6 +396,8 @@ export default function MyOrdersPage() {
           onDownloadInvoice={handleDownloadInvoice}
         />
       )}
+
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');`}</style>
     </div>
   );
 }

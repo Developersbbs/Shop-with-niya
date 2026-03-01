@@ -835,6 +835,10 @@ router.post("/", uploadDigitalFile, async (req, res) => {
 
 // PUT update a product
 router.put("/:id", uploadDigitalFile, async (req, res) => {
+
+  console.log('🔥 RAW BODY KEYS:', Object.keys(req.body).filter(k => k.includes('Variant') || k.includes('variant')));
+console.log('🔥 SAMPLE existingVariantImages key exists:', 'existingVariantImages[0][0]' in req.body);
+
   try {
     console.log('=== PUT PRODUCT DEBUG ===');
 
@@ -1036,15 +1040,14 @@ if (newImageUrls.length > 0) {
     // ─────────────────────────────────────────────────────────────────
     // STEP 2: Read existingVariantImages sent from admin (URLs to keep)
     // ─────────────────────────────────────────────────────────────────
-    const existingVariantImageUrls = {};
-
-    for (const [key, val] of Object.entries(req.body)) {
-      const match = key.match(/existingVariantImages\[(\d+)\]\[(\d+)\]/);
-      if (!match || typeof val !== 'string') continue;
-      const comboIdx = parseInt(match[1]);
-      if (!existingVariantImageUrls[comboIdx]) existingVariantImageUrls[comboIdx] = [];
-      existingVariantImageUrls[comboIdx].push(val);
+   const existingVariantImageUrls = {};
+if (req.body.existingVariantImages && typeof req.body.existingVariantImages === 'object') {
+  Object.entries(req.body.existingVariantImages).forEach(([comboIdx, urlMap]) => {
+    if (typeof urlMap === 'object') {
+      existingVariantImageUrls[parseInt(comboIdx)] = Object.values(urlMap);
     }
+  });
+}
 
     console.log('✅ PUT: Existing variant URLs to preserve:',
       Object.entries(existingVariantImageUrls).map(([k, v]) => `variant ${k}: ${v.length} URLs`)
@@ -1225,11 +1228,11 @@ if (newImageUrls.length > 0) {
     if (!updateData.product_structure && currentProduct.product_structure) updateData.product_structure = currentProduct.product_structure;
 
     // ─── Save to DB ────────────────────────────────────────────────
-    const product = await Product.findOneAndUpdate(
-      productQuery,
-      updateData,
-      { new: true, runValidators: true, context: 'query' }
-    );
+const product = await Product.findOneAndUpdate(
+  productQuery,
+  { $set: updateData },  // ← use $set explicitly
+  { new: true, runValidators: false, context: 'query' }
+);
 
     if (!product) {
       return res.status(404).json({ success: false, error: "Product not found" });

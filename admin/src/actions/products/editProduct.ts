@@ -270,6 +270,8 @@ if (variants && variants.combinations) {
 
     const result = await response.json();
 
+    console.log('🔥 BACKEND RESPONSE:', JSON.stringify(result, null, 2));
+
     if (!response.ok) {
       if (result.error?.includes("slug")) {
         return {
