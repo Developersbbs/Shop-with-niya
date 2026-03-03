@@ -1,4 +1,5 @@
 require("dotenv").config();
+
 const express = require("express");
 const connectDB = require("./lib/mongodb");
 const cors = require("cors");
@@ -95,6 +96,7 @@ const comboOffersRoutes = require("./routes/comboOffers");
 const offerPopupsRoutes = require("./routes/offerPopups");
 const offersRoutes = require("./routes/offers");
 const reportsRoutes = require("./routes/reports");
+const adminNotificationRoutes = require("./routes/AdminNotification");
 
 // Health check route
 app.get('/health', (req, res) => {

@@ -19,7 +19,7 @@ const features = [
       </svg>
     ),
     title: "Fast Delivery",
-    desc: "Orders dispatched within 24 hours. We bring your wardrobe right to your doorstep.",
+    desc: "Orders dispatched within 7 days. We bring your wardrobe right to your doorstep.",
   },
   {
     icon: (
@@ -28,8 +28,8 @@ const features = [
               d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
       </svg>
     ),
-    title: "Easy Returns",
-    desc: "Changed your mind? No worries. Hassle-free 7-day returns with zero questions asked.",
+    title: "Inclusive Size Range",
+    desc: "From XS to 5XL, fashion that fits every beautiful body",
   },
   {
     icon: (

@@ -9,11 +9,11 @@ const variantSchema = new mongoose.Schema({
   selling_price: { type: Number, required: true },
   stock: { type: Number },
   minStock: { type: Number },
-  status: {
-    type: String,
-    enum: ['selling', 'out_of_stock', 'draft', 'archived'],
-    default: 'selling'
-  },
+status: {
+  type: String,
+  enum: ["draft", "selling", "out_of_stock", "low_stock"], // ← add low_stock
+  default: "draft"
+},
   images: [{ type: String }],
   attributes: {
     type: Map,

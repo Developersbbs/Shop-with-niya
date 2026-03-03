@@ -1,29 +1,31 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-
 import Typography from "@/components/ui/typography";
 import NotificationItem from "./NotificationItem";
 import NotificationItemSkeleton from "./NotificationItemSkeleton";
 import { fetchNotifications } from "@/services/notifications";
-import { Notification } from "@/types/api";
+import type { Notification } from "@/types/api";
 
-export default function NotificationContent({ staffId }: { staffId: string }) {
+export default function NotificationContent() {
   const {
     data: notifications,
     isLoading,
     isError,
   } = useQuery({
     queryKey: ["notifications"],
-    queryFn: () => fetchNotifications({ staffId }),
+    queryFn: () => fetchNotifications(),
+    refetchInterval: 30000, // catch new low stock alerts every 30s
   });
 
   if (isLoading) {
-    return new Array(6)
-      .fill(0)
-      .map((_, index: number) => (
-        <NotificationItemSkeleton key={`notification-skeleton-${index}`} />
-      ));
+    return (
+      <>
+        {new Array(4).fill(0).map((_, index) => (
+          <NotificationItemSkeleton key={`notification-skeleton-${index}`} />
+        ))}
+      </>
+    );
   }
 
   if (!notifications || isError) {
@@ -37,12 +39,16 @@ export default function NotificationContent({ staffId }: { staffId: string }) {
   }
 
   if (notifications.length > 0) {
-    return notifications.map((notification: Notification, index: number) => (
-      <NotificationItem
-        key={`notification-${index}`}
-        notification={notification}
-      />
-    ));
+    return (
+      <>
+        {notifications.map((notification: Notification, index: number) => (
+          <NotificationItem
+            key={`notification-${notification._id ?? index}`}
+            notification={notification}
+          />
+        ))}
+      </>
+    );
   }
 
   return (

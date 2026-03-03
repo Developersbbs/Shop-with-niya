@@ -8,7 +8,8 @@ import "swiper/css/effect-fade";
 
 const slides = [
   {
-    img: "/images/slider2.png",
+    imgDesktop: "/images/slider2.png",
+    imgMobile: "/images/slider2-mobile.png",
     tag: "Summer Collection",
     heading: "Explore",
     subheading: "Now",
@@ -18,7 +19,8 @@ const slides = [
     accent: "#f59e0b",
   },
   {
-    img: "/images/slider5.png",
+    imgDesktop: "/images/slider5.png",
+    imgMobile: "/images/slider5-mobile.png",
     tag: "Trending",
     heading: "New",
     subheading: "Arrivals",
@@ -28,7 +30,8 @@ const slides = [
     accent: "#d4a853",
   },
   {
-    img: "/images/slider3.png",
+    imgDesktop: "/images/slider3.png",
+    imgMobile: "/images/slider3-mobile.png",
     tag: "Limited Time",
     heading: "Limited",
     subheading: "Offer",
@@ -58,7 +61,6 @@ export default function HeroSlider() {
   return (
     <>
       <style>{`
-        /* Ken Burns */
         .kb-img {
           transform: scale(1.06);
           transition: transform ${SLIDE_DELAY}ms ease-out;
@@ -67,7 +69,6 @@ export default function HeroSlider() {
           transform: scale(1);
         }
 
-        /* Overlay — lighter so image breathes */
         .slide-overlay {
           background: linear-gradient(
             105deg,
@@ -77,18 +78,15 @@ export default function HeroSlider() {
           );
         }
 
-        /* Bottom vignette */
         .slide-vignette {
           background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 40%);
         }
 
-        /* Progress bar */
         @keyframes progressFill {
           from { width: 0%; }
           to   { width: 100%; }
         }
 
-        /* Pagination bullets */
         .hero-swiper .swiper-pagination {
           bottom: 24px;
         }
@@ -105,7 +103,6 @@ export default function HeroSlider() {
           background: white;
         }
 
-        /* Button shine */
         .btn-shine { position: relative; overflow: hidden; }
         .btn-shine::after {
           content: '';
@@ -116,14 +113,12 @@ export default function HeroSlider() {
         }
         .btn-shine:hover::after { left: 150%; }
 
-        /* Floating dot */
         @keyframes floatDot {
           0%, 100% { transform: translateY(0); }
           50%       { transform: translateY(-6px); }
         }
         .float-dot { animation: floatDot 2.5s ease-in-out infinite; }
 
-        /* Vertical slide indicators */
         .slide-indicator {
           transition: height 0.3s ease, background 0.3s ease;
         }
@@ -146,16 +141,24 @@ export default function HeroSlider() {
         >
           {slides.map((slide, i) => (
             <SwiperSlide key={i} className="relative overflow-hidden">
-              <img
-                src={slide.img}
-                alt={slide.heading}
-                className="kb-img absolute inset-0 w-full h-full object-cover object-top"
-              />
+              
+              {/* ✅ Updated Image Logic (Mobile + Desktop) */}
+              <picture>
+                <source media="(max-width: 768px)" srcSet={slide.imgMobile} />
+                <img
+                  src={slide.imgDesktop}
+                  alt={slide.heading}
+                  className="kb-img absolute inset-0 w-full h-full object-cover object-top md:object-center"
+                />
+              </picture>
+
               <div className="slide-overlay absolute inset-0" />
               <div className="slide-vignette absolute inset-0" />
             </SwiperSlide>
           ))}
         </Swiper>
+
+        {/* REST OF YOUR CODE REMAINS EXACTLY SAME */}
 
         {/* ── Animated text overlay ── */}
         <div

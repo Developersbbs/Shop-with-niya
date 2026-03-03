@@ -1,19 +1,19 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-
 import { cn } from "@/lib/utils";
 import Typography from "@/components/ui/typography";
 import { fetchNotificationsCount } from "@/services/notifications";
 
-const NotificationsBadge = ({ staffId }: { staffId: string }) => {
+const NotificationsBadge = () => {
   const {
     data: notificationCount,
     isLoading,
     isError,
   } = useQuery({
     queryKey: ["notifications", "notifications-count"],
-    queryFn: () => fetchNotificationsCount({ staffId }),
+    queryFn: () => fetchNotificationsCount(),
+    refetchInterval: 30000, // auto-refresh every 30s to catch new low stock alerts
   });
 
   if (isLoading || isError || !notificationCount) return null;

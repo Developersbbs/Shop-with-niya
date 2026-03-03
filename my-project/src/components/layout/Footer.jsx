@@ -91,14 +91,14 @@ const Footer = () => {
                 </p>
                 <div className="flex gap-3">
                   {/* Facebook */}
-                  <a href="https://facebook.com/YOUR_PAGE" target="_blank" rel="noopener noreferrer"
+                  <a href="https://www.facebook.com/people/Shop-with-Niya/61587085150404/" target="_blank" rel="noopener noreferrer"
                     className="w-9 h-9 rounded-full border border-white/15 bg-white/4 flex items-center justify-center text-gray-400 hover:text-white hover:border-white/50 hover:bg-[#1877f2] hover:-translate-y-1 hover:scale-110 transition-all duration-250">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
                     </svg>
                   </a>
                   {/* Instagram */}
-                  <a href="https://instagram.com/YOUR_HANDLE" target="_blank" rel="noopener noreferrer"
+                  <a href="https://www.instagram.com/shopwith_niya_/" target="_blank" rel="noopener noreferrer"
                     className="w-9 h-9 rounded-full border border-white/15 bg-white/4 flex items-center justify-center text-gray-400 hover:text-white hover:border-transparent hover:bg-gradient-to-br hover:from-orange-400 hover:via-pink-500 hover:to-purple-500 hover:-translate-y-1 hover:scale-110 transition-all duration-250">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                       <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
@@ -122,10 +122,10 @@ const Footer = () => {
               <h3 className="footer-col-title text-white text-[0.72rem] font-bold tracking-[0.14em] uppercase mb-[18px] relative pb-[10px]">Shop</h3>
               <ul className="space-y-3">
                 {[
-                  { to: '/collections', label: 'All Collections' },
+                  { to: '/products', label: 'All Collections' },
                   { to: '/categories', label: 'Categories' },
-                  { to: '/mom-and-daughter', label: 'Mom & Daughter' },
-                  { to: '/plus-size', label: 'Plus Size' },
+                  { to: '#', label: 'Mom & Daughter' },
+                  { to: '#', label: 'Plus Size' },
                 ].map(l => (
                   <li key={l.to}>
                     <Link to={l.to} className="footer-link-arrow text-gray-400 hover:text-white text-sm transition-colors duration-200 inline-flex items-center">
@@ -142,9 +142,10 @@ const Footer = () => {
               <ul className="space-y-3">
                 {[
                   { to: '/size-guide', label: 'Size Guide' },
-                  { to: '/shipping', label: 'Shipping & Returns' },
-                  { to: '/faqs', label: 'FAQs' },
-                  { to: '/contact', label: 'Contact Us' },
+                  { to: '#', label: 'Shipping & Returns' },
+                  { to: '#', label: 'FAQs' },
+                  { to: '#', label: 'Contact Us' },
+                  
                 ].map(l => (
                   <li key={l.to}>
                     <Link to={l.to} className="footer-link-arrow text-gray-400 hover:text-white text-sm transition-colors duration-200 inline-flex items-center">
@@ -211,7 +212,7 @@ const Footer = () => {
               <span className="text-gray-700">·</span>
               <Link to="/terms" className="bottom-link relative hover:text-white transition-colors">Terms</Link>
               <span className="text-gray-700">·</span>
-              <span>Developed by <a href="#" className="bottom-link relative hover:text-white transition-colors">SBBS</a></span>
+              <a href="https://sbbs.co.in/" target="_blank" rel="noopener noreferrer" className="bottom-link relative hover:text-white transition-colors">Developed by SBBS</a>
             </div>
           </div>
 

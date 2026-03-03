@@ -2,7 +2,11 @@ const mongoose = require("mongoose");
 
 const notificationSchema = new mongoose.Schema({
   title: { type: String, required: true },
-  type: { type: String, enum: ["new_order", "low_stock"], required: true },
+  type: {
+    type: String,
+    enum: ["new_order", "low_stock", "out_of_stock"],
+    required: true,
+  },
   image_url: { type: String },
   is_read: { type: Boolean, default: false },
   published: { type: Boolean, default: true },
