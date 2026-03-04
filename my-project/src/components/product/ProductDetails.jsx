@@ -156,7 +156,7 @@ const ProductDetails = ({ product, isLoading, isError, onCartUpdate }) => {
         await removeFromWishlist(displayProduct._id);
         toast.success('Removed from wishlist');
       } else {
-        await addToWishlist(displayProduct);
+        await addToWishlist(displayProduct, selectedVariant);
         toast.success('Added to wishlist');
       }
     } catch (error) {

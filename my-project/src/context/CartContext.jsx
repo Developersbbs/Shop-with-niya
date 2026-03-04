@@ -78,17 +78,22 @@ const initialState = {
 const transformCartItems = (items) =>
   items
     .filter(item => item.product_id != null)
-    .map(item => ({
-      id: item.product_id._id || item.product_id,
-      cartItemId: item._id,
-      name: item.product_id.name || item.name || 'Unknown Product',
-      price: item.product_id.selling_price || item.price || 0,
-      quantity: item.quantity || 1,
-      image: (item.product_id.image_url && item.product_id.image_url[0]) || item.image || null,
-      variant: item.variant_attributes || {},
-      stock: item.product_id.stock || 999,
-      slug: item.product_id.slug || null
-    }));
+    .map(item => {
+      const populatedProduct = item.product_id && typeof item.product_id === 'object' ? item.product_id : null;
+      return {
+        id: populatedProduct?._id || item.product_id,
+        cartItemId: item._id,
+        name: item.product_name || populatedProduct?.name || 'Unknown Product',
+        price: item.price || populatedProduct?.selling_price || 0,
+        quantity: item.quantity || 1,
+        // ✅ FIX: read item.product_image first (set by backend from variant), then fallback to product image
+        image: item.product_image || populatedProduct?.image_url?.[0] || null,
+        variant: item.variant_attributes || {},
+        variant_id: item.variant_id || null,
+        stock: item.stock ?? populatedProduct?.stock ?? 999,
+        slug: populatedProduct?.slug || null
+      };
+    });
 
 export const CartProvider = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialState);
@@ -168,8 +173,6 @@ export const CartProvider = ({ children }) => {
 
       if (backendCart.success && backendCart.data && backendCart.data.items && backendCart.data.items.length > 0) {
         console.log('Cart loaded from MongoDB:', backendCart.data.items.length, 'items');
-
-        // ✅ FIX 1: filter out null product_id items
         const transformedItems = transformCartItems(backendCart.data.items);
         dispatch({ type: CART_ACTIONS.SET_CART, payload: transformedItems });
 
@@ -228,6 +231,7 @@ export const CartProvider = ({ children }) => {
 
           const cartItem = {
             product_id: guestItem.id,
+            variant_id: guestItem.variant_id || null,
             quantity: guestItem.quantity,
             price: guestItem.price,
             discounted_price: guestItem.price,
@@ -260,11 +264,9 @@ export const CartProvider = ({ children }) => {
           console.log('Backend cart response after migration:', backendCart);
 
           if (backendCart.success && backendCart.data && backendCart.data.items) {
-            // ✅ FIX 2: filter out null product_id items
             const transformedItems = transformCartItems(backendCart.data.items);
             console.log('Setting cart with transformed items:', transformedItems);
             dispatch({ type: CART_ACTIONS.SET_CART, payload: transformedItems });
-
             console.log('Clearing guest cart after successful reload');
             clearGuestCart();
           } else {
@@ -288,11 +290,13 @@ export const CartProvider = ({ children }) => {
       console.log('CartContext: Adding to cart:', product._id);
 
       if (user && user.uid) {
-        const basePrice = product.selling_price || product.price || product.mrp || 1;
-        const discountedPrice = product.salePrice || product.selling_price || product.price || product.mrp || basePrice;
+        // ✅ FIX 1: Use variant price if available
+        const basePrice = variant?.selling_price || product.selling_price || product.price || product.mrp || 1;
+        const discountedPrice = variant?.selling_price || product.salePrice || product.selling_price || product.price || product.mrp || basePrice;
 
         const cartItem = {
           product_id: product._id,
+          variant_id: variant?._id || null,  // ✅ FIX 2: Send variant_id to backend
           quantity: quantity,
           price: basePrice,
           discounted_price: discountedPrice,
@@ -308,7 +312,8 @@ export const CartProvider = ({ children }) => {
           price: product.price,
           selling_price: product.selling_price,
           salePrice: product.salePrice,
-          mrp: product.mrp
+          mrp: product.mrp,
+          variant_selling_price: variant?.selling_price
         });
 
         if (!cartItem.product_id) throw new Error('Product ID is required');
@@ -327,7 +332,6 @@ export const CartProvider = ({ children }) => {
         const response = await cartAPI.addToCart(cartItem);
 
         if (response.success && response.data && response.data.items) {
-          // ✅ FIX 3: filter out null product_id items
           const backendCartItems = transformCartItems(response.data.items);
           dispatch({ type: CART_ACTIONS.SET_CART, payload: backendCartItems });
           console.log('CartContext: Item added to MongoDB cart successfully');

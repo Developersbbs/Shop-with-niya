@@ -132,7 +132,7 @@ function validateStockForPublish(product, isPublishing) {
   };
 }
 
-function transformVariantsForDB(variantsData, baseSKU, costPrice, salesPrice, variantImagesMap = {}) {
+function transformVariantsForDB(variantsData, baseSKU, costPrice, salesPrice, variantImagesMap = {} , existingVariants = []) {
   if (!variantsData || !variantsData.combinations || variantsData.combinations.length === 0) {
     console.log('🚨 BACKEND: No variants to transform');
     return [];
@@ -142,6 +142,8 @@ function transformVariantsForDB(variantsData, baseSKU, costPrice, salesPrice, va
   console.log('🚨 BACKEND: variantImagesMap:', variantImagesMap);
 
   const transformedVariants = variantsData.combinations.map((combo, index) => {
+
+    const existingVariant = existingVariants[index] || null; 
     let sku = combo.sku;
     if (!sku || variantsData.autoGenerateSKU) {
       const attributeValues = Object.entries(combo.attributes || {})
@@ -152,8 +154,17 @@ function transformVariantsForDB(variantsData, baseSKU, costPrice, salesPrice, va
     }
     sku = sku.toUpperCase();
 
-    const variantCostPrice = combo.costPrice ?? combo.cost_price ?? costPrice ?? 0;
-    const variantSellingPrice = combo.salesPrice ?? combo.selling_price ?? combo.sellingPrice ?? salesPrice ?? 0;
+const variantCostPrice = (combo.costPrice !== undefined && combo.costPrice !== null && combo.costPrice !== '')
+  ? Number(combo.costPrice)
+  : (combo.cost_price !== undefined && combo.cost_price !== null && combo.cost_price !== '')
+    ? Number(combo.cost_price)
+    : existingVariant?.cost_price ?? costPrice ?? 0;
+
+const variantSellingPrice = (combo.salesPrice !== undefined && combo.salesPrice !== null && combo.salesPrice !== '')
+  ? Number(combo.salesPrice)
+  : (combo.selling_price !== undefined && combo.selling_price !== null && combo.selling_price !== '')
+    ? Number(combo.selling_price)
+    : existingVariant?.selling_price ?? salesPrice ?? 0;
 
     // Use images already set on combo (either existing URLs or newly replaced ones)
     let variantImages = combo.images || [];
@@ -183,8 +194,14 @@ function transformVariantsForDB(variantsData, baseSKU, costPrice, salesPrice, va
     });
 
     let variantStatus = 'draft';
-    const variantStock = combo.stock !== undefined ? Number(combo.stock) : 0;
-    const variantMinStock = combo.minStock !== undefined ? Number(combo.minStock) : 0;
+   const variantStock = (combo.stock !== undefined && combo.stock !== null && combo.stock !== '')
+  ? Number(combo.stock)
+  : existingVariant?.stock ?? 0;
+
+const variantMinStock = (combo.minStock !== undefined && combo.minStock !== null && combo.minStock !== '')
+  ? Number(combo.minStock)
+  : existingVariant?.minStock ?? 0;
+
     const variantPublished = combo.published !== undefined ? combo.published : true;
 
     if (variantPublished) {
@@ -1250,13 +1267,14 @@ if (req.body.existingVariantImages && typeof req.body.existingVariantImages === 
 
     // ─── Transform and save variants ───────────────────────────────
     if (variantsData?.combinations?.length > 0) {
-      const transformedVariants = transformVariantsForDB(
-        variantsData,
-        req.body.sku || 'PROD',
-        updateData.cost_price,
-        updateData.selling_price,
-        {} // images already merged onto combinations in FIX 2
-      );
+const transformedVariants = transformVariantsForDB(
+  variantsData,
+  req.body.sku || currentProduct.sku || 'PROD',
+  updateData.cost_price,
+  updateData.selling_price,
+  {},
+  currentProduct.product_variants || []
+);
 
       console.log('=== Transformed variants ===');
       transformedVariants.forEach((v, i) => {

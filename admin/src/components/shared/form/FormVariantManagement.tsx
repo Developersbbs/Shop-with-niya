@@ -91,7 +91,7 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
       published: combo.published,
     })),
     autoGenerateSKU: variantData.autoGenerateSKU,
-  }), [variantData.attributes, variantData.combinations, variantData.autoGenerateSKU, selectedValues, variantData.combinations.map(c => c.name).join(',')]);
+ }), [variantData.attributes, variantData.combinations, variantData.autoGenerateSKU, selectedValues]);
 
   useEffect(() => {
     console.log('🔄 TRANSFORMED DATA FOR FORM:', {
@@ -901,7 +901,7 @@ function VariantCombinationEditor({
                 type="number"
                 min="0"
                 value={combination.stock ?? ''}
-                onChange={(e) => onUpdate({ stock: e.target.value === '' ? undefined : parseInt(e.target.value) || 0 })}
+              onChange={(e) => onUpdate({ stock: e.target.value === '' ? 0 : parseInt(e.target.value) || 0 })}
                 placeholder="0"
               />
             </div>
@@ -913,7 +913,7 @@ function VariantCombinationEditor({
                 type="number"
                 min="0"
                 value={combination.minStock ?? ''}
-                onChange={(e) => onUpdate({ minStock: e.target.value === '' ? undefined : parseInt(e.target.value) || 0 })}
+                onChange={(e) => onUpdate({ minStock: e.target.value === '' ? 0 : parseInt(e.target.value) || 0 })}
                 placeholder="0"
               />
             </div>

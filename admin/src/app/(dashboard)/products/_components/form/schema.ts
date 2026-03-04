@@ -78,8 +78,7 @@ export const productFormSchema = z
         subcategoryIds: z.array(z.string()).optional().default([]),
         subcategoryNames: z.array(z.string()).optional(),
       }))
-      .optional()
-      .default([]),
+        .min(1, { message: "At least one category is required" }),
     costPrice: z.coerce
       .number({ invalid_type_error: "Cost price must be a number" })
       .min(0, { message: "Cost price cannot be negative" })

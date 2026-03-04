@@ -6,6 +6,11 @@ const cartItemSchema = new mongoose.Schema({
     ref: 'Product', 
     required: true 
   },
+   variant_id: { 
+    type: mongoose.Schema.Types.ObjectId,
+     required: false, 
+     default: null
+     },
   variant_sku: { 
     type: String, 
     required: false // For products with variants
