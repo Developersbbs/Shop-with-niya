@@ -32,7 +32,6 @@ const variantCombinationSchema = z.object({
   stock: z.number().int().min(0).optional(),
   minStock: z.number().int().min(0).optional(),
   status: z.enum(['selling', 'out_of_stock', 'draft', 'archived']).optional(),
-  // ✅ FIX: Accept both File objects (new uploads) and strings (existing URLs)
   images: z.array(z.union([z.string().min(1), z.instanceof(File)])).default([]),
   attributes: z.record(z.string()).default({}),
   published: z.boolean().default(true),
@@ -63,12 +62,8 @@ export const productFormSchema = z
       .string()
       .min(1, { message: "Product description is required" })
       .max(1000, "Product description must be 1000 characters or less"),
-    // ✅ FIX: Accept both File objects (new uploads) and strings (existing URLs)
     images: z.array(
-      z.union([
-        fileSchema,
-        z.string().min(1),
-      ])
+      z.union([fileSchema, z.string().min(1)])
     ).optional().default([]),
     sku: z
       .string()
@@ -99,6 +94,14 @@ export const productFormSchema = z
       .optional()
       .transform((val) => val === 0 ? undefined : val)
       .or(z.literal(undefined)),
+
+    // ✅ NEW: Tax Percentage
+    taxPercentage: z.coerce
+      .number({ invalid_type_error: "Tax percentage must be a number" })
+      .min(0, { message: "Tax cannot be negative" })
+      .max(100, { message: "Tax cannot exceed 100%" })
+      .default(0),
+
     stock: z.coerce
       .number({ invalid_type_error: "Stock must be a number" })
       .int({ message: "Stock must be a whole number" })
@@ -186,7 +189,6 @@ export const productFormSchema = z
     }
 
     if (data.productType !== 'digital' && data.productStructure === "simple") {
-      console.log('Running SIMPLE product validation');
       if (!data.costPrice) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -209,7 +211,6 @@ export const productFormSchema = z
         });
       }
     } else if (data.productStructure === "variant") {
-      console.log('Running VARIANT product validation');
       if (data.costPrice !== undefined && data.costPrice !== null) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

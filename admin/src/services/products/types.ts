@@ -11,10 +11,12 @@ export interface FetchProductsParams {
   limit?: number;
   search?: string;
   category?: string;
+  tax_percentage?: number;
   priceSort?: string;
   status?: string;
   published?: boolean;
   dateSort?: string;
+
 }
 
 export interface FetchProductsResponse {

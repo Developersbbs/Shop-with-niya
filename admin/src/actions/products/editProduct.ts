@@ -111,6 +111,7 @@ export async function editProduct(
     categories: categories,
     costPrice: formData.get("costPrice"),
     salesPrice: formData.get("salesPrice"),
+     taxPercentage: formData.get("tax_percentage") || 0, 
     stock: formData.get("stock") || 0,
     minStockThreshold: formData.get("minStockThreshold") || 0,
     weight: formData.get("weight") || undefined,
@@ -217,6 +218,7 @@ if (variants && variants.combinations) {
 
     backendFormData.append("cost_price", parsedData.data.costPrice?.toString() || "0");
     backendFormData.append("selling_price", parsedData.data.salesPrice?.toString() || "0");
+    backendFormData.append("tax_percentage", String(parsedData.data.taxPercentage ?? 0)); 
 
     if (parsedData.data.stock !== undefined) {
       backendFormData.append("stock", parsedData.data.stock.toString());

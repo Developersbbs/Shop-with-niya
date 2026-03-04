@@ -172,6 +172,7 @@ export async function addProduct(
     categories: categories,
     costPrice: formData.get("costPrice"),
     salesPrice: formData.get("salesPrice"),
+    taxPercentage: formData.get("tax_percentage") || 0,  
     stock: formData.get("stock") || 0,
     minStockThreshold: formData.get("minStockThreshold") || 0,
     weight: formData.get("weight") || undefined,
@@ -292,6 +293,7 @@ export async function addProduct(
         backendFormData.append("cost_price", parsedData.data.costPrice.toString());
         backendFormData.append("selling_price", parsedData.data.salesPrice.toString());
     }
+backendFormData.append("tax_percentage", String(parsedData.data.taxPercentage ?? 0));
 
     // Send stock and min stock threshold
     if (parsedData.data.stock !== undefined) {

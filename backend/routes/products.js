@@ -240,6 +240,84 @@ router.get("/uploads/:filename", (req, res) => {
   res.sendFile(filePath);
 });
 
+// GET export products as CSV
+router.get("/export/csv", async (req, res) => {
+  try {
+    const products = await Product.find({})
+      .populate({ path: "categories.category", select: "name slug" })
+      .populate({ path: "categories.subcategories", select: "name" })
+      .sort({ created_at: -1 });
+
+    if (!products || products.length === 0) {
+      return res.status(404).json({ success: false, error: "No products found" });
+    }
+
+    const rows = [];
+
+    // Header row
+    rows.push([
+      "Product Name", "SKU", "Product Type", "Structure", "Status",
+      "Published", "Category", "Cost Price", "Sale Price", "Tax %",
+      "Stock", "Min Stock", "Tags", "Created At"
+    ].join(","));
+
+    for (const product of products) {
+      const categoryName = product.categories?.[0]?.category?.name || "—";
+      const tags = (product.tags || []).join("; ");
+
+      if (product.product_structure === "variant" && product.product_variants?.length > 0) {
+        for (const variant of product.product_variants) {
+          rows.push([
+            `"${(product.name || "").replace(/"/g, '""')} - ${(variant.name || "").replace(/"/g, '""')}"`,
+            `"${variant.sku || ""}"`,
+            `"${product.product_type || "physical"}"`,
+            `"variant"`,
+            `"${variant.status || ""}"`,
+            `"${variant.published ? "Yes" : "No"}"`,
+            `"${categoryName}"`,
+            variant.cost_price ?? 0,
+            variant.selling_price ?? 0,
+            product.tax_percentage ?? 0,
+
+            variant.stock ?? 0,
+            variant.minStock ?? 0,
+            `"${tags}"`,
+            `"${product.created_at ? new Date(product.created_at).toISOString().split("T")[0] : ""}"`
+          ].join(","));
+        }
+      } else {
+        rows.push([
+          `"${(product.name || "").replace(/"/g, '""')}"`,
+          `"${product.sku || ""}"`,
+          `"${product.product_type || "physical"}"`,
+          `"simple"`,
+          `"${product.status || ""}"`,
+          `"${product.published ? "Yes" : "No"}"`,
+          `"${categoryName}"`,
+          product.cost_price ?? 0,
+          product.selling_price ?? 0,
+          product.tax_percentage ?? 0,
+          product.baseStock ?? 0,
+          product.minStock ?? 0,
+          `"${tags}"`,
+          `"${product.created_at ? new Date(product.created_at).toISOString().split("T")[0] : ""}"`
+        ].join(","));
+      }
+    }
+
+    const csv = rows.join("\n");
+    const filename = `products-export-${new Date().toISOString().split("T")[0]}.csv`;
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.status(200).send(csv);
+
+  } catch (err) {
+    console.error("Export CSV error:", err);
+    res.status(500).json({ success: false, error: "Failed to export products" });
+  }
+});
+
 // GET all products
 router.get("/", async (req, res) => {
   try {
@@ -648,6 +726,7 @@ router.post("/", uploadDigitalFile, async (req, res) => {
       categories: categories,
       cost_price: productStructure === 'simple' ? parseFloat(req.body.cost_price || req.body.costPrice) : undefined,
       selling_price: productStructure === 'simple' ? parseFloat(req.body.selling_price || req.body.salesPrice) : undefined,
+      tax_percentage: parseFloat(req.body.tax_percentage || 0),
       image_url: allImageUrls,
       tags: tags,
       ...(productStructure !== 'variant' && { published: req.body.published === 'true' }),
@@ -1090,6 +1169,9 @@ if (req.body.existingVariantImages && typeof req.body.existingVariantImages === 
     if (productStructure) updateData.product_structure = productStructure;
     if (req.body.sku) updateData.sku = req.body.sku.toUpperCase();
     if (categoriesParsed) updateData.categories = categories;
+    if (req.body.tax_percentage !== undefined) {
+  updateData.tax_percentage = parseFloat(req.body.tax_percentage);
+}
 
     if (productStructure === 'simple') {
       if (req.body.cost_price || req.body.costPrice) updateData.cost_price = parseFloat(req.body.cost_price || req.body.costPrice);

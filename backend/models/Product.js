@@ -9,11 +9,11 @@ const variantSchema = new mongoose.Schema({
   selling_price: { type: Number, required: true },
   stock: { type: Number },
   minStock: { type: Number },
-status: {
-  type: String,
-  enum: ["draft", "selling", "out_of_stock", "low_stock"], // ← add low_stock
-  default: "draft"
-},
+  status: {
+    type: String,
+    enum: ["draft", "selling", "out_of_stock", "low_stock"], // ← add low_stock
+    default: "draft"
+  },
   images: [{ type: String }],
   attributes: {
     type: Map,
@@ -124,6 +124,13 @@ const productSchema = new mongoose.Schema(
         }
       }
     },
+
+    tax_percentage: {
+  type: Number,
+  min: 0,
+  max: 100,
+  default: 0
+},
 
     // Stock fields - only for simple products (normal or combo)
     baseStock: {
@@ -241,39 +248,39 @@ const productSchema = new mongoose.Schema(
     download_limit: { type: Number },
 
     // Variants - only for normal variant products
-product_variants: {
-  type: [variantSchema],
-  validate: {
-    validator: function (value) {
-      const update = this.getUpdate ? this.getUpdate() : null;
-      const updateSet = update?.$set || update || {};
+    product_variants: {
+      type: [variantSchema],
+      validate: {
+        validator: function (value) {
+          const update = this.getUpdate ? this.getUpdate() : null;
+          const updateSet = update?.$set || update || {};
 
-      const nature = this.product_nature 
-        || updateSet.product_nature 
-        || update?.product_nature
-        || 'normal'; // default to normal
+          const nature = this.product_nature
+            || updateSet.product_nature
+            || update?.product_nature
+            || 'normal'; // default to normal
 
-      const structure = this.product_structure 
-        || updateSet.product_structure 
-        || update?.product_structure
-        || 'simple'; // default to simple
+          const structure = this.product_structure
+            || updateSet.product_structure
+            || update?.product_structure
+            || 'simple'; // default to simple
 
-      // Normal variant products must have at least one variant
-      if (nature === 'normal' && structure === 'variant') {
-        return value && value.length > 0;
+          // Normal variant products must have at least one variant
+          if (nature === 'normal' && structure === 'variant') {
+            return value && value.length > 0;
+          }
+          // Combo and simple products should not have variants
+          if (nature === 'combo' || structure === 'simple') {
+            return !value || value.length === 0;
+          }
+          // If we can't determine — don't block the update
+          return true;
+        },
+        message: function () {
+          return 'Normal variant products must have at least one variant';
+        }
       }
-      // Combo and simple products should not have variants
-      if (nature === 'combo' || structure === 'simple') {
-        return !value || value.length === 0;
-      }
-      // If we can't determine — don't block the update
-      return true;
     },
-    message: function () {
-      return 'Normal variant products must have at least one variant';
-    }
-  }
-},
 
     // SEO & metadata
     tags: [{ type: String }],

@@ -1,0 +1,1 @@
+import{j as i}from"./index-C10uacnz.js";import"./vendor-Bib7du_b.js";import{A as o}from"./AuthenticationForm-87jXI4T3.js";import"./redux-BMGfIcw1.js";import"./firebase-JFYD2rgV.js";import"./utils-DdD0FRto.js";import"./ui-CkG-GWQN.js";const s=()=>i.jsx(o,{isLogin:!1});export{s as default};

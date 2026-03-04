@@ -83,6 +83,7 @@ export default function ProductFormSheet({
       categories: [],
       costPrice: undefined,
       salesPrice: undefined,
+      taxPercentage: 0,        // ✅ added
       stock: undefined,
       minStockThreshold: undefined,
       status: "selling",
@@ -132,6 +133,7 @@ export default function ProductFormSheet({
         categories: [],
         costPrice: undefined,
         salesPrice: undefined,
+        taxPercentage: 0,      // ✅ added
         stock: undefined,
         minStockThreshold: undefined,
         status: "selling",
@@ -177,7 +179,6 @@ export default function ProductFormSheet({
       const roundedSize = Math.round(fileSizeMB * 10000) / 10000;
       const fileExtension = file.name.split('.').pop()?.toUpperCase() || '';
       const numericFileSize = Number(roundedSize.toFixed(4));
-
       form.setValue('fileSize', numericFileSize, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
       form.setValue('downloadFormat', fileExtension || 'PDF', { shouldValidate: true, shouldDirty: true, shouldTouch: true });
       form.trigger(['fileSize', 'downloadFormat']);
@@ -186,6 +187,7 @@ export default function ProductFormSheet({
 
   const productStructure = form.watch("productStructure");
 
+  // ✅ FIXED: clean useEffect, no JSX inside
   useEffect(() => {
     if (productStructure === "simple") {
       form.setValue('status', 'selling', { shouldValidate: false, shouldDirty: false, shouldTouch: false });
@@ -222,7 +224,6 @@ export default function ProductFormSheet({
 
   useEffect(() => {
     const productStructure = form.watch("productStructure");
-
     if (productStructure === "variant" && variants?.combinations && variants.combinations.length > 0) {
       for (const variant of variants.combinations) {
         if (variant.images && variant.images.length > 0) {
@@ -239,7 +240,6 @@ export default function ProductFormSheet({
         }
       }
     }
-
     if (images && images.length > 0) {
       const firstImage = images[0];
       if (typeof firstImage === 'string') {
@@ -259,7 +259,6 @@ export default function ProductFormSheet({
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:5000';
       return `${baseUrl}${currentOgImage}`;
     }
-
     const productStructure = form.watch("productStructure");
     if (productStructure === "variant" && variants?.combinations && variants.combinations.length > 0) {
       for (const variant of variants.combinations) {
@@ -274,7 +273,6 @@ export default function ProductFormSheet({
         }
       }
     }
-
     if (images && images.length > 0) {
       const firstImage = images[0];
       if (typeof firstImage === 'string') {
@@ -284,7 +282,6 @@ export default function ProductFormSheet({
       }
       return `${images.length} image(s) uploaded - first will be used for social sharing`;
     }
-
     return "No images uploaded yet";
   };
 
@@ -340,27 +337,22 @@ export default function ProductFormSheet({
     let robotsValue: 'index,follow' | 'noindex,nofollow' | 'index,nofollow' | 'noindex,follow' = 'noindex,nofollow';
     if (isInStock) robotsValue = 'index,follow';
     else robotsValue = 'noindex,follow';
-
     form.setValue('seoRobots', robotsValue, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
 
-    // ✅ KEY FIX: Always get product_variants fresh from form.getValues()
-    // This ensures we get the latest state including all images from FormVariantManagement
     const product_variants = form.getValues('product_variants');
-
     const { images: formImages, product_variants: _unused, ...dataWithoutFiles } = finalData;
     const formData = objectToFormData(dataWithoutFiles);
 
-    // Handle main product images
+    // ✅ Append tax percentage
+    formData.append('tax_percentage', String(finalData.taxPercentage ?? 0));
+
     const newImageFiles: File[] = [];
     const existingImageUrls: string[] = [];
 
     if (formImages && formImages.length > 0) {
       formImages.forEach((img: any) => {
-        if (img instanceof File) {
-          newImageFiles.push(img);
-        } else if (typeof img === 'string') {
-          existingImageUrls.push(img);
-        }
+        if (img instanceof File) newImageFiles.push(img);
+        else if (typeof img === 'string') existingImageUrls.push(img);
       });
     }
 
@@ -376,7 +368,6 @@ export default function ProductFormSheet({
       formData.append('image_url', JSON.stringify(existingImageUrls));
     }
 
-    // ✅ Handle variants with fresh data from form.getValues()
     if (product_variants) {
       const variantsForJson = {
         ...product_variants,
@@ -387,15 +378,11 @@ export default function ProductFormSheet({
       };
       formData.append('product_variants', JSON.stringify(variantsForJson));
 
-      // Send variant images separately
       product_variants.combinations?.forEach((combo: any, comboIdx: number) => {
         let newFileIdx = 0;
         let existingUrlIdx = 0;
-
         const comboImages = combo.images || [];
-
         console.log(`🔥 Combo ${comboIdx} images at submit:`, comboImages);
-
         comboImages.forEach((img: any) => {
           if (img instanceof File) {
             formData.append(`variantImages[${comboIdx}][${newFileIdx}]`, img);
@@ -406,18 +393,6 @@ export default function ProductFormSheet({
           }
         });
       });
-    }
-
-    console.log('=== VARIANT IMAGE DEBUG ===');
-    product_variants?.combinations?.forEach((combo: any, i: number) => {
-      console.log(`Combo ${i} images:`, combo.images);
-    });
-
-    console.log('=== FORMDATA KEYS ===');
-    for (const [key, val] of formData.entries()) {
-      if (key.includes('ariant') || key.includes('mage')) {
-        console.log(key, ':', val instanceof File ? `File(${val.name})` : val);
-      }
     }
 
     setTimeout(() => {
@@ -448,6 +423,7 @@ export default function ProductFormSheet({
               categories: [],
               costPrice: undefined,
               salesPrice: undefined,
+              taxPercentage: 0,    // ✅ added
               stock: undefined,
               minStockThreshold: undefined,
               status: "selling",
@@ -496,13 +472,11 @@ export default function ProductFormSheet({
   const onInvalid = (errors: FieldErrors<ProductFormData>) => {
     console.log('=== FORM VALIDATION FAILED ===');
     console.log('Validation errors:', errors);
-
     if (errors.images) {
       imageDropzoneRef.current?.focus();
     } else if (errors.categories) {
       categoryRef.current?.focus();
     }
-
     const firstErrorKey = Object.keys(errors)[0];
     const firstError = errors[firstErrorKey as keyof ProductFormData];
     if (firstError && 'message' in firstError) {
@@ -618,6 +592,16 @@ export default function ProductFormSheet({
                         placeholder="Sale Price"
                         min="0"
                       />
+                      {/* ✅ Tax for simple products */}
+                      <FormTextInput
+                        control={form.control}
+                        name="taxPercentage"
+                        label="Tax Percentage (%)"
+                        placeholder="e.g. 18"
+                        type="number"
+                        min="0"
+                        max="100"
+                      />
                     </>
                   )}
 
@@ -643,14 +627,26 @@ export default function ProductFormSheet({
                   )}
 
                   {form.watch("productType") === "physical" && form.watch("productStructure") === "variant" && (
-                    <FormVariantManagement
-                      control={form.control}
-                      name="product_variants"
-                      label="Product Variants"
-                      baseSKU={form.watch("sku") || ""}
-                      baseSlug={form.watch("slug") || ""}
-                      productName={form.watch("name") || ""}
-                    />
+                    <>
+                      {/* ✅ Tax for variant products */}
+                      <FormTextInput
+                        control={form.control}
+                        name="taxPercentage"
+                        label="Tax Percentage (%)"
+                        placeholder="e.g. 18"
+                        type="number"
+                        min="0"
+                        max="100"
+                      />
+                      <FormVariantManagement
+                        control={form.control}
+                        name="product_variants"
+                        label="Product Variants"
+                        baseSKU={form.watch("sku") || ""}
+                        baseSlug={form.watch("slug") || ""}
+                        productName={form.watch("name") || ""}
+                      />
+                    </>
                   )}
 
                   {form.watch("productType") === "digital" && (
@@ -715,6 +711,19 @@ export default function ProductFormSheet({
                               min="1"
                             />
                           </div>
+                        </div>
+
+                        {/* ✅ Tax for digital products */}
+                        <div className="pt-4 border-t border-gray-200 mt-4">
+                          <FormTextInput
+                            control={form.control}
+                            name="taxPercentage"
+                            label="Tax Percentage (%)"
+                            placeholder="e.g. 18"
+                            type="number"
+                            min="0"
+                            max="100"
+                          />
                         </div>
                       </div>
                     </div>
