@@ -38,15 +38,15 @@ export type OrderDetails = Pick<
 
 export type OrdersExport = {
   id: string;
-  invoice_no?: string;
+  invoice_no: string;
   customer_name: string;
   customer_email: string;
+  customer_phone: string;
   total_amount: number;
-  discount: string;
+  discount: number;
   shipping_cost: number;
   payment_method: string;
-  order_time: string;
+  order_date: string;
   status: string;
-  created_at: string;
-  updated_at: string;
+  shipping_address: string;
 };

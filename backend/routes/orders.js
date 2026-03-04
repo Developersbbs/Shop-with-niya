@@ -256,7 +256,6 @@ router.get("/export", async (req, res) => {
   try {
     const { search, status, method, startDate, endDate } = req.query;
 
-    // Build filter query
     let filter = {};
 
     if (search) {
@@ -267,25 +266,15 @@ router.get("/export", async (req, res) => {
       ];
     }
 
-    if (status) {
-      filter.status = status;
-    }
-
-    if (method) {
-      filter.payment_method = method;
-    }
+    if (status) filter.status = status;
+    if (method) filter.payment_method = method;
 
     if (startDate || endDate) {
       filter.order_time = {};
-      if (startDate) {
-        filter.order_time.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        filter.order_time.$lte = new Date(endDate);
-      }
+      if (startDate) filter.order_time.$gte = new Date(startDate);
+      if (endDate) filter.order_time.$lte = new Date(endDate);
     }
 
-    // Fetch orders with customer data
     const orders = await Order.find(filter)
       .populate({
         path: "customer_id",
@@ -294,28 +283,25 @@ router.get("/export", async (req, res) => {
       })
       .sort({ order_time: -1 });
 
-    // Transform orders for CSV
     const csvOrders = orders.map(order => ({
-      'Invoice No': order.invoice_no,
-      'Order Date': new Date(order.order_time).toLocaleDateString(),
-      'Customer Name': order.customer_id?.name || order.shipping_address?.name || 'N/A',
-      'Customer Email': order.shipping_address?.email || order.customer_id?.email || 'N/A',
-      'Customer Phone': order.shipping_address?.phone || order.customer_id?.phone || 'N/A',
-      'Payment Method': order.payment_method,
-      'Order Status': order.status,
-      'Shipping Cost': order.shipping_cost || 0,
-      'Total Amount': order.total_amount,
-      'Shipping Address': `${order.shipping_address?.street || ''}, ${order.shipping_address?.city || ''}, ${order.shipping_address?.state || ''} ${order.shipping_address?.zipCode || ''}`.trim()
+      invoice_no: order.invoice_no,
+      order_date: new Date(order.order_time).toLocaleDateString(),
+      customer_name: order.customer_id?.name || order.shipping_address?.name || 'N/A',
+      customer_email: order.shipping_address?.email || order.customer_id?.email || 'N/A',
+      customer_phone: order.shipping_address?.phone || order.customer_id?.phone || 'N/A',
+      payment_method: order.payment_method,
+      status: order.status,
+      shipping_cost: order.shipping_cost || 0,
+      total_amount: order.total_amount,
+      shipping_address: `${order.shipping_address?.street || ''}, ${order.shipping_address?.city || ''}, ${order.shipping_address?.state || ''} ${order.shipping_address?.zipCode || ''}`.trim()
     }));
 
-    // Convert to CSV
-    const csv = convertToCSV(csvOrders);
+    // Return JSON instead of raw CSV so the frontend server action can process it
+    res.json({
+      success: true,
+      data: csvOrders
+    });
 
-    // Set headers for CSV download
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=orders_export_${new Date().toISOString().split('T')[0]}.csv`);
-
-    res.send(csv);
   } catch (err) {
     console.error('Error exporting orders:', err);
     res.status(500).json({

@@ -18,9 +18,10 @@ type Props = {
   date: string | undefined;
   setDate: (date: string) => void;
   container?: HTMLDivElement;
+  disablePast?: boolean;  // optional — pass true only where you need it
 };
 
-export function DatePicker({ className, date, setDate, container }: Props) {
+export function DatePicker({ className, date, setDate, container, disablePast = false }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -35,7 +36,6 @@ export function DatePicker({ className, date, setDate, container }: Props) {
           )}
         >
           {date ? format(parseISO(date), "PPP") : <span>Pick a date</span>}
-
           <CalendarIcon className="ml-2 size-4" />
         </Button>
       </PopoverTrigger>
@@ -50,9 +50,7 @@ export function DatePicker({ className, date, setDate, container }: Props) {
               setOpen(false);
             }
           }}
-          disabled={{
-            before: new Date(), // Disable all dates before today
-          }}
+          disabled={disablePast ? { before: new Date() } : undefined}
           initialFocus
         />
       </PopoverContent>
