@@ -19,13 +19,13 @@ router.get('/', async (req, res) => {
                 { endDate: { $gte: now } }
             ]
         };
-        
+
         // Optional device targeting filter
         if (req.query.device) {
             const device = req.query.device.toLowerCase();
             query.showOn = { $in: ['all', device] };
         }
-        
+
         const slides = await HeroSection.find(query).sort({ order: 1 });
         res.json({ success: true, data: slides });
     } catch (err) {
@@ -46,15 +46,15 @@ router.get('/admin', async (req, res) => {
 // POST new slide
 router.post('/', async (req, res) => {
     try {
-        const { 
-            title, 
-            subtitle, 
-            description, 
-            image, 
+        const {
+            title,
+            subtitle,
+            description,
+            image,
             imageMobile,
             primaryCTA,
             secondaryCTA,
-            gradient, 
+            gradient,
             isActive,
             order,
             startDate,
@@ -66,8 +66,8 @@ router.post('/', async (req, res) => {
 
         // Validate required fields
         if (!title || !image) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 error: 'Title and image are required',
                 errors: {
                     title: !title ? ['Title is required'] : [],
@@ -95,7 +95,11 @@ router.post('/', async (req, res) => {
             endDate: endDate ? new Date(endDate) : undefined,
             templateType: templateType || 'center',
             showOn: showOn || 'all',
-            isArchived: isArchived === true || isArchived === 'true'
+            isArchived: isArchived === true || isArchived === 'true',
+            textColor: req.body.textColor || '#ffffff',
+            buttonStyle: req.body.buttonStyle || 'filled',
+            buttonColor: req.body.buttonColor || '#ffffff',
+            buttonTextColor: req.body.buttonTextColor || '#0a0a0a',
         });
 
         await newSlide.save();
@@ -109,16 +113,16 @@ router.post('/', async (req, res) => {
 // PUT update slide
 router.put('/:id', async (req, res) => {
     try {
-        const { 
-            title, 
-            subtitle, 
-            description, 
-            image, 
+        const {
+            title,
+            subtitle,
+            description,
+            image,
             imageMobile,
             primaryCTA,
             secondaryCTA,
-            gradient, 
-            isActive, 
+            gradient,
+            isActive,
             order,
             startDate,
             endDate,
@@ -131,15 +135,15 @@ router.put('/:id', async (req, res) => {
         // Only update fields that are provided
         if (title !== undefined) {
             if (!title || title.trim() === '') {
-                return res.status(400).json({ 
-                    success: false, 
+                return res.status(400).json({
+                    success: false,
                     error: 'Title is required',
                     errors: { title: ['Title is required'] }
                 });
             }
             updateData.title = title.trim();
         }
-        
+
         if (subtitle !== undefined) updateData.subtitle = subtitle || '';
         if (description !== undefined) updateData.description = description || '';
         if (image !== undefined) updateData.image = image.trim(); // Firebase Storage URL
@@ -154,6 +158,10 @@ router.put('/:id', async (req, res) => {
         if (templateType !== undefined) updateData.templateType = templateType;
         if (showOn !== undefined) updateData.showOn = showOn;
         if (isArchived !== undefined) updateData.isArchived = isArchived === true || isArchived === 'true';
+        if (req.body.textColor !== undefined) updateData.textColor = req.body.textColor;
+        if (req.body.buttonStyle !== undefined) updateData.buttonStyle = req.body.buttonStyle;
+        if (req.body.buttonColor !== undefined) updateData.buttonColor = req.body.buttonColor;
+        if (req.body.buttonTextColor !== undefined) updateData.buttonTextColor = req.body.buttonTextColor;
 
         const slide = await HeroSection.findByIdAndUpdate(
             req.params.id,

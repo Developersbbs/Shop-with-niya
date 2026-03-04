@@ -24,7 +24,7 @@ export async function updateHeroSection(
       const fileExtension = imageFile.name.split('.').pop();
       const fileName = `hero_${Date.now()}.${fileExtension}`;
       const storageRef = ref(storage, `hero-section/${fileName}`);
-      
+
       // Upload the file
       const snapshot = await uploadBytes(storageRef, imageFile);
       // Get the download URL
@@ -75,6 +75,10 @@ export async function updateHeroSection(
       gradient: formData.get("gradient") || "from-black/90 via-black/40 to-transparent",
       isActive: formData.get("isActive") === "true",
       order: parseInt(formData.get("order") as string) || 0,
+      textColor: formData.get('textColor') || '#ffffff',
+      buttonStyle: formData.get('buttonStyle') || 'filled',
+      buttonColor: formData.get('buttonColor') || '#ffffff',
+      buttonTextColor: formData.get('buttonTextColor') || '#0a0a0a',
     };
 
     // Make the API request to your backend

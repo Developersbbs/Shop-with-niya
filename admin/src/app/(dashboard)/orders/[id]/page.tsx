@@ -1,19 +1,11 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { FaBagShopping } from "react-icons/fa6";
 import { format } from "date-fns";
 
 import PageTitle from "@/components/shared/PageTitle";
-import Typography from "@/components/ui/typography";
-import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
@@ -22,18 +14,11 @@ import { OrderBadgeVariants } from "@/constants/badge";
 import { fetchOrderDetails } from "@/services/orders";
 import { InvoiceActions } from "./_components/InvoiceActions";
 
-type PageParams = {
-  params: {
-    id: string;
-  };
-};
+type PageParams = { params: { id: string } };
 
-export async function generateMetadata({
-  params: { id },
-}: PageParams): Promise<Metadata> {
+export async function generateMetadata({ params: { id } }: PageParams): Promise<Metadata> {
   try {
     const { order } = await fetchOrderDetails({ id });
-
     return { title: `Order #${order.invoice_no}` };
   } catch (e) {
     return { title: "Order not found" };
@@ -44,235 +29,211 @@ export default async function Order({ params: { id } }: PageParams) {
   try {
     const { order } = await fetchOrderDetails({ id });
 
+    const subtotal = order.order_items.reduce(
+      (sum, item) => sum + item.quantity * item.unit_price, 0
+    );
+    const tax = subtotal * 0.1;
+    const discount = getDiscount({
+      totalAmount: order.total_amount,
+      shippingCost: order.shipping_cost,
+      coupon: order.coupons,
+    });
+
     return (
       <section>
         <PageTitle className="print:hidden">Invoice</PageTitle>
 
-        <Card className="mb-8 text-muted-foreground p-4 lg:p-6 print:border-none print:bg-white print:mb-0">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-x-4 gap-y-6 print:flex-row print:justify-between">
-            <div className="flex flex-col">
-              <Typography
-                className="uppercase text-card-foreground mb-1.5 md:text-xl tracking-wide print:text-black"
-                variant="h2"
-              >
-                invoice
-              </Typography>
+        {/* ── Always white wrapper — ignores dark mode ── */}
+        <div className="mb-8 mt-2 rounded-lg overflow-hidden shadow-sm print:shadow-none print:rounded-none"
+          style={{ backgroundColor: "#ffffff", color: "#111111" }}>
 
-              <div className="flex items-center gap-x-2">
-                <Typography className="uppercase font-semibold text-xs print:text-black">
-                  status
-                </Typography>
-
-                <Badge
-                  variant={OrderBadgeVariants[order.status]}
-                  className="flex-shrink-0 text-xs capitalize"
-                >
-                  {order.status}
-                </Badge>
-              </div>
-            </div>
-
-            <div className="flex flex-col text-sm gap-y-0.5 md:text-right print:text-right print:text-black">
-              <div className="flex items-center md:justify-end gap-x-1 print:justify-end">
-                <FaBagShopping className="size-6 text-primary mb-1 flex-shrink-0" />
-                <Typography
-                  component="span"
-                  variant="h2"
-                  className="text-card-foreground print:text-black"
-                >
-                  ECommerce
-                </Typography>
-              </div>
-
-              <Typography component="p">
-                2 Lawson Avenue, California, United States
-              </Typography>
-              <Typography component="p">+1 (212) 456-7890</Typography>
-              <Typography component="p" className="break-words">
-                ecommerceadmin@gmail.com
-              </Typography>
-              <Typography component="p">
-                ecommerce-admin-board.vercel.app
-              </Typography>
-            </div>
+          {/* ── Dark green header with logo ── */}
+          <div style={{ backgroundColor: "#082B27", padding: "28px 40px", textAlign: "center" }}>
+            <img
+              src="/assets/niya-logo.webp"
+              alt="Shop With Niya"
+              style={{ height: "68px", width: "auto", objectFit: "contain", margin: "0 auto", display: "block" }}
+            />
+            <p style={{ fontSize: "9px", letterSpacing: "0.35em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)", margin: "10px 0 4px", fontFamily: "sans-serif" }}>
+              Invoice
+            </p>
+            <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.7)", margin: 0, fontFamily: "sans-serif" }}>
+              No: 33, Reddy St, Krishna Nagar, Virugambakkam, Chennai, Tamilnadu &nbsp;|&nbsp; +91 70944 42030
+            </p>
           </div>
 
-          <Separator className="my-6 print:bg-print-border" />
+          {/* ── Invoice content ── */}
+          <div style={{ padding: "32px 40px 40px", backgroundColor: "#ffffff" }}>
 
-          <div className="flex flex-col md:flex-row md:justify-between gap-4 mb-10 print:flex-row print:justify-between print:text-black">
-            <div>
-              <Typography
-                variant="p"
-                component="h4"
-                className="font-semibold uppercase text-card-foreground mb-1 print:text-black"
-              >
-                date
-              </Typography>
+            <Separator style={{ margin: "0 0 24px", backgroundColor: "#e5e5e5" }} />
 
-              <Typography className="text-sm">
-                {format(order.order_time, "PPP")}
-              </Typography>
-            </div>
+            {/* ── Invoice Details + Billing Details ── */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
 
-            <div>
-              <Typography
-                variant="p"
-                component="h4"
-                className="font-semibold uppercase text-card-foreground mb-1 print:text-black"
-              >
-                invoice no
-              </Typography>
+              <div style={{ border: "1px solid #e5e5e5", borderRadius: "6px", padding: "16px 18px", backgroundColor: "#ffffff" }}>
+                <p style={labelStyle}>Invoice Details</p>
+                <InfoRow label="Invoice No" value={`ORD-${order.invoice_no}`} />
+                <InfoRow label="Order Date" value={format(order.order_time, "d MMMM yyyy")} />
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "6px" }}>
+                  <span style={{ fontSize: "11px", color: "#555", fontFamily: "sans-serif" }}>Status:</span>
+                  <Badge variant={OrderBadgeVariants[order.status]} className="text-xs capitalize">
+                    {order.status}
+                  </Badge>
+                </div>
+                <InfoRow label="Payment" value={order.payment_method.replace(/_/g, " ")} />
+              </div>
 
-              <Typography className="text-sm">#{order.invoice_no}</Typography>
-            </div>
-
-            <div className="md:text-right print:text-right">
-              <Typography
-                variant="p"
-                component="h4"
-                className="font-semibold uppercase text-card-foreground mb-1 print:text-black"
-              >
-                invoice to
-              </Typography>
-
-              <div className="flex flex-col text-sm gap-y-0.5">
-                <Typography component="p">{order.customers.name}</Typography>
-                <Typography component="p" className="break-words">
+              <div style={{ border: "1px solid #e5e5e5", borderRadius: "6px", padding: "16px 18px", backgroundColor: "#ffffff" }}>
+                <p style={labelStyle}>Billing Details</p>
+                <p style={{ fontSize: "13px", fontWeight: 700, color: "#111", margin: "0 0 4px", fontFamily: "sans-serif" }}>
+                  {order.customers.name}
+                </p>
+                <p style={{ fontSize: "11px", color: "#555", margin: "0 0 2px", fontFamily: "sans-serif" }}>
                   {order.customers.email}
-                </Typography>
+                </p>
                 {order.customers.phone && (
-                  <Typography component="p">{order.customers.phone}</Typography>
-                )}
-                {order.customers.address && (
-                  <Typography component="p" className="max-w-80">
-                    {order.customers.address}
-                  </Typography>
+                  <p style={{ fontSize: "11px", color: "#555", margin: 0, fontFamily: "sans-serif" }}>
+                    {order.customers.phone}
+                  </p>
                 )}
               </div>
             </div>
-          </div>
 
-          <div className="border rounded-md overflow-hidden mb-10 print:text-black print:border-print-border">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50 dark:bg-transparent print:border-b-print-border">
-                  <TableHead className="uppercase h-10 whitespace-nowrap print:text-black">
-                    SR.
-                  </TableHead>
-                  <TableHead className="uppercase h-10 whitespace-nowrap print:text-black">
-                    product title
-                  </TableHead>
-                  <TableHead className="uppercase h-10 whitespace-nowrap text-center print:text-black">
-                    quantity
-                  </TableHead>
-                  <TableHead className="uppercase h-10 whitespace-nowrap text-center print:text-black">
-                    item price
-                  </TableHead>
-                  <TableHead className="uppercase h-10 whitespace-nowrap text-right print:text-black">
-                    amount
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
+            {/* ── Shipping Address + Delivery Info ── */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "28px" }}>
 
-              <TableBody>
-                {order.order_items.map((orderItem, index) => (
+              <div style={{ border: "1px solid #e5e5e5", borderRadius: "6px", padding: "16px 18px", backgroundColor: "#ffffff" }}>
+                <p style={labelStyle}>Shipping Address</p>
+                {order.customers.address ? (
+                  <p style={{ fontSize: "11px", color: "#555", margin: 0, lineHeight: 1.6, fontFamily: "sans-serif" }}>
+                    {order.customers.address}
+                  </p>
+                ) : (
+                  <p style={{ fontSize: "11px", color: "#aaa", fontFamily: "sans-serif" }}>No address provided</p>
+                )}
+              </div>
+
+              <div style={{ border: "1px solid #e5e5e5", borderRadius: "6px", padding: "16px 18px", backgroundColor: "#ffffff" }}>
+                <p style={labelStyle}>Delivery Info</p>
+                <p style={{ fontSize: "11px", color: "#555", margin: "0 0 4px", fontFamily: "sans-serif" }}>
+                  <span style={{ fontWeight: 600, color: "#111" }}>Est. Delivery: </span>
+                  {format(
+                    new Date(new Date(order.order_time).getTime() + 7 * 24 * 60 * 60 * 1000),
+                    "d MMMM yyyy"
+                  )}
+                </p>
+                <p style={{ fontSize: "11px", color: "#aaa", margin: 0, fontFamily: "sans-serif" }}>
+                  Tracking not available yet
+                </p>
+              </div>
+            </div>
+
+            {/* ── Order Items ── */}
+            <p style={{ ...labelStyle, marginBottom: "10px" }}>Order Items</p>
+
+            <div style={{ border: "1px solid #e5e5e5", borderRadius: "6px", overflow: "hidden" }}>
+              <Table>
+                <TableHeader>
                   <TableRow
-                    key={`order-item-${index}`}
-                    className="hover:bg-transparent print:border-b-print-border"
+                    className="hover:bg-transparent border-b-0"
+                    style={{ backgroundColor: "#082B27" }}
                   >
-                    <TableCell className="py-3 print:font-normal print:text-black">
-                      {index + 1}
-                    </TableCell>
-                    <TableCell className="font-medium py-3 px-6 text-card-foreground print:font-normal print:text-black">
-                      {orderItem.products.name}
-                    </TableCell>
-                    <TableCell className="font-semibold py-3 text-center print:font-normal print:text-black">
-                      {orderItem.quantity}
-                    </TableCell>
-                    <TableCell className="font-semibold py-3 text-center print:font-normal print:text-black">
-                      ${orderItem.unit_price.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="font-semibold py-3 text-primary text-right print:text-black">
-                      ${(orderItem.quantity * orderItem.unit_price).toFixed(2)}
-                    </TableCell>
+                    {["Product", "SKU", "Qty", "Unit Price", "Total"].map((h, i) => (
+                      <TableHead
+                        key={h}
+                        style={{
+                          color: "#ffffff",
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          letterSpacing: "0.12em",
+                          textTransform: "uppercase",
+                          textAlign: i === 2 ? "center" : i === 3 ? "center" : i === 4 ? "right" : "left",
+                        }}
+                      >
+                        {h}
+                      </TableHead>
+                    ))}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {order.order_items.map((item, index) => (
+                    <TableRow
+                      key={`order-item-${index}`}
+                      className="hover:bg-transparent"
+                      style={{
+                        backgroundColor: index % 2 === 0 ? "#ffffff" : "#fafafa",
+                        borderBottom: "1px solid #f0f0f0",
+                      }}
+                    >
+                      <TableCell style={{ color: "#111", fontSize: "12px", fontFamily: "sans-serif" }}>
+                        {item.products.name}
+                      </TableCell>
+                      <TableCell style={{ color: "#777", fontSize: "11px", fontFamily: "sans-serif" }}>
+                        {(item.products as any).sku || "—"}
+                      </TableCell>
+                      <TableCell style={{ color: "#111", fontSize: "12px", fontFamily: "sans-serif", textAlign: "center" }}>
+                        {item.quantity}
+                      </TableCell>
+                      <TableCell style={{ color: "#111", fontSize: "12px", fontFamily: "sans-serif", textAlign: "center" }}>
+                        ₹{item.unit_price.toFixed(2)}
+                      </TableCell>
+                      <TableCell style={{ color: "#111", fontSize: "12px", fontWeight: 600, fontFamily: "sans-serif", textAlign: "right" }}>
+                        ₹{(item.quantity * item.unit_price).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* ── Totals ── */}
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <div style={{
+                width: "260px",
+                border: "1px solid #e5e5e5",
+                borderTop: "none",
+                borderBottomLeftRadius: "6px",
+                borderBottomRightRadius: "6px",
+                overflow: "hidden",
+                backgroundColor: "#ffffff",
+              }}>
+                <TotalRow label="Subtotal" value={`₹${subtotal.toFixed(2)}`} />
+                <TotalRow label="Tax (10%)" value={`₹${tax.toFixed(2)}`} />
+                <TotalRow
+                  label="Shipping"
+                  value={order.shipping_cost > 0 ? `₹${order.shipping_cost.toFixed(2)}` : "Free"}
+                />
+                {discount !== "0.00" && (
+                  <TotalRow label="Discount" value={`-₹${discount}`} />
+                )}
+                <div style={{
+                  display: "flex", justifyContent: "space-between",
+                  padding: "12px 16px",
+                  borderTop: "2px solid #082B27",
+                  backgroundColor: "#ffffff",
+                }}>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "#111", fontFamily: "sans-serif" }}>
+                    Total
+                  </span>
+                  <span style={{ fontSize: "15px", fontWeight: 700, color: "#082B27", fontFamily: "sans-serif" }}>
+                    ₹{order.total_amount.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Footer ── */}
+            <div style={{ borderTop: "1px solid #e5e5e5", marginTop: "40px", paddingTop: "16px", textAlign: "center" }}>
+              <p style={{ fontSize: "10px", color: "#373737", margin: "0 0 2px", fontFamily: "sans-serif" }}>
+                This is a computer-generated invoice. No signature required.
+              </p>
+              <p style={{ fontSize: "10px", color: "#373737", margin: 0, fontFamily: "sans-serif" }}>
+                Generated on {format(new Date(), "d MMMM yyyy")} &nbsp;•&nbsp; Niya by Yuthika Fashion Studio
+              </p>
+            </div>
+
           </div>
-
-          <div className="bg-background rounded-lg flex flex-col gap-4 md:justify-between md:flex-row p-6 md:px-8 mb-4 print:flex-row print:justify-between print:mb-0 print:p-0 print:px-2 print:bg-white">
-            <div>
-              <Typography
-                component="h4"
-                className="font-medium text-sm uppercase mb-1 tracking-wide print:text-black"
-              >
-                payment method
-              </Typography>
-
-              <Typography className="text-base capitalize font-semibold text-card-foreground tracking-wide print:text-black">
-                {order.payment_method}
-              </Typography>
-            </div>
-
-            <div>
-              <Typography
-                component="h4"
-                className="font-medium text-sm uppercase mb-1 tracking-wide print:text-black"
-              >
-                shipping cost
-              </Typography>
-
-              <Typography className="text-base capitalize font-semibold text-card-foreground tracking-wide print:text-black">
-                ${order.shipping_cost.toFixed(2)}
-              </Typography>
-            </div>
-
-            <div>
-              <Typography
-                component="h4"
-                className="font-medium text-sm uppercase mb-1 tracking-wide print:text-black"
-              >
-                tax
-              </Typography>
-
-              <Typography className="text-base capitalize font-semibold text-card-foreground tracking-wide print:text-black">
-                ${((order.subtotal) * 0.1).toFixed(2)}
-              </Typography>
-            </div>
-
-            <div>
-              <Typography
-                component="h4"
-                className="font-medium text-sm uppercase mb-1 tracking-wide print:text-black"
-              >
-                discount
-              </Typography>
-
-              <Typography className="text-base capitalize font-semibold text-card-foreground tracking-wide print:text-black">
-                $
-                {getDiscount({
-                  totalAmount: order.total_amount,
-                  shippingCost: order.shipping_cost,
-                  coupon: order.coupons,
-                })}
-              </Typography>
-            </div>
-
-            <div>
-              <Typography
-                component="h4"
-                className="font-medium text-sm uppercase mb-1 tracking-wide print:text-black"
-              >
-                total amount
-              </Typography>
-
-              <Typography className="text-xl capitalize font-semibold tracking-wide text-primary">
-                ${order.total_amount.toFixed(2)}
-              </Typography>
-            </div>
-          </div>
-        </Card>
+        </div>
 
         <InvoiceActions order={order} />
       </section>
@@ -280,4 +241,34 @@ export default async function Order({ params: { id } }: PageParams) {
   } catch (e) {
     return notFound();
   }
+}
+
+/* ── Style constants ── */
+const labelStyle: React.CSSProperties = {
+  fontSize: "9px",
+  letterSpacing: "0.2em",
+  textTransform: "uppercase",
+  color: "#888",
+  marginBottom: "10px",
+  marginTop: 0,
+  fontFamily: "sans-serif",
+};
+
+/* ── Helpers ── */
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", gap: "6px", marginTop: "5px" }}>
+      <span style={{ fontSize: "11px", color: "#555", fontFamily: "sans-serif" }}>{label}:</span>
+      <span style={{ fontSize: "11px", fontWeight: 600, color: "#111", fontFamily: "sans-serif" }}>{value}</span>
+    </div>
+  );
+}
+
+function TotalRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 16px", borderBottom: "1px solid #f0f0f0", backgroundColor: "#ffffff" }}>
+      <span style={{ fontSize: "11px", color: "#555", fontFamily: "sans-serif" }}>{label}</span>
+      <span style={{ fontSize: "11px", color: "#111", fontFamily: "sans-serif" }}>{value}</span>
+    </div>
+  );
 }

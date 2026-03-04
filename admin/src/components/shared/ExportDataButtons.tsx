@@ -40,9 +40,10 @@ export function ExportDataButtons({ tableName, action }: Props) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/${tableName}/export/${format}?${params.toString()}`
       );
 
-      if (!response.ok) {
-        throw new Error('Export failed');
-      }
+if (!response.ok) {
+  const errorData = await response.json().catch(() => ({}));
+  throw new Error(errorData.message || errorData.error || `Export failed with status ${response.status}`);
+}
 
       // Download the file
       const blob = await response.blob();

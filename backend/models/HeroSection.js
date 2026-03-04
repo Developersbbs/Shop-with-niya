@@ -87,7 +87,25 @@ const heroSectionSchema = new mongoose.Schema({
     isArchived: {
         type: Boolean,
         default: false
-    }
+    },
+    // Text & button styling
+textColor: {
+    type: String,
+    default: '#ffffff'
+},
+buttonStyle: {
+    type: String,
+    enum: ['filled', 'outline', 'ghost'],
+    default: 'filled'
+},
+buttonColor: {
+    type: String,
+    default: '#ffffff'
+},
+buttonTextColor: {
+    type: String,
+    default: '#0a0a0a'
+},
 }, {
     timestamps: true
 });

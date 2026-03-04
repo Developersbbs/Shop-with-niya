@@ -14,6 +14,12 @@ export async function exportProducts() {
     return { data: data.data };
   } catch (error: any) {
     console.error("Products export error:", error);
+
+  console.error("Full error:", {
+    status: error.response?.status,
+    data: error.response?.data,
+    message: error.message,
+  });
     return {
       error: error.response?.data?.error || "Failed to fetch data for products."
     };
