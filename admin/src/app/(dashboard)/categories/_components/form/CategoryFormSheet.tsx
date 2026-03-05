@@ -81,30 +81,32 @@ export default function CategoryFormSheet({
     },
   });
 
-  useEffect(() => {
-    // Determine if this is add mode or edit mode
-    const hasInitialData = initialData && Object.keys(initialData).length > 0;
-    setIsAddMode(!hasInitialData);
+// ✅ Fixed useEffect
+useEffect(() => {
+  if (!isSheetOpen) return;
 
-    if (hasInitialData) {
-      form.reset({
-        name: initialData.name || "",
-        description: initialData.description || "",
-        image: initialData.image || undefined, // Keep the existing image URL
-        slug: initialData.slug || "",
-        subcategories: initialData.subcategories || [],
-      });
-    } else {
-      // For add mode, ensure form is completely empty
-      form.reset({
-        name: "",
-        description: "",
-        image: undefined,
-        slug: "",
-        subcategories: [],
-      });
-    }
-  }, [form, initialData]);
+  const hasInitialData = initialData && Object.keys(initialData).length > 0;
+  setIsAddMode(!hasInitialData);
+
+  if (hasInitialData) {
+    console.log('Resetting form with subcategories:', initialData.subcategories);
+    form.reset({
+      name: initialData.name || "",
+      description: initialData.description || "",
+      image: initialData.image || undefined,
+      slug: initialData.slug || "",
+      subcategories: initialData.subcategories || [],  // ← make sure this has data
+    });
+  } else {
+    form.reset({
+      name: "",
+      description: "",
+      image: undefined,
+      slug: "",
+      subcategories: [],
+    });
+  }
+}, [isSheetOpen]); // keep as-is
 
   const onSubmit = (data: CategoryFormData) => {
     console.log('=== FORM SUBMIT DEBUG ===');

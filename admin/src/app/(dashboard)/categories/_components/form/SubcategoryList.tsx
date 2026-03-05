@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { useFieldArray, Control, useWatch, UseFormReturn } from "react-hook-form";
+import React from "react";
+import { useFieldArray, Control, UseFormReturn } from "react-hook-form";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormTextInput } from "@/components/shared/form";
@@ -16,9 +16,9 @@ function generateSimpleSlug(text: string): string {
   return text
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, '') // Remove special characters
-    .replace(/[\s_-]+/g, '-') // Replace spaces and underscores with hyphens
-    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 export function SubcategoryList({ control, form }: SubcategoryListProps) {
@@ -27,60 +27,17 @@ export function SubcategoryList({ control, form }: SubcategoryListProps) {
     name: "subcategories",
   });
 
-  // Watch for changes in subcategories
-  const subcategories = useWatch({
-    control,
-    name: "subcategories",
-    defaultValue: [],
-  });
-
-  console.log('SubcategoryList fields:', fields);
-  console.log('SubcategoryList watched subcategories:', subcategories);
-  console.log('SubcategoryList form available:', !!form);
-
-  // Initialize fields with existing subcategories if form is reset
-  useEffect(() => {
-    const currentLength = fields.length;
-    const dataLength = subcategories.length;
-
-    console.log('useEffect - current fields length:', currentLength, 'data length:', dataLength);
-
-    if (dataLength > 0 && currentLength === 0) {
-      // Form was reset with initial data, populate the fields
-      console.log('Populating fields with initial subcategories:', subcategories);
-      subcategories.forEach(subcat => {
-        append(subcat);
-      });
-    }
-  }, [subcategories, fields.length, append]);
+  // ✅ REMOVED the buggy useEffect that was re-appending subcategories
+  // react-hook-form's useFieldArray already handles initialData correctly
+  // The useEffect was causing deleted subcategories to reappear
 
   const addSubcategory = () => {
-    console.log('Adding subcategory - before append:', {
-      fieldsLength: fields.length,
-      subcategoriesLength: subcategories.length
-    });
-
     append({
       name: "",
       description: "",
       slug: "",
-      published: true, // Default to published
+      published: true,
     });
-
-    console.log('Adding subcategory - after append');
-  };
-
-  // Allow deleting subcategories - users can delete any subcategory they want
-  const canDeleteSubcategory = (index: number) => {
-    // Always allow deletion - users should be able to remove any subcategory
-    const canDelete = true;
-
-    console.log(`canDeleteSubcategory(${index}):`, {
-      fieldsLength: fields.length,
-      canDelete
-    });
-
-    return canDelete;
   };
 
   return (
@@ -117,13 +74,13 @@ export function SubcategoryList({ control, form }: SubcategoryListProps) {
                   <Plus className="h-4 w-4" />
                 </Button>
 
+                {/* ✅ Always allow delete — no disabled state needed */}
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   onClick={() => remove(index)}
-                  disabled={!canDeleteSubcategory(index)}
-                  title={!canDeleteSubcategory(index) ? "Cannot delete the only subcategory" : "Delete subcategory"}
+                  title="Delete subcategory"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -208,12 +165,12 @@ export function SubcategoryList({ control, form }: SubcategoryListProps) {
                           <input
                             type="checkbox"
                             id={`published-${index}`}
-                            checked={field.value ?? true} // Ensure controlled state with default
+                            checked={field.value ?? true}
                             onChange={(e) => field.onChange(e.target.checked)}
                             className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
-                          <label 
-                            htmlFor={`published-${index}`} 
+                          <label
+                            htmlFor={`published-${index}`}
                             className="text-sm font-medium text-gray-700 cursor-pointer"
                           >
                             Make this subcategory active
@@ -228,6 +185,23 @@ export function SubcategoryList({ control, form }: SubcategoryListProps) {
             </div>
           </div>
         ))}
+
+        {/* ✅ Show empty state if no subcategories */}
+        {fields.length === 0 && (
+          <div className="text-center py-8 text-gray-500 border-2 border-dashed rounded-lg">
+            <p className="text-sm">No subcategories yet.</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={addSubcategory}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add First Subcategory
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

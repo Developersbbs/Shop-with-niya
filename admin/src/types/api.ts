@@ -309,14 +309,13 @@ export interface StaffRole {
 // Notification Types
 export interface Notification {
   _id: string;
-  id: string;
   title: string;
-  message: string;
-  type: 'info' | 'warning' | 'error' | 'success' | 'low_stock';
+  type: "new_order" | "low_stock" | "out_of_stock";
   image_url?: string;
   is_read: boolean;
+  published: boolean;
+  staff_id: string;
   created_at: string;
-  updated_at: string;
 }
 
 // Inventory Log Types

@@ -161,11 +161,12 @@ export const getColumns = ({
                   description: row.original.description ?? "",
                   image: row.original.image_url || "", // Handle null image_url
                   slug: row.original.slug,
-                  subcategories: (row.original.subcategories || []).map(sub => ({
-                    name: sub.name,
-                    description: sub.description || "",
-                    slug: sub.slug,
-                    published: true, // Default to true for form compatibility
+   subcategories: (row.original.subcategories || []).map(sub => ({
+  name: sub.name,
+  description: sub.description || "",
+  slug: sub.slug,
+  published: sub.published ?? true, // ← use actual value
+ // Default to true for form compatibility
                   })), // Map to form format
                 }}
                 action={(formData) => editCategory(row.original.id, formData)}

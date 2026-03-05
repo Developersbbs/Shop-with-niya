@@ -70,11 +70,11 @@ export const navItems = [
     icon: <TbTruckDelivery />,
   },
 
-  {
-    title: "Coupons",
-    url: "/coupons",
-    icon: <RiCoupon2Line />,
-  },
+  // {
+  //   title: "Coupons",
+  //   url: "/coupons",
+  //   icon: <RiCoupon2Line />,
+  // },
 
   {
     title: "Offers",

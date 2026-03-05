@@ -16,10 +16,11 @@ export async function exportOrders() {
     return {
       data: data.data.map(
         (order: any): OrdersExport => ({
-          id: order.id,
+          id: order.invoice_no,
           invoice_no: order.invoice_no,
-          customer_name: order.customers?.name ?? "",
-          customer_email: order.customers?.email ?? "",
+          customer_name: order.customer_name,
+          customer_email: order.customer_email,
+          customer_phone: order.customer_phone,
           total_amount: order.total_amount,
           discount: getDiscount({
             coupon: order.coupons,
@@ -28,15 +29,21 @@ export async function exportOrders() {
           }),
           shipping_cost: order.shipping_cost,
           payment_method: order.payment_method,
-          order_time: order.order_time,
+          order_date: order.order_date,
           status: order.status,
-          created_at: order.created_at,
-          updated_at: order.updated_at,
+          shipping_address: order.shipping_address,
         })
       ),
     };
   } catch (error: any) {
-    console.error("Orders export error:", error);
+    console.error("Orders export error FULL:", {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+      url: error.config?.url,
+      headers: error.config?.headers,
+    });
     return {
       error: error.response?.data?.error || "Failed to fetch data for orders."
     };

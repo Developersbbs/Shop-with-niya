@@ -10,7 +10,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import Typography from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
-import { Notification } from "@/types/api";
+import type { Notification } from "@/types/api";
 import { deleteNotification } from "@/services/notifications";
 
 type Props = {
@@ -27,33 +27,46 @@ export default function NotificationItem({ notification }: Props) {
   } = useMutation({
     mutationFn: () =>
       deleteNotification({
-        notificationId: notification.id,
+        notificationId: notification._id, // ← fixed: was notification.id
       }),
     onSuccess: () => {
-      toast.success("Notification deleted successfully");
-      queryClient.invalidateQueries({
-        queryKey: ["notifications"],
-      });
+      toast.success("Notification dismissed");
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 
   useEffect(() => {
     if (isError) {
-      toast.error(
-        "There was an error while trying to delete notification. Please try again!"
-      );
+      toast.error("Could not dismiss notification. Please try again.");
     }
   }, [isError]);
+
+  const getBadge = () => {
+    switch (notification.type) {
+      case "out_of_stock":
+        return <Badge variant="destructive" className="flex-shrink-0">Out of Stock</Badge>;
+      case "low_stock":
+        return <Badge variant="destructive" className="flex-shrink-0 bg-orange-500 hover:bg-orange-600">Low Stock</Badge>;
+      case "new_order":
+        return <Badge variant="success" className="flex-shrink-0">New Order</Badge>;
+      default:
+        return <Badge className="flex-shrink-0">{notification.type}</Badge>;
+    }
+  };
 
   return (
     <div className="flex items-center justify-between p-3 border-t border-t-border first:border-t-0 sm:gap-x-2">
       <div className="flex items-center gap-x-3">
         <Image
-          src={notification.image_url && notification.image_url.trim() !== '' ? notification.image_url : '/placeholder-avatar.jpg'}
+          src={
+            notification.image_url && notification.image_url.trim() !== ""
+              ? notification.image_url
+              : "/placeholder-avatar.jpg"
+          }
           alt={notification.title}
           width={30}
           height={30}
-          className="size-[1.875rem] rounded-full flex-shrink-0 self-start mt-1.5 sm:mt-0 sm:self-center"
+          className="size-[1.875rem] rounded-full flex-shrink-0 self-start mt-1.5 sm:mt-0 sm:self-center object-cover"
         />
 
         <div className="flex flex-col">
@@ -65,17 +78,8 @@ export default function NotificationItem({ notification }: Props) {
           </Typography>
 
           <div className="flex flex-col-reverse items-start sm:items-center sm:flex-row gap-x-2 gap-y-2">
-            {notification.type === "low_stock" ? (
-              <Badge variant="destructive" className="flex-shrink-0">
-                Stock Out
-              </Badge>
-            ) : (
-              <Badge variant="success" className="flex-shrink-0">
-                New Order
-              </Badge>
-            )}
-
-            <Typography component="p" className="text-xs md:text-xs">
+            {getBadge()}
+            <Typography component="p" className="text-xs md:text-xs text-muted-foreground">
               {format(new Date(notification.created_at), "MMM d yyyy - hh:mma")}
             </Typography>
           </div>

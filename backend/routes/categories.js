@@ -209,8 +209,7 @@ router.post("/", async (req, res) => {
       // Check for subcategories in the request body
       const subcatKeys = Object.keys(req.body).filter(key => key.startsWith('subcategories.'));
       console.log('POST Subcategory keys found:', subcatKeys);
-
-      if (subcatKeys.length > 0) {
+if (subcatKeys.length > 0 || req.body.subcategories !== undefined || req.body['subcategories.cleared'] === 'true') {
         // Group by index
         const groupedSubcats = {};
         subcatKeys.forEach(key => {
@@ -371,7 +370,7 @@ router.put("/:id", async (req, res) => {
     const subcatKeys = Object.keys(req.body).filter(key => key.startsWith('subcategories.'));
     console.log('PUT Subcategory keys found:', subcatKeys);
 
-    if (subcatKeys.length > 0) {
+   if (subcatKeys.length > 0 || req.body.subcategories !== undefined || req.body['subcategories.cleared'] === 'true') {
       // Group by index
       const groupedSubcats = {};
       subcatKeys.forEach(key => {
@@ -405,8 +404,7 @@ router.put("/:id", async (req, res) => {
     }
 
     console.log('PUT Final parsed subcategories:', subcategoriesArray);
-
-    if (subcatKeys.length > 0 || req.body.subcategories !== undefined) {
+if (subcatKeys.length > 0 || req.body.subcategories !== undefined || req.body['subcategories.cleared'] === 'true') {
       // Remove existing subcategories first
       await Subcategory.deleteMany({ category_id: req.params.id });
 

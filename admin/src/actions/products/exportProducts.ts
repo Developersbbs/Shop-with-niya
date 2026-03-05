@@ -4,14 +4,12 @@ import { serverAxiosInstance } from "@/helpers/axiosInstance";
 
 export async function exportProducts() {
   try {
-    const { data } = await serverAxiosInstance.get("/api/products/export");
+    const { data } = await serverAxiosInstance.get("/api/products/export/csv", {
+      responseType: "text",   // ← expect CSV text, not JSON
+    });
 
-    if (!data.success) {
-      console.error("API export failed:", data.error);
-      return { error: data.error || "Failed to fetch data for products." };
-    }
+    return { data };          // data is now the raw CSV string
 
-    return { data: data.data };
   } catch (error: any) {
     console.error("Products export error:", error);
     return {

@@ -35,7 +35,7 @@ export default function LoginForm() {
   const form = useForm<FormData>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
-      email: "superadmin@ecommerce.com",
+      email: "superadmin@shopwithniya.com",
       password: "123456",
     },
   });

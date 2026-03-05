@@ -14,6 +14,14 @@ const wishlistItemSchema = new mongoose.Schema({
     type: String, 
     required: false 
   },
+    variant_name: { 
+      type: String, 
+      required: false 
+    },
+    variant_attributes: { 
+      type: mongoose.Schema.Types.Mixed, 
+      required: false 
+    },
   price: { 
     type: Number, 
     required: true 

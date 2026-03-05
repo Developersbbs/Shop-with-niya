@@ -110,12 +110,12 @@ export function EditProductSheet({ product, children }: Props) {
         attributesType: typeof variant.attributes,
         attributesKeys: variant.attributes ? Object.keys(variant.attributes) : 'no attributes'
       });
-      
+
       if (variant.attributes) {
         Object.entries(variant.attributes).forEach(([attrName, attrValue]) => {
           const attrId = `attr-${attrName.toLowerCase()}`;
           console.log(`🔄 EDIT SHEET: Processing attribute ${attrName} -> ${attrValue}, attrId: ${attrId}`);
-          
+
           if (!selectedValues[attrId]) {
             selectedValues[attrId] = [];
           }
@@ -157,7 +157,7 @@ export function EditProductSheet({ product, children }: Props) {
   console.log("EditProductSheet - Initial data being passed to form:", {
     name: product.name,
     description: product.description ?? "",
-    images: [],
+    images: product.image_url || [],
     sku: product.sku,
     productType: (product.product_type as "physical" | "digital") || "physical",
     productStructure: product.product_variants && product.product_variants.length > 0 ? "variant" : "simple",
@@ -169,7 +169,7 @@ export function EditProductSheet({ product, children }: Props) {
 
       // Handle subcategories with null check
       const subcategories = Array.isArray(cat.subcategories) ? cat.subcategories : [];
-      
+
       return {
         categoryId,
         categoryName,
@@ -189,6 +189,9 @@ export function EditProductSheet({ product, children }: Props) {
     seoKeywords: product.seo?.keywords || [],
     product_variants: formVariants,
   });
+  console.log("🖼️ product.image_url:", product.image_url);
+  console.log("🖼️ image_url type:", typeof product.image_url);
+  console.log("🖼️ image_url isArray:", Array.isArray(product.image_url));
 
   return (
     <ProductFormSheet
@@ -199,19 +202,15 @@ export function EditProductSheet({ product, children }: Props) {
       initialData={{
         name: product.name,
         description: product.description ?? "",
-        images: [],
+        images: product.image_url || [],
         sku: product.sku,
         productType: (product.product_type as "physical" | "digital") || "physical",
         productStructure: product.product_variants && product.product_variants.length > 0 ? "variant" : "simple",
         categories: product.categories ? product.categories.map(cat => {
-          // Add null checks for category and its properties
           const categoryId = cat.category?._id || '';
           const categoryName = cat.category?.name || 'Uncategorized';
           const categorySlug = cat.category?.slug || '';
-
-          // Handle subcategories with null check
           const subcategories = Array.isArray(cat.subcategories) ? cat.subcategories : [];
-          
           return {
             categoryId,
             categoryName,
@@ -222,6 +221,7 @@ export function EditProductSheet({ product, children }: Props) {
         }) : [],
         costPrice: product.cost_price,
         salesPrice: product.selling_price,
+        taxPercentage: product.tax_percentage ?? 0,   // ✅ ADD THIS LINE
         stock: product.baseStock,
         minStockThreshold: product.minStock,
         slug: product.slug,
@@ -234,7 +234,6 @@ export function EditProductSheet({ product, children }: Props) {
         seoOgTitle: product.seo?.ogTitle || "",
         seoOgDescription: product.seo?.ogDescription || "",
         seoOgImage: product.seo?.ogImage || "",
-        // Add the transformed variant data
         product_variants: formVariants,
       }}
       action={(formData) => editProduct(product._id, formData)}

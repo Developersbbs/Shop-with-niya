@@ -11,8 +11,8 @@ const variantSchema = new mongoose.Schema({
   minStock: { type: Number },
   status: {
     type: String,
-    enum: ['selling', 'out_of_stock', 'draft', 'archived'],
-    default: 'selling'
+    enum: ["draft", "selling", "out_of_stock", "low_stock"], // ← add low_stock
+    default: "draft"
   },
   images: [{ type: String }],
   attributes: {
@@ -124,6 +124,13 @@ const productSchema = new mongoose.Schema(
         }
       }
     },
+
+    tax_percentage: {
+  type: Number,
+  min: 0,
+  max: 100,
+  default: 0
+},
 
     // Stock fields - only for simple products (normal or combo)
     baseStock: {
@@ -245,27 +252,32 @@ const productSchema = new mongoose.Schema(
       type: [variantSchema],
       validate: {
         validator: function (value) {
-          const nature = this.product_nature || (this.getUpdate && (this.getUpdate().product_nature || (this.getUpdate().$set && this.getUpdate().$set.product_nature)));
-          const structure = this.product_structure || (this.getUpdate && (this.getUpdate().product_structure || (this.getUpdate().$set && this.getUpdate().$set.product_structure)));
+          const update = this.getUpdate ? this.getUpdate() : null;
+          const updateSet = update?.$set || update || {};
 
-          // Only normal variant products can have variants
+          const nature = this.product_nature
+            || updateSet.product_nature
+            || update?.product_nature
+            || 'normal'; // default to normal
+
+          const structure = this.product_structure
+            || updateSet.product_structure
+            || update?.product_structure
+            || 'simple'; // default to simple
+
+          // Normal variant products must have at least one variant
           if (nature === 'normal' && structure === 'variant') {
             return value && value.length > 0;
           }
-          // Combo products and simple products should not have variants
-          return !value || value.length === 0;
+          // Combo and simple products should not have variants
+          if (nature === 'combo' || structure === 'simple') {
+            return !value || value.length === 0;
+          }
+          // If we can't determine — don't block the update
+          return true;
         },
         message: function () {
-          const nature = this.product_nature || (this.getUpdate && (this.getUpdate().product_nature || (this.getUpdate().$set && this.getUpdate().$set.product_nature)));
-          const structure = this.product_structure || (this.getUpdate && (this.getUpdate().product_structure || (this.getUpdate().$set && this.getUpdate().$set.product_structure)));
-
-          if (nature === 'combo') {
-            return 'Combo products cannot have variants';
-          } else if (structure === 'simple') {
-            return 'Simple products cannot have variants';
-          } else {
-            return 'Normal variant products must have at least one variant';
-          }
+          return 'Normal variant products must have at least one variant';
         }
       }
     },

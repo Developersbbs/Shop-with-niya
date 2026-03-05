@@ -3,6 +3,7 @@ import Profile from "@/components/shared/header/Profile";
 import NavMenuToggle from "@/components/shared/header/NavMenuToggle";
 import ThemeToggle from "@/components/shared/header/ThemeToggle";
 import Notifications from "@/components/shared/notifications/Notifications";
+import AdminNotificationBell from "@/components/shared/notifications/AdminNotificationBell";
 
 export default function Header() {
   return (
@@ -13,7 +14,7 @@ export default function Header() {
 
           <div className="flex items-center gap-x-2 ml-auto">
             <ThemeToggle />
-            {/* <Notifications /> */}
+            <Notifications />
             <Profile />
           </div>
         </div>
