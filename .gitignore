@@ -27,4 +27,4 @@ my-project/.env.test.local
 my-project/.env.production.local
 my-project/.vite
 my-project/package-lock.json
-
+my-project/dist
