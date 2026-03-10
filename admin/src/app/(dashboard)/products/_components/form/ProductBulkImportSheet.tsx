@@ -61,37 +61,51 @@ type Props = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+// ✅ FIX: Required cols use normalized keys (lowercase, no spaces/underscores).
+// "Product Name" → "productname", "Sale Price" → "saleprice", etc.
+// This matches BOTH the exported CSV format AND manual upload templates.
 const REQUIRED_COLS = [
-  "name",
+  "productname",
   "sku",
   "costprice",
-  "salesprice",
+  "saleprice",
   "stock",
-  "category",
 ];
 
 const TEMPLATE_HEADERS = [
-  "name",
-  "description",
-  "sku",
-  "costPrice",
-  "salesPrice",
-  "stock",
-  "category",
-  "tags",
-  "status",
+  "Product Name",
+  "Description",
+  "SKU",
+  "Product Type",
+  "Structure",
+  "Status",
+  "Published",
+  "Category",
+  "Cost Price",
+  "Sale Price",
+  "Tax %",
+  "Stock",
+  "Min Stock",
+  "Tags",
+  "Created At",
 ];
 
 const TEMPLATE_SAMPLE = [
   "Sample Product",
   "A great product description",
   "SKU-001",
+  "physical",
+  "simple",
+  "selling",
+  "Yes",
+  "Electronics",
   199.99,
   299.99,
+  0,
   50,
-  "Electronics",
+  5,
   "new,sale",
-  "selling",
+  "",
 ];
 
 const VALID_STATUSES = ["selling", "draft", "archived", "out_of_stock"];
@@ -99,7 +113,7 @@ const VALID_STATUSES = ["selling", "draft", "archived", "out_of_stock"];
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalizeHeader(h: string) {
-  return h.trim().toLowerCase().replace(/[\s_-]/g, "");
+  return h.trim().toLowerCase().replace(/[\s_\-%.]/g, "");
 }
 
 function mapHeaders(rawHeaders: string[]): Record<string, number> {
@@ -119,6 +133,7 @@ function parseRow(
   const get = (col: string): string =>
     String(raw[headerMap[col]] ?? "").trim();
 
+  // Check required columns
   REQUIRED_COLS.forEach((col) => {
     if (headerMap[col] === undefined || get(col) === "") {
       errors.push(`Missing required field: ${col}`);
@@ -128,7 +143,8 @@ function parseRow(
   const costPrice = parseFloat(get("costprice"));
   if (isNaN(costPrice) || costPrice < 0) errors.push("Invalid costPrice");
 
-  const salesPrice = parseFloat(get("salesprice"));
+  // ✅ FIX: use "saleprice" (matches "Sale Price" normalized) instead of "salesprice"
+  const salesPrice = parseFloat(get("saleprice"));
   if (isNaN(salesPrice) || salesPrice < 0) errors.push("Invalid salesPrice");
 
   if (!isNaN(costPrice) && !isNaN(salesPrice) && salesPrice <= costPrice) {
@@ -143,6 +159,9 @@ function parseRow(
     ? (statusRaw as ImportProduct["status"])
     : "draft";
 
+  // ✅ Category is optional for exported CSV rows (variants may have no category)
+  const category = get("category") || "";
+
   if (errors.length > 0) {
     return { row: rowNum, product: null, errors, status: "invalid" };
   }
@@ -150,13 +169,13 @@ function parseRow(
   return {
     row: rowNum,
     product: {
-      name: get("name"),
+      name: get("productname"),
       description: get("description") || undefined,
       sku: get("sku").toUpperCase(),
       costPrice,
       salesPrice,
       stock,
-      category: get("category"),
+      category,
       tags: get("tags") || undefined,
       status,
     },
@@ -186,19 +205,32 @@ function parseFile(file: File): Promise<RowResult[]> {
         const rawHeaders = rows[0] as string[];
         const headerMap = mapHeaders(rawHeaders);
 
+        // ✅ FIX: Check against normalized required cols
         const missing = REQUIRED_COLS.filter(
           (c) => headerMap[c] === undefined
         );
         if (missing.length > 0) {
+          // Show human-readable names in error message
+          const humanNames: Record<string, string> = {
+            productname: "Product Name",
+            sku: "SKU",
+            costprice: "Cost Price",
+            saleprice: "Sale Price",
+            stock: "Stock",
+          };
           reject(
-            new Error(`Missing required columns: ${missing.join(", ")}`)
+            new Error(
+              `Missing required columns: ${missing
+                .map((c) => humanNames[c] || c)
+                .join(", ")}`
+            )
           );
           return;
         }
 
         const results: RowResult[] = rows
           .slice(1)
-          .filter((row) => row.some((cell) => cell !== "")) // skip empty rows
+          .filter((row) => row.some((cell) => cell !== ""))
           .map((row, i) => parseRow(row as string[], headerMap, i + 2));
 
         resolve(results);
@@ -222,10 +254,10 @@ function downloadTemplate() {
 
 function StatusBadge({ status }: { status: RowResult["status"] }) {
   const styles: Record<RowResult["status"], string> = {
-    valid:    "bg-emerald-100 text-emerald-700",
-    invalid:  "bg-red-100 text-red-600",
+    valid: "bg-emerald-100 text-emerald-700",
+    invalid: "bg-red-100 text-red-600",
     uploaded: "bg-blue-100 text-blue-700",
-    failed:   "bg-orange-100 text-orange-700",
+    failed: "bg-orange-100 text-orange-700",
   };
   return (
     <span
@@ -247,19 +279,19 @@ export default function ProductBulkImportSheet({
   const [isPending, startTransition] = useTransition();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const [isDragging, setIsDragging]         = useState(false);
-  const [file, setFile]                     = useState<File | null>(null);
-  const [results, setResults]               = useState<RowResult[]>([]);
-  const [parseError, setParseError]         = useState<string | null>(null);
-  const [expandedRow, setExpandedRow]       = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [results, setResults] = useState<RowResult[]>([]);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [showErrorsOnly, setShowErrorsOnly] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const valid    = results.filter((r) => r.status === "valid");
-  const invalid  = results.filter((r) => r.status === "invalid");
+  const valid = results.filter((r) => r.status === "valid");
+  const invalid = results.filter((r) => r.status === "invalid");
   const uploaded = results.filter((r) => r.status === "uploaded");
-  const failed   = results.filter((r) => r.status === "failed");
+  const failed = results.filter((r) => r.status === "failed");
 
   // ── File handling ──────────────────────────────────────────────────────────
 
@@ -357,7 +389,7 @@ export default function ProductBulkImportSheet({
               <div className="flex flex-col">
                 <SheetTitle>Import Products via CSV / Excel</SheetTitle>
                 <SheetDescription>
-                  Upload a .csv or .xlsx file to bulk-add products
+                  Upload a .csv or .xlsx file to bulk-add products. You can also use your exported CSV directly.
                 </SheetDescription>
               </div>
               <button
@@ -410,7 +442,7 @@ export default function ProductBulkImportSheet({
                         Drop your file here or click to browse
                       </p>
                       <p className="mt-1 text-xs text-gray-400">
-                        Supports .csv, .xlsx, .xls
+                        Supports .csv, .xlsx, .xls — including exported CSVs
                       </p>
                     </div>
                   </div>
@@ -511,9 +543,7 @@ export default function ProductBulkImportSheet({
                       >
                         <div
                           className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                            showErrorsOnly
-                              ? "translate-x-4"
-                              : "translate-x-0.5"
+                            showErrorsOnly ? "translate-x-4" : "translate-x-0.5"
                           }`}
                         />
                       </div>

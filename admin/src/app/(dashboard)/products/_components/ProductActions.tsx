@@ -26,22 +26,55 @@ export default function ProductActions({
 }: RowSelectionProps & { products?: any[] }) {
   const { hasPermission } = useAuthorization();
 
-  // Helper function to get actual product IDs from row selection
   const getSelectedProductIds = () => {
-    return Object.entries(rowSelection)
+    const selectedRowIds = Object.entries(rowSelection)
       .filter(([_, isSelected]) => isSelected)
-      .map(([index]) => {
-        const productIndex = parseInt(index);
-        return products?.[productIndex]?._id || products?.[productIndex]?.id;
-      })
-      .filter(Boolean);
+      .map(([rowId]) => rowId);
+
+    const ids = selectedRowIds.map((rowId) => {
+      const simpleProduct = products.find(
+        (p) => (p._id?.toString() || p.id?.toString()) === rowId && (!p.product_variants || p.product_variants.length === 0)
+      );
+      if (simpleProduct) return simpleProduct._id || simpleProduct.id;
+
+      const parentProduct = products.find((p) =>
+        p.product_variants?.some(
+          (v: any) => v._id?.toString() === rowId
+        )
+      );
+      if (parentProduct) return parentProduct._id || parentProduct.id;
+
+      return rowId;
+    });
+
+    return [...new Set(ids)].filter(Boolean);
   };
 
   return (
     <Card className="mb-5">
       <div className="flex flex-col xl:flex-row xl:justify-between gap-4">
-        <ExportDataButtons action={exportProducts} tableName="products" />
 
+        {/* ✅ Left side: Export CSV + Import CSV together */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <ExportDataButtons action={exportProducts} tableName="products" />
+
+          {hasPermission("products", "canCreate") && (
+            <ProductBulkImportSheet action={importProducts}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  type="button"
+                  className="sm:flex-grow xl:flex-grow-0"
+                >
+                  <Upload className="mr-2 size-4" /> Import CSV
+                </Button>
+              </SheetTrigger>
+            </ProductBulkImportSheet>
+          )}
+        </div>
+
+        {/* Right side: Bulk Action + Delete + Add Product */}
         {(hasPermission("products", "canEdit") ||
           hasPermission("products", "canDelete") ||
           hasPermission("products", "canCreate")) && (
@@ -91,22 +124,6 @@ export default function ProductActions({
                   Delete
                 </Button>
               </ActionAlertDialog>
-            )}
-
-            {/* Import CSV */}
-            {hasPermission("products", "canCreate") && (
-              <ProductBulkImportSheet action={importProducts}>
-                <SheetTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    type="button"
-                    className="sm:flex-grow xl:flex-grow-0"
-                  >
-                    <Upload className="mr-2 size-4" /> Import CSV
-                  </Button>
-                </SheetTrigger>
-              </ProductBulkImportSheet>
             )}
 
             {/* Add Product */}

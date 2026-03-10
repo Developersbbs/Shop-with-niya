@@ -1427,6 +1427,80 @@ const product = await Product.findOneAndUpdate(
   }
 });
 
+// BULK delete products
+router.delete("/bulk", async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0)
+      return res.status(400).json({ success: false, error: "No product IDs provided" });
+
+    const objectIds = ids.map(id => {
+      try {
+        if (id && id.length === 24 && /^[a-fA-F0-9]{24}$/.test(id)) return new mongoose.Types.ObjectId(id);
+        return id;
+      } catch { return null; }
+    }).filter(Boolean);
+
+    if (objectIds.length === 0)
+      return res.status(400).json({ success: false, error: "No valid IDs provided" });
+
+    const productsToDelete = await Product.find({ _id: { $in: objectIds } });
+
+    for (const product of productsToDelete) {
+      const mainImageFileNames = product.image_url?.map(url => url.split("/").pop()).filter(Boolean) ?? [];
+      for (const imageFileName of mainImageFileNames) {
+        const imagePath = path.join(uploadDir, imageFileName);
+        if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+      }
+
+      if (product.product_variants && product.product_variants.length > 0) {
+        for (const variant of product.product_variants) {
+          if (variant.images && variant.images.length > 0) {
+            for (const imageUrl of variant.images) {
+              if (imageUrl) {
+                const imageFileName = imageUrl.split("/").pop();
+                const imagePath = path.join(uploadDir, imageFileName);
+                if (fs.existsSync(imagePath)) {
+                  try { fs.unlinkSync(imagePath); } catch (e) { console.error(e.message); }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (product.product_type === 'digital' && product.file_path) {
+        const digitalFileName = `products/${product.file_path.split("/").pop()}`;
+        const digitalFilePath = path.join(uploadDir, digitalFileName);
+        if (fs.existsSync(digitalFilePath)) fs.unlinkSync(digitalFilePath);
+      }
+    }
+
+    try {
+      const deletedStocks = await Stock.deleteMany({ productId: { $in: objectIds } });
+      console.log(`✅ Bulk deleted ${deletedStocks.deletedCount} stock entries`);
+    } catch (stockError) {
+      console.error('❌ Error deleting stock entries in bulk:', stockError);
+    }
+
+    const result = await Product.deleteMany({ _id: { $in: objectIds } });
+
+    res.json({
+      success: true,
+      message: `${result.deletedCount} products and all associated files deleted successfully`,
+      deletedCount: result.deletedCount
+    });
+  } catch (err) {
+    console.error("Bulk delete products error:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete products",
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+});
+
+
 // DELETE a product by id
 router.delete("/:id", async (req, res) => {
   try {
@@ -1511,78 +1585,6 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// BULK delete products
-router.delete("/bulk", async (req, res) => {
-  try {
-    const { ids } = req.body;
-    if (!ids || !Array.isArray(ids) || ids.length === 0)
-      return res.status(400).json({ success: false, error: "No product IDs provided" });
-
-    const objectIds = ids.map(id => {
-      try {
-        if (id && id.length === 24 && /^[a-fA-F0-9]{24}$/.test(id)) return new mongoose.Types.ObjectId(id);
-        return id;
-      } catch { return null; }
-    }).filter(Boolean);
-
-    if (objectIds.length === 0)
-      return res.status(400).json({ success: false, error: "No valid IDs provided" });
-
-    const productsToDelete = await Product.find({ _id: { $in: objectIds } });
-
-    for (const product of productsToDelete) {
-      const mainImageFileNames = product.image_url?.map(url => url.split("/").pop()).filter(Boolean) ?? [];
-      for (const imageFileName of mainImageFileNames) {
-        const imagePath = path.join(uploadDir, imageFileName);
-        if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-      }
-
-      if (product.product_variants && product.product_variants.length > 0) {
-        for (const variant of product.product_variants) {
-          if (variant.images && variant.images.length > 0) {
-            for (const imageUrl of variant.images) {
-              if (imageUrl) {
-                const imageFileName = imageUrl.split("/").pop();
-                const imagePath = path.join(uploadDir, imageFileName);
-                if (fs.existsSync(imagePath)) {
-                  try { fs.unlinkSync(imagePath); } catch (e) { console.error(e.message); }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      if (product.product_type === 'digital' && product.file_path) {
-        const digitalFileName = `products/${product.file_path.split("/").pop()}`;
-        const digitalFilePath = path.join(uploadDir, digitalFileName);
-        if (fs.existsSync(digitalFilePath)) fs.unlinkSync(digitalFilePath);
-      }
-    }
-
-    try {
-      const deletedStocks = await Stock.deleteMany({ productId: { $in: objectIds } });
-      console.log(`✅ Bulk deleted ${deletedStocks.deletedCount} stock entries`);
-    } catch (stockError) {
-      console.error('❌ Error deleting stock entries in bulk:', stockError);
-    }
-
-    const result = await Product.deleteMany({ _id: { $in: objectIds } });
-
-    res.json({
-      success: true,
-      message: `${result.deletedCount} products and all associated files deleted successfully`,
-      deletedCount: result.deletedCount
-    });
-  } catch (err) {
-    console.error("Bulk delete products error:", err);
-    res.status(500).json({
-      success: false,
-      error: "Failed to delete products",
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-  }
-});
 
 // PATCH toggle product published status
 router.patch("/toggle-status", async (req, res) => {

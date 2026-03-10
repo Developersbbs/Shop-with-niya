@@ -34,13 +34,13 @@ export async function editProduct(
 
   // Read existing URLs from image_url field (sent by ProductFormSheet)
   const imageUrlJson = formData.get("image_url");
-  if (imageUrlJson && typeof imageUrlJson === 'string') {
+  if (imageUrlJson && typeof imageUrlJson === "string") {
     try {
       const parsed = JSON.parse(imageUrlJson);
       if (Array.isArray(parsed)) {
         existingImageUrls.push(...parsed);
       }
-    } catch (e) { }
+    } catch (e) {}
   }
 
   const tagsJson = formData.get("tags");
@@ -55,7 +55,7 @@ export async function editProduct(
   let seoKeywords = [];
   try {
     seoKeywords = seoKeywordsJson ? JSON.parse(seoKeywordsJson as string) : [];
-  } catch (e) { }
+  } catch (e) {}
 
   const variantsJson = formData.get("product_variants");
   let variants = null;
@@ -65,8 +65,7 @@ export async function editProduct(
     console.error("Failed to parse variants:", e);
   }
 
- 
- // Extract NEW variant image files from FormData
+  // Extract NEW variant image files from FormData
   const variantImageFiles: { [key: string]: File[] } = {};
   let comboIndex = 0;
   let fileIndex = 0;
@@ -91,16 +90,14 @@ export async function editProduct(
   const allFormEntries = Array.from(formData.entries());
   allFormEntries.forEach(([key, val]) => {
     const match = key.match(/existingVariantImages\[(\d+)\]\[(\d+)\]/);
-    if (match && typeof val === 'string') {
+    if (match && typeof val === "string") {
       const idx = match[1];
       if (!existingVariantImages[idx]) existingVariantImages[idx] = [];
       existingVariantImages[idx].push(val);
     }
   });
 
-  console.log('🔥 existingVariantImages:', existingVariantImages);
-  console.log('🔥 variantImageFiles keys:', Object.keys(variantImageFiles));
-
+  // ✅ FIX 3: Include seoOgTitle and seoOgDescription in safeParse
   const parsedData = productFormSchema.safeParse({
     productType: formData.get("productType"),
     productStructure: formData.get("product_structure"),
@@ -111,7 +108,7 @@ export async function editProduct(
     categories: categories,
     costPrice: formData.get("costPrice"),
     salesPrice: formData.get("salesPrice"),
-     taxPercentage: formData.get("tax_percentage") || 0, 
+    taxPercentage: formData.get("tax_percentage") || 0,
     stock: formData.get("stock") || 0,
     minStockThreshold: formData.get("minStockThreshold") || 0,
     weight: formData.get("weight") || undefined,
@@ -129,6 +126,12 @@ export async function editProduct(
     seoTitle: formData.get("seoTitle") || undefined,
     seoDescription: formData.get("seoDescription") || undefined,
     seoKeywords: seoKeywords,
+    seoCanonical: formData.get("seoCanonical") || undefined,
+    seoRobots: formData.get("seoRobots") || undefined,
+    // ✅ These two were missing — OG fields now included in validation & payload
+    seoOgTitle: formData.get("seoOgTitle") || undefined,
+    seoOgDescription: formData.get("seoOgDescription") || undefined,
+    seoOgImage: formData.get("seoOgImage") || undefined,
     slug: formData.get("slug"),
     product_variants: variants,
   });
@@ -145,8 +148,10 @@ export async function editProduct(
     // Firebase upload helper
     const uploadImageToFirebase = async (file: File, folder: string) => {
       const sanitizedName = file.name.replace(/\s+/g, "_");
-      const fileExtension = sanitizedName.split('.').pop();
-      const fileName = `${folder}_${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExtension}`;
+      const fileExtension = sanitizedName.split(".").pop();
+      const fileName = `${folder}_${Date.now()}_${Math.random()
+        .toString(36)
+        .slice(2)}.${fileExtension}`;
       const storageRef = ref(storage, `${folder}/${fileName}`);
       const snapshot = await uploadBytes(storageRef, file);
       return getDownloadURL(snapshot.ref);
@@ -160,10 +165,6 @@ export async function editProduct(
     // Merge existing URLs + new Firebase URLs
     const allImageUrls = [...existingImageUrls, ...newFirebaseUrls];
 
-    console.log('🔥 existingImageUrls:', existingImageUrls);
-    console.log('🔥 newFirebaseUrls:', newFirebaseUrls);
-    console.log('🔥 allImageUrls:', allImageUrls);
-
     // Upload variant images to Firebase
     const variantImageUrls: Record<string, string[]> = {};
     await Promise.all(
@@ -175,80 +176,116 @@ export async function editProduct(
       })
     );
 
-  
-    const backendFormData = new FormData()
-// Merge variant images: existing URLs + new Firebase URLs
+    const backendFormData = new FormData();
+
+    // Merge variant images: existing URLs + new Firebase URLs
     if (variants && variants.combinations && variants.combinations.length > 0) {
-      variants.combinations = variants.combinations.map((combination: any, index: number) => {
-        const idx = index.toString();
-        // New files uploaded to Firebase
-        const newUrls = variantImageUrls[idx] || [];
-        // Existing URLs sent from frontend as existingVariantImages[x][y]
-        const preservedUrls = existingVariantImages[idx] || [];
-        // Final merge: preserved + new
-        const mergedImages = [...preservedUrls, ...newUrls];
+      variants.combinations = variants.combinations.map(
+        (combination: any, index: number) => {
+          const idx = index.toString();
+          const newUrls = variantImageUrls[idx] || [];
+          const preservedUrls = existingVariantImages[idx] || [];
+          const mergedImages = [...preservedUrls, ...newUrls];
+          return { ...combination, images: mergedImages };
+        }
+      );
+    }
 
-        console.log(`🔥 Variant ${idx} images: ${preservedUrls.length} existing + ${newUrls.length} new = ${mergedImages.length} total`);
-
-        return {
-          ...combination,
-          images: mergedImages,
-        };
+    if (variants && variants.combinations) {
+      variants.combinations.forEach((combination: any, index: number) => {
+        const images: string[] = (combination.images || []).filter(
+          (img: any) => typeof img === "string"
+        );
+        images.forEach((url, urlIdx) => {
+          backendFormData.append(
+            `existingVariantImages[${index}][${urlIdx}]`,
+            url
+          );
+        });
       });
     }
-    // Send all variant image URLs (existing + new Firebase) as existingVariantImages
-// so backend knows to preserve them — no raw files sent, all are Firebase URLs
-if (variants && variants.combinations) {
-  variants.combinations.forEach((combination: any, index: number) => {
-    const images: string[] = (combination.images || []).filter((img: any) => typeof img === 'string');
-    images.forEach((url, urlIdx) => {
-      backendFormData.append(`existingVariantImages[${index}][${urlIdx}]`, url);
-    });
-  });
-}
-;
+
     backendFormData.append("product_type", parsedData.data.productType);
     backendFormData.append("name", parsedData.data.name);
     backendFormData.append("description", parsedData.data.description);
     backendFormData.append("sku", parsedData.data.sku);
 
     if (parsedData.data.categories && parsedData.data.categories.length > 0) {
-      backendFormData.append("categories", JSON.stringify(parsedData.data.categories));
+      backendFormData.append(
+        "categories",
+        JSON.stringify(parsedData.data.categories)
+      );
     }
 
-    backendFormData.append("cost_price", parsedData.data.costPrice?.toString() || "0");
-    backendFormData.append("selling_price", parsedData.data.salesPrice?.toString() || "0");
-    backendFormData.append("tax_percentage", String(parsedData.data.taxPercentage ?? 0)); 
+    backendFormData.append(
+      "cost_price",
+      parsedData.data.costPrice?.toString() || "0"
+    );
+    backendFormData.append(
+      "selling_price",
+      parsedData.data.salesPrice?.toString() || "0"
+    );
+    backendFormData.append(
+      "tax_percentage",
+      String(parsedData.data.taxPercentage ?? 0)
+    );
 
     if (parsedData.data.stock !== undefined) {
       backendFormData.append("stock", parsedData.data.stock.toString());
     }
     if (parsedData.data.minStockThreshold !== undefined) {
-      backendFormData.append("min_stock_threshold", parsedData.data.minStockThreshold.toString());
+      backendFormData.append(
+        "min_stock_threshold",
+        parsedData.data.minStockThreshold.toString()
+      );
     }
     if (parsedData.data.color) backendFormData.append("color", parsedData.data.color);
     if (parsedData.data.size) backendFormData.append("size", parsedData.data.size);
     if (parsedData.data.material) backendFormData.append("material", parsedData.data.material);
     if (parsedData.data.brand) backendFormData.append("brand", parsedData.data.brand);
     if (parsedData.data.warranty) backendFormData.append("warranty", parsedData.data.warranty);
-    if (parsedData.data.fileSize) backendFormData.append("file_size", parsedData.data.fileSize.toString());
-    if (parsedData.data.downloadFormat) backendFormData.append("download_format", parsedData.data.downloadFormat);
-    if (parsedData.data.licenseType) backendFormData.append("license_type", parsedData.data.licenseType);
-    if (parsedData.data.downloadLimit) backendFormData.append("download_limit", parsedData.data.downloadLimit.toString());
-    if (parsedData.data.tags !== undefined) backendFormData.append("tags", JSON.stringify(parsedData.data.tags || []));
+    if (parsedData.data.fileSize)
+      backendFormData.append("file_size", parsedData.data.fileSize.toString());
+    if (parsedData.data.downloadFormat)
+      backendFormData.append("download_format", parsedData.data.downloadFormat);
+    if (parsedData.data.licenseType)
+      backendFormData.append("license_type", parsedData.data.licenseType);
+    if (parsedData.data.downloadLimit)
+      backendFormData.append(
+        "download_limit",
+        parsedData.data.downloadLimit.toString()
+      );
+    if (parsedData.data.tags !== undefined)
+      backendFormData.append(
+        "tags",
+        JSON.stringify(parsedData.data.tags || [])
+      );
 
     backendFormData.append("published", "true");
 
-    if (parsedData.data.seoTitle) backendFormData.append("seo_title", parsedData.data.seoTitle);
-    if (parsedData.data.seoDescription) backendFormData.append("seo_description", parsedData.data.seoDescription);
+    // SEO fields
+    if (parsedData.data.seoTitle)
+      backendFormData.append("seo_title", parsedData.data.seoTitle);
+    if (parsedData.data.seoDescription)
+      backendFormData.append("seo_description", parsedData.data.seoDescription);
     if (parsedData.data.seoKeywords && parsedData.data.seoKeywords.length > 0) {
-      backendFormData.append("seo_keywords", JSON.stringify(parsedData.data.seoKeywords));
+      backendFormData.append(
+        "seo_keywords",
+        JSON.stringify(parsedData.data.seoKeywords)
+      );
     }
-    if (parsedData.data.seoCanonical) backendFormData.append("seo_canonical", parsedData.data.seoCanonical);
-    if (parsedData.data.seoRobots) backendFormData.append("seo_robots", parsedData.data.seoRobots);
-    if (parsedData.data.seoOgTitle) backendFormData.append("seo_og_title", parsedData.data.seoOgTitle);
-    if (parsedData.data.seoOgDescription) backendFormData.append("seo_og_description", parsedData.data.seoOgDescription);
-    if (parsedData.data.seoOgImage) backendFormData.append("seo_og_image", parsedData.data.seoOgImage);
+    if (parsedData.data.seoCanonical)
+      backendFormData.append("seo_canonical", parsedData.data.seoCanonical);
+    if (parsedData.data.seoRobots)
+      backendFormData.append("seo_robots", parsedData.data.seoRobots);
+
+    // ✅ FIX 3: These were missing from the backendFormData append calls
+    if (parsedData.data.seoOgTitle)
+      backendFormData.append("seo_og_title", parsedData.data.seoOgTitle);
+    if (parsedData.data.seoOgDescription)
+      backendFormData.append("seo_og_description", parsedData.data.seoOgDescription);
+    if (parsedData.data.seoOgImage)
+      backendFormData.append("seo_og_image", parsedData.data.seoOgImage);
 
     if (parsedData.data.product_variants) {
       backendFormData.append("product_variants", JSON.stringify(variants));
@@ -261,18 +298,15 @@ if (variants && variants.combinations) {
       backendFormData.append("digital_file", parsedData.data.fileUpload);
     }
 
-    console.log('🔥 CALLING PUT:', `${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`);
-    console.log('🔥 productId:', productId);
-    console.log('🔥 image_url in formData:', backendFormData.get('image_url'));
-
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`, {
-      method: "PUT",
-      body: backendFormData,
-    });
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`,
+      {
+        method: "PUT",
+        body: backendFormData,
+      }
+    );
 
     const result = await response.json();
-
-    console.log('🔥 BACKEND RESPONSE:', JSON.stringify(result, null, 2));
 
     if (!response.ok) {
       if (result.error?.includes("slug")) {
@@ -281,15 +315,20 @@ if (variants && variants.combinations) {
             slug: "This product slug is already in use. Please choose a different one.",
           },
         };
-      } else if (result.error?.includes("sku") || result.error?.includes("SKU")) {
+      } else if (
+        result.error?.includes("sku") ||
+        result.error?.includes("SKU")
+      ) {
         return {
           validationErrors: {
             sku: "This product SKU is already assigned to an existing item. Please enter a different SKU.",
           },
         };
       }
-      console.error("Product update failed:", result);
-      return { dbError: result.error || "Something went wrong. Please try again later." };
+      return {
+        dbError:
+          result.error || "Something went wrong. Please try again later.",
+      };
     }
 
     revalidatePath("/products");

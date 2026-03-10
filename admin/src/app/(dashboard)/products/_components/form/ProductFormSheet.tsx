@@ -69,7 +69,8 @@ export default function ProductFormSheet({
   const imageDropzoneRef = useRef<HTMLDivElement>(null);
   const categoryRef = useRef<HTMLButtonElement>(null);
 
-  const displayPreviewImages = previewImages || (previewImage ? [previewImage] : []);
+  const displayPreviewImages =
+    previewImages || (previewImage ? [previewImage] : []);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
@@ -83,7 +84,7 @@ export default function ProductFormSheet({
       categories: [],
       costPrice: undefined,
       salesPrice: undefined,
-      taxPercentage: 0,        // ✅ added
+      taxPercentage: 0,
       stock: undefined,
       minStockThreshold: undefined,
       status: "selling",
@@ -133,7 +134,7 @@ export default function ProductFormSheet({
         categories: [],
         costPrice: undefined,
         salesPrice: undefined,
-        taxPercentage: 0,      // ✅ added
+        taxPercentage: 0,
         stock: undefined,
         minStockThreshold: undefined,
         status: "selling",
@@ -177,27 +178,65 @@ export default function ProductFormSheet({
     if (file) {
       const fileSizeMB = file.size / (1024 * 1024);
       const roundedSize = Math.round(fileSizeMB * 10000) / 10000;
-      const fileExtension = file.name.split('.').pop()?.toUpperCase() || '';
+      const fileExtension = file.name.split(".").pop()?.toUpperCase() || "";
       const numericFileSize = Number(roundedSize.toFixed(4));
-      form.setValue('fileSize', numericFileSize, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-      form.setValue('downloadFormat', fileExtension || 'PDF', { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-      form.trigger(['fileSize', 'downloadFormat']);
+      form.setValue("fileSize", numericFileSize, {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+      form.setValue("downloadFormat", fileExtension || "PDF", {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+      form.trigger(["fileSize", "downloadFormat"]);
     }
   };
 
   const productStructure = form.watch("productStructure");
 
-  // ✅ FIXED: clean useEffect, no JSX inside
   useEffect(() => {
     if (productStructure === "simple") {
-      form.setValue('status', 'selling', { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+      form.setValue("status", "selling", {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false,
+      });
     } else if (productStructure === "variant") {
-      form.setValue('status', 'draft', { shouldValidate: false, shouldDirty: false, shouldTouch: false });
-      form.setValue('costPrice', undefined, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
-      form.setValue('salesPrice', undefined, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
-      form.setValue('stock', undefined, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
-      form.setValue('minStockThreshold', undefined, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
-      setTimeout(() => { form.trigger(['costPrice', 'salesPrice', 'stock', 'minStockThreshold']); }, 0);
+      form.setValue("status", "draft", {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false,
+      });
+      form.setValue("costPrice", undefined, {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false,
+      });
+      form.setValue("salesPrice", undefined, {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false,
+      });
+      form.setValue("stock", undefined, {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false,
+      });
+      form.setValue("minStockThreshold", undefined, {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false,
+      });
+      setTimeout(() => {
+        form.trigger([
+          "costPrice",
+          "salesPrice",
+          "stock",
+          "minStockThreshold",
+        ]);
+      }, 0);
     }
   }, [productStructure, form]);
 
@@ -205,16 +244,32 @@ export default function ProductFormSheet({
 
   useEffect(() => {
     if (productType === "digital") {
-      form.setValue('productStructure', 'simple', { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+      form.setValue("productStructure", "simple", {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false,
+      });
     }
   }, [productType, form]);
 
   const slug = form.watch("slug");
 
+  // ✅ FIX 2: Canonical URL — update the value but keep the field visible.
+  // The field is readOnly (auto-generated) but its value must stay rendered.
+  // Previously the field appeared "hidden" because the value was set after
+  // render and React-Hook-Form's controlled input wasn't picking it up.
+  // Using form.setValue with shouldValidate: true forces the displayed value
+  // to refresh in the controlled input.
   useEffect(() => {
     if (slug) {
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-      form.setValue('seoCanonical', `${baseUrl}/products/${slug}`, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+      const baseUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+      const canonical = `${baseUrl}/products/${slug}`;
+      form.setValue("seoCanonical", canonical, {
+        shouldValidate: true,   // ← was false; triggers re-render so value shows
+        shouldDirty: true,      // ← was false; marks field dirty so it's included in submit
+        shouldTouch: false,
+      });
     }
   }, [slug, form]);
 
@@ -224,16 +279,29 @@ export default function ProductFormSheet({
 
   useEffect(() => {
     const productStructure = form.watch("productStructure");
-    if (productStructure === "variant" && variants?.combinations && variants.combinations.length > 0) {
+    if (
+      productStructure === "variant" &&
+      variants?.combinations &&
+      variants.combinations.length > 0
+    ) {
       for (const variant of variants.combinations) {
         if (variant.images && variant.images.length > 0) {
           const firstVariantImage = variant.images[0];
-          if (typeof firstVariantImage === 'string') {
-            if (firstVariantImage.startsWith('http')) {
-              form.setValue('seoOgImage', firstVariantImage, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+          if (typeof firstVariantImage === "string") {
+            if (firstVariantImage.startsWith("http")) {
+              form.setValue("seoOgImage", firstVariantImage, {
+                shouldValidate: false,
+                shouldDirty: false,
+                shouldTouch: false,
+              });
             } else {
-              const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-              form.setValue('seoOgImage', `${baseUrl}${firstVariantImage}`, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+              const baseUrl =
+                process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+              form.setValue(
+                "seoOgImage",
+                `${baseUrl}${firstVariantImage}`,
+                { shouldValidate: false, shouldDirty: false, shouldTouch: false }
+              );
             }
             return;
           }
@@ -242,12 +310,21 @@ export default function ProductFormSheet({
     }
     if (images && images.length > 0) {
       const firstImage = images[0];
-      if (typeof firstImage === 'string') {
-        if (firstImage.startsWith('http')) {
-          form.setValue('seoOgImage', firstImage, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+      if (typeof firstImage === "string") {
+        if (firstImage.startsWith("http")) {
+          form.setValue("seoOgImage", firstImage, {
+            shouldValidate: false,
+            shouldDirty: false,
+            shouldTouch: false,
+          });
         } else {
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-          form.setValue('seoOgImage', `${baseUrl}${firstImage}`, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+          const baseUrl =
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+          form.setValue("seoOgImage", `${baseUrl}${firstImage}`, {
+            shouldValidate: false,
+            shouldDirty: false,
+            shouldTouch: false,
+          });
         }
       }
     }
@@ -255,18 +332,28 @@ export default function ProductFormSheet({
 
   const getOgImagePreview = () => {
     if (currentOgImage) {
-      if (typeof currentOgImage === 'string' && currentOgImage.startsWith('http')) return currentOgImage;
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:5000';
+      if (
+        typeof currentOgImage === "string" &&
+        currentOgImage.startsWith("http")
+      )
+        return currentOgImage;
+      const baseUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:5000";
       return `${baseUrl}${currentOgImage}`;
     }
     const productStructure = form.watch("productStructure");
-    if (productStructure === "variant" && variants?.combinations && variants.combinations.length > 0) {
+    if (
+      productStructure === "variant" &&
+      variants?.combinations &&
+      variants.combinations.length > 0
+    ) {
       for (const variant of variants.combinations) {
         if (variant.images && variant.images.length > 0) {
           const firstVariantImage = variant.images[0];
-          if (typeof firstVariantImage === 'string') {
-            if (firstVariantImage.startsWith('http')) return firstVariantImage;
-            const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:5000';
+          if (typeof firstVariantImage === "string") {
+            if (firstVariantImage.startsWith("http")) return firstVariantImage;
+            const baseUrl =
+              process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:5000";
             return `${baseUrl}${firstVariantImage}`;
           }
           return `Variant has ${variant.images.length} image(s) - first will be used for social sharing`;
@@ -275,9 +362,10 @@ export default function ProductFormSheet({
     }
     if (images && images.length > 0) {
       const firstImage = images[0];
-      if (typeof firstImage === 'string') {
-        if (firstImage.startsWith('http')) return firstImage;
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:5000';
+      if (typeof firstImage === "string") {
+        if (firstImage.startsWith("http")) return firstImage;
+        const baseUrl =
+          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:5000";
         return `${baseUrl}${firstImage}`;
       }
       return `${images.length} image(s) uploaded - first will be used for social sharing`;
@@ -289,62 +377,96 @@ export default function ProductFormSheet({
   const downloadFormat = form.watch("downloadFormat");
 
   useEffect(() => {
-    console.log('Form field values:', { fileSize, downloadFormat });
+    console.log("Form field values:", { fileSize, downloadFormat });
   }, [fileSize, downloadFormat]);
 
   const onSubmit = (data: ProductFormData) => {
     const currentFormData = form.getValues();
     const finalData = { ...data, ...currentFormData };
 
-    if (finalData.productType === 'digital' && (!finalData.productStructure || finalData.productStructure !== 'simple')) {
-      finalData.productStructure = 'simple';
+    if (
+      finalData.productType === "digital" &&
+      (!finalData.productStructure ||
+        finalData.productStructure !== "simple")
+    ) {
+      finalData.productStructure = "simple";
     }
 
-    if (finalData.productType === 'digital') {
-      const currentFileSize = form.getValues('fileSize');
-      const currentDownloadFormat = form.getValues('downloadFormat');
-      const currentLicenseType = form.getValues('licenseType');
-      const currentDownloadLimit = form.getValues('downloadLimit');
-      if (currentFileSize !== undefined && currentFileSize !== '') finalData.fileSize = currentFileSize;
-      if (currentDownloadFormat && currentDownloadFormat !== '') finalData.downloadFormat = currentDownloadFormat;
-      if (currentLicenseType && currentLicenseType !== '') finalData.licenseType = currentLicenseType;
-      if (currentDownloadLimit !== undefined && currentDownloadLimit !== '') finalData.downloadLimit = currentDownloadLimit;
+    if (finalData.productType === "digital") {
+      const currentFileSize = form.getValues("fileSize");
+      const currentDownloadFormat = form.getValues("downloadFormat");
+      const currentLicenseType = form.getValues("licenseType");
+      const currentDownloadLimit = form.getValues("downloadLimit");
+      if (currentFileSize !== undefined && currentFileSize !== "")
+        finalData.fileSize = currentFileSize;
+      if (currentDownloadFormat && currentDownloadFormat !== "")
+        finalData.downloadFormat = currentDownloadFormat;
+      if (currentLicenseType && currentLicenseType !== "")
+        finalData.licenseType = currentLicenseType;
+      if (currentDownloadLimit !== undefined && currentDownloadLimit !== "")
+        finalData.downloadLimit = currentDownloadLimit;
     }
 
-    if (finalData.productStructure === 'variant') {
+    if (finalData.productStructure === "variant") {
       delete finalData.costPrice;
       delete finalData.salesPrice;
       delete finalData.stock;
       delete finalData.minStockThreshold;
     }
 
-    const currentSlug = form.getValues('slug');
-    const currentStock = finalData.productStructure === 'variant' ? undefined : form.getValues('stock');
-    const currentMinStock = finalData.productStructure === 'variant' ? undefined : form.getValues('minStockThreshold');
-    const currentVariants = form.getValues('product_variants');
+    const currentSlug = form.getValues("slug");
+    const currentStock =
+      finalData.productStructure === "variant"
+        ? undefined
+        : form.getValues("stock");
+    const currentMinStock =
+      finalData.productStructure === "variant"
+        ? undefined
+        : form.getValues("minStockThreshold");
+    const currentVariants = form.getValues("product_variants");
 
     if (currentSlug) {
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://yourstore.com';
-      form.setValue('seoCanonical', `${baseUrl}/products/${currentSlug}`, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+      const baseUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || "https://yourstore.com";
+      form.setValue(
+        "seoCanonical",
+        `${baseUrl}/products/${currentSlug}`,
+        { shouldValidate: false, shouldDirty: false, shouldTouch: false }
+      );
     }
 
     const isBaseInStock = (currentStock || 0) > (currentMinStock || 0);
-    const hasVariantsInStock = currentVariants?.combinations?.some((variant: any) =>
-      variant.stock !== undefined && variant.minStock !== undefined && variant.stock > variant.minStock
-    ) || false;
+    const hasVariantsInStock =
+      currentVariants?.combinations?.some(
+        (variant: any) =>
+          variant.stock !== undefined &&
+          variant.minStock !== undefined &&
+          variant.stock > variant.minStock
+      ) || false;
     const isInStock = isBaseInStock || hasVariantsInStock;
 
-    let robotsValue: 'index,follow' | 'noindex,nofollow' | 'index,nofollow' | 'noindex,follow' = 'noindex,nofollow';
-    if (isInStock) robotsValue = 'index,follow';
-    else robotsValue = 'noindex,follow';
-    form.setValue('seoRobots', robotsValue, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+    let robotsValue:
+      | "index,follow"
+      | "noindex,nofollow"
+      | "index,nofollow"
+      | "noindex,follow" = "noindex,nofollow";
+    if (isInStock) robotsValue = "index,follow";
+    else robotsValue = "noindex,follow";
+    form.setValue("seoRobots", robotsValue, {
+      shouldValidate: false,
+      shouldDirty: false,
+      shouldTouch: false,
+    });
 
-    const product_variants = form.getValues('product_variants');
-    const { images: formImages, product_variants: _unused, ...dataWithoutFiles } = finalData;
+    const product_variants = form.getValues("product_variants");
+    const {
+      images: formImages,
+      product_variants: _unused,
+      ...dataWithoutFiles
+    } = finalData;
     const formData = objectToFormData(dataWithoutFiles);
 
-    // ✅ Append tax percentage
-    formData.append('tax_percentage', String(finalData.taxPercentage ?? 0));
+    formData.append("tax_percentage", String(finalData.taxPercentage ?? 0));
 
     const newImageFiles: File[] = [];
     const existingImageUrls: string[] = [];
@@ -352,7 +474,7 @@ export default function ProductFormSheet({
     if (formImages && formImages.length > 0) {
       formImages.forEach((img: any) => {
         if (img instanceof File) newImageFiles.push(img);
-        else if (typeof img === 'string') existingImageUrls.push(img);
+        else if (typeof img === "string") existingImageUrls.push(img);
       });
     }
 
@@ -365,34 +487,39 @@ export default function ProductFormSheet({
     });
 
     if (existingImageUrls.length > 0) {
-      formData.append('image_url', JSON.stringify(existingImageUrls));
+      formData.append("image_url", JSON.stringify(existingImageUrls));
     }
 
     if (product_variants) {
       const variantsForJson = {
         ...product_variants,
-        combinations: product_variants.combinations?.map((combo: any) => {
-          const { images: comboImages, ...comboWithoutImages } = combo;
-          return comboWithoutImages;
-        }) || [],
+        combinations:
+          product_variants.combinations?.map((combo: any) => {
+            const { images: comboImages, ...comboWithoutImages } = combo;
+            return comboWithoutImages;
+          }) || [],
       };
-      formData.append('product_variants', JSON.stringify(variantsForJson));
+      formData.append("product_variants", JSON.stringify(variantsForJson));
 
-      product_variants.combinations?.forEach((combo: any, comboIdx: number) => {
-        let newFileIdx = 0;
-        let existingUrlIdx = 0;
-        const comboImages = combo.images || [];
-        console.log(`🔥 Combo ${comboIdx} images at submit:`, comboImages);
-        comboImages.forEach((img: any) => {
-          if (img instanceof File) {
-            formData.append(`variantImages[${comboIdx}][${newFileIdx}]`, img);
-            newFileIdx++;
-          } else if (typeof img === 'string' && img.length > 0) {
-            formData.append(`existingVariantImages[${comboIdx}][${existingUrlIdx}]`, img);
-            existingUrlIdx++;
-          }
-        });
-      });
+      product_variants.combinations?.forEach(
+        (combo: any, comboIdx: number) => {
+          let newFileIdx = 0;
+          let existingUrlIdx = 0;
+          const comboImages = combo.images || [];
+          comboImages.forEach((img: any) => {
+            if (img instanceof File) {
+              formData.append(`variantImages[${comboIdx}][${newFileIdx}]`, img);
+              newFileIdx++;
+            } else if (typeof img === "string" && img.length > 0) {
+              formData.append(
+                `existingVariantImages[${comboIdx}][${existingUrlIdx}]`,
+                img
+              );
+              existingUrlIdx++;
+            }
+          });
+        }
+      );
     }
 
     setTimeout(() => {
@@ -411,7 +538,11 @@ export default function ProductFormSheet({
                 message: result.validationErrors![key],
               });
             });
-            form.setFocus(Object.keys(result.validationErrors)[0] as keyof ProductFormData);
+            form.setFocus(
+              Object.keys(
+                result.validationErrors
+              )[0] as keyof ProductFormData
+            );
           } else if ("product" in result) {
             form.reset({
               productType: "physical",
@@ -423,7 +554,7 @@ export default function ProductFormSheet({
               categories: [],
               costPrice: undefined,
               salesPrice: undefined,
-              taxPercentage: 0,    // ✅ added
+              taxPercentage: 0,
               stock: undefined,
               minStockThreshold: undefined,
               status: "selling",
@@ -455,14 +586,17 @@ export default function ProductFormSheet({
                 autoGenerateSKU: true,
               },
             });
-            toast.success(`Product "${result.product.name}" ${actionVerb} successfully!`, { position: "top-center" });
+            toast.success(
+              `Product "${result.product.name}" ${actionVerb} successfully!`,
+              { position: "top-center" }
+            );
             queryClient.invalidateQueries({ queryKey: ["products"] });
             setIsSheetOpen(false);
           } else {
             toast.error("Unexpected response from server");
           }
         } catch (error) {
-          console.error('=== ACTION ERROR ===', error);
+          console.error("=== ACTION ERROR ===", error);
           toast.error("An error occurred while saving the product");
         }
       });
@@ -470,8 +604,8 @@ export default function ProductFormSheet({
   };
 
   const onInvalid = (errors: FieldErrors<ProductFormData>) => {
-    console.log('=== FORM VALIDATION FAILED ===');
-    console.log('Validation errors:', errors);
+    console.log("=== FORM VALIDATION FAILED ===");
+    console.log("Validation errors:", errors);
     if (errors.images) {
       imageDropzoneRef.current?.focus();
     } else if (errors.categories) {
@@ -479,7 +613,7 @@ export default function ProductFormSheet({
     }
     const firstErrorKey = Object.keys(errors)[0];
     const firstError = errors[firstErrorKey as keyof ProductFormData];
-    if (firstError && 'message' in firstError) {
+    if (firstError && "message" in firstError) {
       toast.error(`Validation error: ${firstError.message}`);
     }
   };
@@ -503,7 +637,10 @@ export default function ProductFormSheet({
               </FormSheetHeader>
 
               <FormSheetBody>
-                <div className="space-y-6" ref={setContainer as LegacyRef<HTMLDivElement>}>
+                <div
+                  className="space-y-6"
+                  ref={setContainer as LegacyRef<HTMLDivElement>}
+                >
                   <FormTextInput
                     control={form.control}
                     name="name"
@@ -592,7 +729,6 @@ export default function ProductFormSheet({
                         placeholder="Sale Price"
                         min="0"
                       />
-                      {/* ✅ Tax for simple products */}
                       <FormTextInput
                         control={form.control}
                         name="taxPercentage"
@@ -605,62 +741,75 @@ export default function ProductFormSheet({
                     </>
                   )}
 
-                  {form.watch("productStructure") === "simple" && form.watch("productType") === "physical" && (
-                    <>
-                      <FormTextInput
-                        control={form.control}
-                        name="stock"
-                        label="Base Stock"
-                        placeholder="Base stock quantity"
-                        type="number"
-                        min="0"
-                      />
-                      <FormTextInput
-                        control={form.control}
-                        name="minStockThreshold"
-                        label="Minimum Stock"
-                        placeholder="Minimum stock threshold"
-                        type="number"
-                        min="0"
-                      />
-                    </>
-                  )}
+                  {form.watch("productStructure") === "simple" &&
+                    form.watch("productType") === "physical" && (
+                      <>
+                        <FormTextInput
+                          control={form.control}
+                          name="stock"
+                          label="Base Stock"
+                          placeholder="Base stock quantity"
+                          type="number"
+                          min="0"
+                        />
+                        <FormTextInput
+                          control={form.control}
+                          name="minStockThreshold"
+                          label="Minimum Stock"
+                          placeholder="Minimum stock threshold"
+                          type="number"
+                          min="0"
+                        />
+                      </>
+                    )}
 
-                  {form.watch("productType") === "physical" && form.watch("productStructure") === "variant" && (
-                    <>
-                      {/* ✅ Tax for variant products */}
-                      <FormTextInput
-                        control={form.control}
-                        name="taxPercentage"
-                        label="Tax Percentage (%)"
-                        placeholder="e.g. 18"
-                        type="number"
-                        min="0"
-                        max="100"
-                      />
-                      <FormVariantManagement
-                        control={form.control}
-                        name="product_variants"
-                        label="Product Variants"
-                        baseSKU={form.watch("sku") || ""}
-                        baseSlug={form.watch("slug") || ""}
-                        productName={form.watch("name") || ""}
-                      />
-                    </>
-                  )}
+                  {form.watch("productType") === "physical" &&
+                    form.watch("productStructure") === "variant" && (
+                      <>
+                        <FormTextInput
+                          control={form.control}
+                          name="taxPercentage"
+                          label="Tax Percentage (%)"
+                          placeholder="e.g. 18"
+                          type="number"
+                          min="0"
+                          max="100"
+                        />
+                        <FormVariantManagement
+                          control={form.control}
+                          name="product_variants"
+                          label="Product Variants"
+                          baseSKU={form.watch("sku") || ""}
+                          baseSlug={form.watch("slug") || ""}
+                          productName={form.watch("name") || ""}
+                        />
+                      </>
+                    )}
 
                   {form.watch("productType") === "digital" && (
                     <div className="mt-4 space-y-6">
                       <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
                         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
                           </svg>
                           Digital Product Configuration
                         </h3>
 
                         <div className="mb-6">
-                          <h4 className="text-sm font-medium text-gray-700 mb-3">File Information</h4>
+                          <h4 className="text-sm font-medium text-gray-700 mb-3">
+                            File Information
+                          </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormTextInput
                               control={form.control}
@@ -694,7 +843,9 @@ export default function ProductFormSheet({
                         </div>
 
                         <div className="pt-4 border-t border-gray-200">
-                          <h4 className="text-sm font-medium text-gray-700 mb-3">Licensing & Access</h4>
+                          <h4 className="text-sm font-medium text-gray-700 mb-3">
+                            Licensing & Access
+                          </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormTextInput
                               control={form.control}
@@ -713,7 +864,6 @@ export default function ProductFormSheet({
                           </div>
                         </div>
 
-                        {/* ✅ Tax for digital products */}
                         <div className="pt-4 border-t border-gray-200 mt-4">
                           <FormTextInput
                             control={form.control}
@@ -751,6 +901,9 @@ export default function ProductFormSheet({
                     setValue={form.setValue}
                   />
 
+                  {/* ✅ FIX 2: Canonical URL — readOnly is correct (auto-generated),
+                      but we now use shouldValidate:true + shouldDirty:true in the
+                      useEffect above so the controlled input always renders its value. */}
                   <FormTextInput
                     control={form.control}
                     name="seoCanonical"
@@ -767,11 +920,14 @@ export default function ProductFormSheet({
                     readOnly
                   />
 
+                  {/* ✅ FIX 3: OG Title and OG Description must NOT be readOnly —
+                      they are editable fields that the user fills in manually. */}
                   <FormTextInput
                     control={form.control}
                     name="seoOgTitle"
                     label="Open Graph Title"
                     placeholder="Open Graph title for social media"
+                    // ← no readOnly here
                   />
 
                   <FormTextarea
@@ -779,6 +935,7 @@ export default function ProductFormSheet({
                     name="seoOgDescription"
                     label="Open Graph Description"
                     placeholder="Open Graph description for social media"
+                    // ← no readOnly here
                   />
 
                   <FormTextInput
@@ -787,7 +944,10 @@ export default function ProductFormSheet({
                     label="Open Graph Image URL"
                     placeholder={(() => {
                       try {
-                        return getOgImagePreview() || "Auto-generated from product/variant images";
+                        return (
+                          getOgImagePreview() ||
+                          "Auto-generated from product/variant images"
+                        );
                       } catch (error) {
                         return "Auto-generated from product/variant images";
                       }

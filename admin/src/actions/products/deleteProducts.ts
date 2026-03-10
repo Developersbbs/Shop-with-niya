@@ -94,7 +94,9 @@ export async function deleteProducts(
       }
     }
 
-    // Delete products from database
+    // ✅ FIX: Delete products one by one using the individual DELETE endpoint.
+    // The bulk endpoint requires Express JSON body parsing for DELETE which
+    // is unreliable across middleware setups. Individual deletes are guaranteed to work.
     for (const productId of productIds) {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`, {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FaPlus, FaTrash, FaEdit, FaImage, FaSave, FaTimes } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaEdit, FaImage, FaSave, FaTimes, FaMobileAlt, FaDesktop } from 'react-icons/fa';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Typography from '@/components/ui/typography';
@@ -37,8 +37,15 @@ export default function HeroSectionPage() {
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [currentSlide, setCurrentSlide] = useState<HeroSlide | null>(null);
+
+    // Desktop image
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState('');
+
+    // Mobile image
+    const [imageMobileFile, setImageMobileFile] = useState<File | null>(null);
+    const [previewMobileUrl, setPreviewMobileUrl] = useState('');
+
     const [isSaving, setIsSaving] = useState(false);
 
     const [formData, setFormData] = useState<{
@@ -114,6 +121,19 @@ export default function HeroSectionPage() {
         }
     };
 
+    const handleMobileImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setImageMobileFile(file);
+            setPreviewMobileUrl(URL.createObjectURL(file));
+        }
+    };
+
+    const removeMobileImage = () => {
+        setImageMobileFile(null);
+        setPreviewMobileUrl('');
+    };
+
     const resetForm = () => {
         setFormData({
             title: '',
@@ -137,6 +157,8 @@ export default function HeroSectionPage() {
         });
         setImageFile(null);
         setPreviewUrl('');
+        setImageMobileFile(null);
+        setPreviewMobileUrl('');
         setIsEditing(false);
         setCurrentSlide(null);
     };
@@ -163,10 +185,23 @@ export default function HeroSectionPage() {
             buttonColor: slide.buttonColor || '#ffffff',
             buttonTextColor: slide.buttonTextColor || '#0a0a0a',
         });
+
+        // Desktop image
         const normalizedImage = slide.image?.startsWith('http')
             ? slide.image
             : `${API_URL.replace('/api', '')}${slide.image}`;
         setPreviewUrl(normalizedImage);
+
+        // Mobile image
+        if (slide.imageMobile) {
+            const normalizedMobileImage = slide.imageMobile?.startsWith('http')
+                ? slide.imageMobile
+                : `${API_URL.replace('/api', '')}${slide.imageMobile}`;
+            setPreviewMobileUrl(normalizedMobileImage);
+        } else {
+            setPreviewMobileUrl('');
+        }
+
         setIsEditing(true);
     };
 
@@ -219,8 +254,17 @@ export default function HeroSectionPage() {
             }));
         }
 
+        // Desktop image
         if (imageFile) data.append('image', imageFile);
         if (isEditing && currentSlide?.image) data.append('existingImage', currentSlide.image);
+
+        // Mobile image
+        if (imageMobileFile) data.append('imageMobile', imageMobileFile);
+        if (isEditing && currentSlide?.imageMobile) data.append('existingImageMobile', currentSlide.imageMobile);
+        // Flag to remove mobile image if it was cleared
+        if (isEditing && currentSlide?.imageMobile && !previewMobileUrl && !imageMobileFile) {
+            data.append('removeMobileImage', 'true');
+        }
 
         try {
             const result = isEditing && currentSlide
@@ -386,7 +430,6 @@ export default function HeroSectionPage() {
                                                 <input type="text" name="textColor" value={formData.textColor} onChange={handleInputChange}
                                                     className="flex-1 p-2 border border-border bg-background rounded-lg text-sm font-mono"
                                                     placeholder="#ffffff" />
-                                                {/* Live preview swatch */}
                                                 <div className="w-10 h-10 rounded border border-border flex items-center justify-center text-xs font-bold"
                                                     style={{ background: '#1a1a1a', color: formData.textColor }}>
                                                     Aa
@@ -427,7 +470,7 @@ export default function HeroSectionPage() {
                                             </div>
                                         </div>
 
-                                        {/* Button Text Color — only relevant for filled */}
+                                        {/* Button Text Color */}
                                         {formData.buttonStyle === 'filled' && (
                                             <div>
                                                 <label className="block text-sm font-medium mb-1">Button Text Color</label>
@@ -459,22 +502,108 @@ export default function HeroSectionPage() {
 
                             {/* ── RIGHT COLUMN ── */}
                             <div className="space-y-4">
-                                {/* Image Upload */}
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Background Image</label>
-                                    <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary transition-colors">
-                                        <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" id="image-upload" />
-                                        <label htmlFor="image-upload" className="cursor-pointer flex flex-col items-center">
-                                            {previewUrl ? (
-                                                <div className="relative w-full h-48 mb-2">
-                                                    <Image src={previewUrl} alt="Preview" fill className="object-cover rounded-lg" />
-                                                </div>
-                                            ) : (
-                                                <FaImage className="w-12 h-12 text-muted-foreground mb-2" />
-                                            )}
-                                            <span className="text-sm text-muted-foreground">Click to upload image</span>
+
+                                {/* ── IMAGE UPLOADS SECTION ── */}
+                                <div className="border rounded-xl p-4 space-y-4 bg-muted/30">
+                                    <h4 className="font-medium flex items-center gap-2">
+                                        <FaImage className="text-muted-foreground" /> Background Images
+                                    </h4>
+
+                                    {/* Desktop Image */}
+                                    <div>
+                                        <label className="flex items-center gap-2 text-sm font-medium mb-2">
+                                            <FaDesktop size={13} className="text-muted-foreground" />
+                                            Desktop Image
+                                            <span className="text-xs text-muted-foreground font-normal">(recommended: 1920×1080)</span>
                                         </label>
+                                        <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary transition-colors">
+                                            <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" id="image-upload" />
+                                            <label htmlFor="image-upload" className="cursor-pointer flex flex-col items-center">
+                                                {previewUrl ? (
+                                                    <div className="relative w-full h-40 mb-2">
+                                                        <Image src={previewUrl} alt="Desktop Preview" fill className="object-cover rounded-lg" />
+                                                    </div>
+                                                ) : (
+                                                    <FaDesktop className="w-10 h-10 text-muted-foreground mb-2" />
+                                                )}
+                                                <span className="text-sm text-muted-foreground">
+                                                    {previewUrl ? 'Click to replace' : 'Click to upload desktop image'}
+                                                </span>
+                                            </label>
+                                        </div>
                                     </div>
+
+                                    {/* Divider */}
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1 border-t border-border" />
+                                        <span className="text-xs text-muted-foreground uppercase tracking-widest">Mobile</span>
+                                        <div className="flex-1 border-t border-border" />
+                                    </div>
+
+                                    {/* Mobile Image */}
+                                    <div>
+                                        <label className="flex items-center gap-2 text-sm font-medium mb-1">
+                                            <FaMobileAlt size={13} className="text-muted-foreground" />
+                                            Mobile Image
+                                            <span className="text-xs text-muted-foreground font-normal">(recommended: 750×1334)</span>
+                                        </label>
+                                        <p className="text-xs text-muted-foreground mb-2">
+                                            If not set, the desktop image will be used on mobile.
+                                        </p>
+                                        <div className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+                                            previewMobileUrl ? 'border-primary/60' : 'border-border hover:border-primary'
+                                        }`}>
+                                            <input type="file" accept="image/*" onChange={handleMobileImageChange} className="hidden" id="image-mobile-upload" />
+                                            <label htmlFor="image-mobile-upload" className="cursor-pointer flex flex-col items-center">
+                                                {previewMobileUrl ? (
+                                                    <div className="relative mx-auto mb-2" style={{ width: 80, height: 140 }}>
+                                                        <Image src={previewMobileUrl} alt="Mobile Preview" fill className="object-cover rounded-lg" />
+                                                    </div>
+                                                ) : (
+                                                    <FaMobileAlt className="w-8 h-12 text-muted-foreground mb-2" />
+                                                )}
+                                                <span className="text-sm text-muted-foreground">
+                                                    {previewMobileUrl ? 'Click to replace' : 'Click to upload mobile image'}
+                                                </span>
+                                            </label>
+                                        </div>
+
+                                        {/* Remove mobile image button */}
+                                        {previewMobileUrl && (
+                                            <button
+                                                type="button"
+                                                onClick={removeMobileImage}
+                                                className="mt-2 flex items-center gap-1.5 text-xs text-destructive hover:text-destructive/80 transition-colors"
+                                            >
+                                                <FaTimes size={10} /> Remove mobile image
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Side-by-side preview */}
+                                    {previewUrl && previewMobileUrl && (
+                                        <div className="border-t pt-3">
+                                            <p className="text-xs text-muted-foreground mb-2 font-medium">Preview comparison</p>
+                                            <div className="flex gap-3 items-end">
+                                                <div className="flex-1">
+                                                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                                        <FaDesktop size={10} /> Desktop
+                                                    </p>
+                                                    <div className="relative w-full h-24 rounded overflow-hidden">
+                                                        <Image src={previewUrl} alt="Desktop" fill className="object-cover" />
+                                                    </div>
+                                                </div>
+                                                <div style={{ width: 56 }}>
+                                                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                                        <FaMobileAlt size={10} /> Mobile
+                                                    </p>
+                                                    <div className="relative rounded overflow-hidden" style={{ width: 56, height: 96 }}>
+                                                        <Image src={previewMobileUrl} alt="Mobile" fill className="object-cover" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Gradient */}
@@ -561,7 +690,6 @@ export default function HeroSectionPage() {
                                     <p className="text-sm truncate" style={{ color: slide.textColor ? `${slide.textColor}99` : 'rgba(255,255,255,0.7)' }}>
                                         {slide.subtitle}
                                     </p>
-                                    {/* Button style preview badge */}
                                     <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded"
                                         style={{
                                             background: slide.buttonStyle === 'filled' ? slide.buttonColor || '#fff' : 'transparent',
@@ -571,6 +699,14 @@ export default function HeroSectionPage() {
                                         {slide.primaryCTA?.text || 'Shop Now'}
                                     </span>
                                 </div>
+                                {/* Mobile image badge */}
+                                {slide.imageMobile && (
+                                    <div className="absolute top-2 left-2">
+                                        <span className="flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">
+                                            <FaMobileAlt size={9} /> Mobile img
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => handleEdit(slide)}
                                         className="p-2 bg-card/90 text-card-foreground rounded-full hover:bg-card hover:text-primary transition-colors">
@@ -589,10 +725,15 @@ export default function HeroSectionPage() {
                                     </span>
                                     <span className="text-xs text-muted-foreground">Order: {slide.order}</span>
                                 </div>
-                                <div className="flex gap-2 text-xs text-muted-foreground mb-2">
+                                <div className="flex gap-2 text-xs text-muted-foreground mb-2 flex-wrap">
                                     <span className="px-2 py-0.5 bg-muted rounded">{slide.templateType || 'center'}</span>
                                     <span className="px-2 py-0.5 bg-muted rounded">{slide.showOn || 'all'}</span>
                                     <span className="px-2 py-0.5 bg-muted rounded capitalize">{slide.buttonStyle || 'filled'} btn</span>
+                                    {slide.imageMobile && (
+                                        <span className="px-2 py-0.5 bg-blue-500/10 text-blue-600 rounded flex items-center gap-1">
+                                            <FaMobileAlt size={9} /> custom img
+                                        </span>
+                                    )}
                                 </div>
                                 {(slide.startDate || slide.endDate) && (
                                     <div className="text-xs text-muted-foreground mb-2">

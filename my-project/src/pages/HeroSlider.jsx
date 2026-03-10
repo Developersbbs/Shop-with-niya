@@ -6,48 +6,63 @@ import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/effect-fade";
 
-const slides = [
-  {
-    imgDesktop: "/images/slider2.png",
-    imgMobile: "/images/slider2-mobile.png",
-    tag: "Summer Collection",
-    heading: "Explore",
-    subheading: "Now",
-    description: "Discover our latest summer collection",
-    buttonText: "Shop Now",
-    buttonLink: "/products",
-    accent: "#f59e0b",
-  },
-  {
-    imgDesktop: "/images/slider5.png",
-    imgMobile: "/images/slider5-mobile.png",
-    tag: "Trending",
-    heading: "New",
-    subheading: "Arrivals",
-    description: "Check out what's trending this season",
-    buttonText: "Explore More",
-    buttonLink: "/products",
-    accent: "#d4a853",
-  },
-  {
-    imgDesktop: "/images/slider3.png",
-    imgMobile: "/images/slider3-mobile.png",
-    tag: "Limited Time",
-    heading: "Limited",
-    subheading: "Offer",
-    description: "Grab your favorites before they run out",
-    buttonText: "Shop Deals",
-    buttonLink: "/products",
-    accent: "#ef4444",
-  },
-];
+interface HeroSlide {
+  _id: string;
+  title: string;
+  subtitle?: string;
+  description?: string;
+  image: string;
+  imageMobile?: string;
+  primaryCTA?: { text: string; link: string };
+  secondaryCTA?: { text: string; link: string };
+  gradient?: string;
+  textColor?: string;
+  buttonStyle?: "filled" | "outline" | "ghost";
+  buttonColor?: string;
+  buttonTextColor?: string;
+  templateType?: string;
+  order: number;
+  isActive: boolean;
+}
 
 const SLIDE_DELAY = 5000;
 
 export default function HeroSlider() {
+  const [slides, setSlides] = useState<HeroSlide[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [animKey, setAnimKey] = useState(0);
-  const progressRef = useRef(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const API_URL = baseUrl.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
+
+  // Helper: resolve image URL (handles relative & absolute paths)
+  const resolveUrl = (path?: string) => {
+    if (!path) return "";
+    return path.startsWith("http") ? path : `${API_URL.replace("/api", "")}${path}`;
+  };
+
+  useEffect(() => {
+    const fetchSlides = async () => {
+      try {
+        const res = await fetch(`${API_URL}/hero-section`);
+        const data = await res.json();
+        if (data.success) {
+          // Only active slides, sorted by order
+          const active = (data.data as HeroSlide[])
+            .filter((s) => s.isActive)
+            .sort((a, b) => a.order - b.order);
+          setSlides(active);
+        }
+      } catch (err) {
+        console.error("Failed to load hero slides:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSlides();
+  }, [API_URL]);
 
   useEffect(() => {
     if (!progressRef.current) return;
@@ -56,7 +71,18 @@ export default function HeroSlider() {
     progressRef.current.style.animation = `progressFill ${SLIDE_DELAY}ms linear forwards`;
   }, [activeIndex]);
 
-  const current = slides[activeIndex];
+  if (loading) {
+    return (
+      <div className="relative w-full h-screen bg-black flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (slides.length === 0) return null;
+
+  const current = slides[activeIndex] || slides[0];
+  const accent = current.buttonColor || "#f59e0b";
 
   return (
     <>
@@ -68,7 +94,6 @@ export default function HeroSlider() {
         .swiper-slide-active .kb-img {
           transform: scale(1);
         }
-
         .slide-overlay {
           background: linear-gradient(
             105deg,
@@ -77,32 +102,22 @@ export default function HeroSlider() {
             rgba(5, 20, 15, 0.65) 100%
           );
         }
-
         .slide-vignette {
           background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 40%);
         }
-
         @keyframes progressFill {
           from { width: 0%; }
           to   { width: 100%; }
         }
-
-        .hero-swiper .swiper-pagination {
-          bottom: 24px;
-        }
+        .hero-swiper .swiper-pagination { bottom: 24px; }
         .hero-swiper .swiper-pagination-bullet {
-          width: 6px;
-          height: 6px;
+          width: 6px; height: 6px;
           background: rgba(255,255,255,0.35);
-          opacity: 1;
-          transition: all 0.3s ease;
+          opacity: 1; transition: all 0.3s ease;
         }
         .hero-swiper .swiper-pagination-bullet-active {
-          width: 24px;
-          border-radius: 3px;
-          background: white;
+          width: 24px; border-radius: 3px; background: white;
         }
-
         .btn-shine { position: relative; overflow: hidden; }
         .btn-shine::after {
           content: '';
@@ -112,16 +127,12 @@ export default function HeroSlider() {
           transition: left 0.5s ease;
         }
         .btn-shine:hover::after { left: 150%; }
-
         @keyframes floatDot {
           0%, 100% { transform: translateY(0); }
           50%       { transform: translateY(-6px); }
         }
         .float-dot { animation: floatDot 2.5s ease-in-out infinite; }
-
-        .slide-indicator {
-          transition: height 0.3s ease, background 0.3s ease;
-        }
+        .slide-indicator { transition: height 0.3s ease, background 0.3s ease; }
       `}</style>
 
       <div className="relative w-full h-screen overflow-hidden">
@@ -135,19 +146,24 @@ export default function HeroSlider() {
           pagination={{ clickable: true }}
           onSlideChange={(s) => {
             setActiveIndex(s.realIndex);
-            setAnimKey(k => k + 1);
+            setAnimKey((k) => k + 1);
           }}
           className="h-full hero-swiper"
         >
           {slides.map((slide, i) => (
-            <SwiperSlide key={i} className="relative overflow-hidden">
-              
-              {/* ✅ Updated Image Logic (Mobile + Desktop) */}
+            <SwiperSlide key={slide._id || i} className="relative overflow-hidden">
+
+              {/* ── Responsive image: mobile uses imageMobile if set ── */}
               <picture>
-                <source media="(max-width: 768px)" srcSet={slide.imgMobile} />
+                {slide.imageMobile && (
+                  <source
+                    media="(max-width: 768px)"
+                    srcSet={resolveUrl(slide.imageMobile)}
+                  />
+                )}
                 <img
-                  src={slide.imgDesktop}
-                  alt={slide.heading}
+                  src={resolveUrl(slide.image)}
+                  alt={slide.title}
                   className="kb-img absolute inset-0 w-full h-full object-cover object-top md:object-center"
                 />
               </picture>
@@ -158,16 +174,14 @@ export default function HeroSlider() {
           ))}
         </Swiper>
 
-        {/* REST OF YOUR CODE REMAINS EXACTLY SAME */}
-
         {/* ── Animated text overlay ── */}
         <div
           key={animKey}
           className="absolute inset-0 z-10 pointer-events-none
-           flex flex-col justify-center items-end
-           px-10 md:px-16 lg:px-24 pb-16 md:pb-0"
+                     flex flex-col justify-center items-end
+                     px-10 md:px-16 lg:px-24 pb-16 md:pb-0"
         >
-          <div className="flex flex-col items-start" style={{ maxWidth: "520px", marginRight: '9vw' }}>
+          <div className="flex flex-col items-start" style={{ maxWidth: "520px", marginRight: "9vw" }}>
 
             {/* Tag */}
             <div
@@ -178,18 +192,17 @@ export default function HeroSlider() {
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full
                            text-[11px] font-bold uppercase tracking-[0.15em]"
                 style={{
-                  color: current.accent,
-                  background: `${current.accent}25`,
-                  border: `1px solid ${current.accent}60`,
+                  color: accent,
+                  background: `${accent}25`,
+                  border: `1px solid ${accent}60`,
                 }}
               >
-                <span className="float-dot w-1.5 h-1.5 rounded-full"
-                      style={{ background: current.accent }} />
-                {current.tag}
+                <span className="float-dot w-1.5 h-1.5 rounded-full" style={{ background: accent }} />
+                {current.subtitle || current.title}
               </span>
             </div>
 
-            {/* Heading word 1 */}
+            {/* Heading */}
             <div className="overflow-hidden">
               <h1
                 className="animate-slide-in-left font-black text-white leading-[0.95] tracking-tight"
@@ -197,94 +210,90 @@ export default function HeroSlider() {
                   fontSize: "clamp(3.5rem, 8vw, 6rem)",
                   animationDelay: "0.2s",
                   animationFillMode: "both",
+                  color: current.textColor || "#ffffff",
                   textShadow: "0 2px 20px rgba(0,0,0,0.5)",
                 }}
               >
-                {current.heading}
+                {current.title}
               </h1>
             </div>
 
-            {/* Heading word 2 — accent colored */}
-            <div className="overflow-hidden mb-6">
-              <h1
-                className="animate-slide-in-right font-black leading-[0.95] tracking-tight"
-                style={{
-                  fontSize: "clamp(3.5rem, 8vw, 6rem)",
-                  color: current.accent,
-                  animationDelay: "0.35s",
-                  animationFillMode: "both",
-                  textShadow: `0 2px 24px ${current.accent}70`,
-                  filter: "brightness(1.25)",
-                }}
-              >
-                {current.subheading}
-              </h1>
-            </div>
-
-            {/* Divider line */}
+            {/* Divider */}
             <div
-              className="animate-zoom-in h-0.5 w-14 mb-5 rounded-full"
+              className="animate-zoom-in h-0.5 w-14 mb-5 mt-4 rounded-full"
               style={{
-                background: `linear-gradient(to right, ${current.accent}, transparent)`,
+                background: `linear-gradient(to right, ${accent}, transparent)`,
                 animationDelay: "0.45s",
                 animationFillMode: "both",
               }}
             />
 
             {/* Description */}
-            <p
-              className="animate-fade-up text-white/90 mb-8 leading-relaxed"
-              style={{
-                fontSize: "clamp(0.9rem, 1.5vw, 1.05rem)",
-                animationDelay: "0.55s",
-                animationFillMode: "both",
-                textShadow: "0 1px 10px rgba(0,0,0,0.6)",
-              }}
-            >
-              {current.description}
-            </p>
+            {current.description && (
+              <p
+                className="animate-fade-up text-white/90 mb-8 leading-relaxed"
+                style={{
+                  fontSize: "clamp(0.9rem, 1.5vw, 1.05rem)",
+                  animationDelay: "0.55s",
+                  animationFillMode: "both",
+                  textShadow: "0 1px 10px rgba(0,0,0,0.6)",
+                }}
+              >
+                {current.description}
+              </p>
+            )}
 
             {/* Buttons */}
             <div
               className="animate-fade-up flex flex-wrap items-center gap-4 pointer-events-auto"
               style={{ animationDelay: "0.7s", animationFillMode: "both" }}
             >
-              {/* Primary */}
-              
-              <a  href={current.buttonLink}
-                className="btn-shine group inline-flex items-center gap-2.5
-                           px-6 py-3 rounded-full font-semibold text-sm text-white
-                           transition-all duration-300 hover:scale-105 active:scale-95"
-                style={{
-                  background: current.accent,
-                  boxShadow: `0 6px 24px ${current.accent}55`,
-                }}
-              >
-                {current.buttonText}
-                <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center
-                                 group-hover:bg-white/30 transition-colors">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
-                          d="M13 7l5 5-5 5M6 12h12" />
-                  </svg>
-                </span>
-              </a>
+              {/* Primary CTA */}
+              {current.primaryCTA && (
+                <a
+                  href={current.primaryCTA.link}
+                  className="btn-shine group inline-flex items-center gap-2.5
+                             px-6 py-3 rounded-full font-semibold text-sm
+                             transition-all duration-300 hover:scale-105 active:scale-95"
+                  style={{
+                    background: current.buttonStyle === "outline" ? "transparent"
+                      : current.buttonStyle === "ghost" ? "rgba(0,0,0,0.08)"
+                      : accent,
+                    color: current.buttonStyle === "filled"
+                      ? current.buttonTextColor || "#000"
+                      : accent,
+                    border: `2px solid ${accent}`,
+                    boxShadow: current.buttonStyle === "filled" ? `0 6px 24px ${accent}55` : "none",
+                  }}
+                >
+                  {current.primaryCTA.text}
+                  <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center
+                                   group-hover:bg-white/30 transition-colors">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                            d="M13 7l5 5-5 5M6 12h12" />
+                    </svg>
+                  </span>
+                </a>
+              )}
 
-              {/* Ghost secondary */}
-              
-              <a  href="/products"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full
-                           text-sm font-medium text-white hover:text-white
-                           border border-white/25 hover:border-white/50
-                           backdrop-blur-sm bg-white/8 hover:bg-white/15
-                           transition-all duration-300"
-              >
-                Browse all
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </a>
+              {/* Secondary CTA */}
+              {current.secondaryCTA && (
+                <a
+                  href={current.secondaryCTA.link}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full
+                             text-sm font-medium text-white hover:text-white
+                             border border-white/25 hover:border-white/50
+                             backdrop-blur-sm bg-white/8 hover:bg-white/15
+                             transition-all duration-300"
+                >
+                  {current.secondaryCTA.text}
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </a>
+              )}
             </div>
 
           </div>
@@ -300,20 +309,18 @@ export default function HeroSlider() {
               style={{
                 width: "3px",
                 height: i === activeIndex ? "32px" : "8px",
-                background: i === activeIndex
-                  ? current.accent
-                  : "rgba(255,255,255,0.25)",
+                background: i === activeIndex ? accent : "rgba(255,255,255,0.25)",
               }}
             />
           ))}
         </div>
 
-        {/* ── Progress bar — very bottom ── */}
+        {/* ── Progress bar ── */}
         <div className="absolute bottom-0 left-0 right-0 z-20 h-[2px] bg-white/10">
           <div
             ref={progressRef}
             className="h-full rounded-full"
-            style={{ background: current.accent }}
+            style={{ background: accent }}
           />
         </div>
       </div>
