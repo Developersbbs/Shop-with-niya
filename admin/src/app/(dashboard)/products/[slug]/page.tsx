@@ -5,31 +5,26 @@ import { fetchProductDetails } from "@/services/products";
 import ProductDetailsClient from "./_components/ProductDetailsClient";
 
 type PageParams = {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
-export async function generateMetadata({
-  params: { slug },
-}: PageParams): Promise<Metadata> {
+export async function generateMetadata({ params }: PageParams): Promise<Metadata> {
   try {
-    const { product } = await fetchProductDetails({
-      slug,
-    });
-
+    const { slug } = await params;
+    const { product } = await fetchProductDetails({ slug });
     return { title: product.name };
   } catch (e) {
     return { title: "Product not found" };
   }
 }
 
-export default async function ProductDetails({ params: { slug } }: PageParams) {
+export default async function ProductDetails({ params }: PageParams) {
   try {
+    const { slug } = await params;
     console.log('🔍 SSR: Fetching product details for slug:', slug);
-    const { product } = await fetchProductDetails({
-      slug,
-    });
+    const { product } = await fetchProductDetails({ slug });
     console.log('✅ SSR: Product details fetched successfully');
     console.log('✅ SSR: Product data:', product.name);
 

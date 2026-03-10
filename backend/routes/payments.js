@@ -81,9 +81,12 @@ router.post("/create-order", authenticateHybridToken, async (req, res) => {
 
     console.log("✅ PAYMENT DEBUG: Validation passed");
 
-    // Calculate totals
+    // ✅ FIX: Tax calculation matches CheckoutPage.jsx exactly.
+    // CheckoutPage: taxTotal = items.reduce((sum, item) => item.price * (item.taxRate || 0))
+    // That is tax on single unit price only (NOT × quantity) — matching frontend.
+    // items sent from CheckoutPage have: { unit_price, quantity, taxRate }
     const subtotal = items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
-    const tax = subtotal * 0.1; // 10% tax
+    const tax = items.reduce((sum, item) => sum + (item.unit_price * (item.taxRate || 0)), 0);
     const total_amount = subtotal + shipping_cost + tax;
 
     console.log("🔍 PAYMENT DEBUG: Calculated totals:");

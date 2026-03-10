@@ -45,8 +45,8 @@ app.use((req, res, next) => {
 });
 
 // JSON and URL-encoded body parsing
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '200mb', extended: true }));
 
 // Configure body parsing to skip multipart/form-data
 app.use((req, res, next) => {
@@ -141,7 +141,11 @@ connectDB();
 
 // Start server
 const PORT = process.env.PORT || 5000;
+
+
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌐 API URL: http://localhost:${PORT}`);
 });
+
+server.setTimeout(300000); 

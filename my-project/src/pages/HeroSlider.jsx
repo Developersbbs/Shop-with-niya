@@ -32,16 +32,22 @@ export default function HeroSlider() {
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [animKey, setAnimKey] = useState(0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const progressRef = useRef<HTMLDivElement>(null);
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
   const API_URL = baseUrl.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
 
-  // Helper: resolve image URL (handles relative & absolute paths)
   const resolveUrl = (path?: string) => {
     if (!path) return "";
     return path.startsWith("http") ? path : `${API_URL.replace("/api", "")}${path}`;
   };
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const fetchSlides = async () => {
@@ -49,7 +55,6 @@ export default function HeroSlider() {
         const res = await fetch(`${API_URL}/hero-section`);
         const data = await res.json();
         if (data.success) {
-          // Only active slides, sorted by order
           const active = (data.data as HeroSlide[])
             .filter((s) => s.isActive)
             .sort((a, b) => a.order - b.order);
@@ -153,20 +158,11 @@ export default function HeroSlider() {
           {slides.map((slide, i) => (
             <SwiperSlide key={slide._id || i} className="relative overflow-hidden">
 
-              {/* ── Responsive image: mobile uses imageMobile if set ── */}
-              <picture>
-                {slide.imageMobile && (
-                  <source
-                    media="(max-width: 768px)"
-                    srcSet={resolveUrl(slide.imageMobile)}
-                  />
-                )}
-                <img
-                  src={resolveUrl(slide.image)}
-                  alt={slide.title}
-                  className="kb-img absolute inset-0 w-full h-full object-cover object-top md:object-center"
-                />
-              </picture>
+              <img
+                src={slide.imageMobile && isMobile ? resolveUrl(slide.imageMobile) : resolveUrl(slide.image)}
+                alt={slide.title}
+                className="kb-img absolute inset-0 w-full h-full object-cover object-top"
+              />
 
               <div className="slide-overlay absolute inset-0" />
               <div className="slide-vignette absolute inset-0" />
@@ -248,7 +244,6 @@ export default function HeroSlider() {
               className="animate-fade-up flex flex-wrap items-center gap-4 pointer-events-auto"
               style={{ animationDelay: "0.7s", animationFillMode: "both" }}
             >
-              {/* Primary CTA */}
               {current.primaryCTA && (
                 <a
                   href={current.primaryCTA.link}
@@ -277,7 +272,6 @@ export default function HeroSlider() {
                 </a>
               )}
 
-              {/* Secondary CTA */}
               {current.secondaryCTA && (
                 <a
                   href={current.secondaryCTA.link}

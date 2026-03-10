@@ -102,30 +102,13 @@ const CheckoutPage = () => {
   };
 
   // ✅ Exactly matches CartPage:
-  // subtotal = price × quantity for all items
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-  // ✅ Flat ₹50 shipping always (no free shipping threshold)
   const shipping = subtotal > 0 ? 50 : 0;
-
-  // ✅ Tax = item.price × item.taxRate (on single unit price only, NOT × quantity)
-  // Same formula as CartPage: const taxAmount = item.price * (item.taxRate || 0)
-  const taxTotal = cartItems.reduce((sum, item) => {
-    const taxAmount = item.price * (item.taxRate || 0); // tax on single unit price only
-    return sum + taxAmount;
-  }, 0);
-
+  // ✅ Tax = item.price × item.taxRate (single unit only, NOT × quantity)
+  const taxTotal = cartItems.reduce((sum, item) => sum + (item.price * (item.taxRate || 0)), 0);
   const total = subtotal + shipping + taxTotal;
 
-  // ✅ Dynamic tax label from per-item taxRate
-  const getTaxLabel = () => {
-    const rates = [...new Set(
-      cartItems.map(item => Math.round((item.taxRate || 0) * 100)).filter(r => r > 0)
-    )];
-    // if (rates.length === 0) return 'Tax';
-    // if (rates.length === 1) return `Tax (${rates[0]}%)`;
-    return 'Tax';
-  };
+  const getTaxLabel = () => 'Tax';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -163,17 +146,31 @@ const CheckoutPage = () => {
           unit_price: item.price
         })),
         shipping_cost: shipping,
+        // ✅ FIX: Send taxTotal to backend so Razorpay charges exactly what
+        //         the user sees on screen. Without this, amounts would not match.
+        tax_amount: taxTotal,
         coupon_id: null
       };
+
       if (formData.paymentMethod === 'razorpay') {
         await paymentService.initializeRazorpayPayment(orderData,
-          (result) => { clearCart(true); setOrderDetails(result.order); setOrderPlaced(true); setTimeout(() => navigate('/my-orders'), 3000); },
-          (err) => console.error('Payment failed:', err)
+          (result) => {
+            clearCart(true);
+            setOrderDetails(result.order);
+            setOrderPlaced(true);
+            setTimeout(() => navigate('/my-orders'), 3000);
+          },
+          (err) => {
+            console.error('Payment failed:', err);
+            setLoading(false);
+          }
         );
       } else {
         const response = await orderService.placeOrder(orderData);
         if (response.success) {
-          clearCart(true); setOrderDetails(response.order); setOrderPlaced(true);
+          clearCart(true);
+          setOrderDetails(response.order);
+          setOrderPlaced(true);
           toast.success('Order placed!');
           setTimeout(() => navigate('/my-orders'), 3000);
         } else throw new Error(response.message || 'Failed to place order');
@@ -183,7 +180,7 @@ const CheckoutPage = () => {
     } finally { setLoading(false); }
   };
 
-  // ── Order Confirmed ────────────────────────────────────────────────────────
+  // ── Order Confirmed screen ─────────────────────────────────────────────────
   if (orderPlaced && orderDetails) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 bg-[#faf8f5]">
@@ -204,7 +201,7 @@ const CheckoutPage = () => {
               {orderDetails.invoice_no}
             </p>
             <p className="text-sm text-[#1a3c2e]/60 mt-1">
-              Total: <span className="font-semibold text-[#1a3c2e]">{formatCurrency(orderDetails.total)}</span>
+              Total: <span className="font-semibold text-[#1a3c2e]">{formatCurrency(orderDetails.total || orderDetails.total_amount)}</span>
             </p>
             <div className="flex items-center gap-2 mt-3">
               {orderDetails.payment_method === 'razorpay'
@@ -454,8 +451,6 @@ const CheckoutPage = () => {
             {/* ── RIGHT — Order Summary ── */}
             <div className="lg:w-1/3 mt-8 lg:mt-0 sticky top-6">
               <div className="bg-white border border-[#1a3c2e]/10 p-6">
-
-                {/* Header */}
                 <div className="flex items-center gap-3 mb-6">
                   <p className="text-[#1a3c2e]"
                     style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '20px', fontWeight: 700 }}>
@@ -464,7 +459,6 @@ const CheckoutPage = () => {
                   <div className="h-px flex-1 bg-[#1a3c2e]/10" />
                 </div>
 
-                {/* Item list */}
                 <div className="space-y-4 mb-5 max-h-64 overflow-y-auto">
                   {cartItems.map((item, index) => (
                     <div key={`${item.id}-${index}`} className="flex items-center gap-3">
@@ -488,10 +482,7 @@ const CheckoutPage = () => {
                           </p>
                         )}
                         <p className="text-xs text-[#1a3c2e]/40 mt-0.5">Qty: {item.quantity}</p>
-                        {/* ✅ Show per-item tax rate from taxRate (same field CartPage uses) */}
-               
                       </div>
-                      {/* ✅ Show (price × qty) — subtotal per line */}
                       <p className="text-sm font-semibold text-[#1a3c2e] flex-shrink-0">
                         {formatCurrency(item.price * item.quantity)}
                       </p>
@@ -499,18 +490,15 @@ const CheckoutPage = () => {
                   ))}
                 </div>
 
-                {/* Totals */}
                 <div className="border-t border-[#1a3c2e]/10 pt-4 space-y-2.5 mb-6">
                   <div className="flex justify-between text-sm">
                     <span className="text-[#1a3c2e]/50">Subtotal</span>
                     <span className="text-[#1a3c2e]/70 font-medium">{formatCurrency(subtotal)}</span>
                   </div>
-                  {/* ✅ Flat ₹50 shipping always */}
                   <div className="flex justify-between text-sm">
                     <span className="text-[#1a3c2e]/50">Shipping</span>
                     <span className="text-[#1a3c2e]/70 font-medium">{formatCurrency(shipping)}</span>
                   </div>
-                  {/* ✅ Tax: per-item taxRate on single unit price only */}
                   {taxTotal > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-[#1a3c2e]/50">{getTaxLabel()}</span>
@@ -526,7 +514,6 @@ const CheckoutPage = () => {
                   </div>
                 </div>
 
-                {/* CTA */}
                 <button type="submit" disabled={loading}
                   className="w-full py-4 text-xs tracking-widest uppercase font-medium text-white bg-[#1a3c2e] hover:bg-[#2d5a42] transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                   {loading ? (
@@ -543,7 +530,6 @@ const CheckoutPage = () => {
                   }
                 </button>
 
-                {/* Back to cart */}
                 <div className="mt-4">
                   <Link to="/cart"
                     className="inline-flex items-center gap-2 text-xs tracking-widest uppercase text-[#1a3c2e]/50 hover:text-[#1a3c2e] transition-colors w-full justify-center py-2">
@@ -554,7 +540,6 @@ const CheckoutPage = () => {
                   </Link>
                 </div>
 
-                {/* Trust badges */}
                 <div className="mt-6 pt-5 border-t border-[#1a3c2e]/10 grid grid-cols-3 gap-3 text-center">
                   {[
                     { icon: '🔒', label: 'Secure Payment' },
@@ -568,7 +553,6 @@ const CheckoutPage = () => {
                   ))}
                 </div>
 
-                {/* Terms */}
                 <p className="text-center text-xs text-[#1a3c2e]/30 leading-relaxed mt-4">
                   By placing your order you agree to our{' '}
                   <Link to="/terms" className="underline underline-offset-2 hover:text-[#1a3c2e]/60">Terms</Link>

@@ -19,7 +19,13 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
 });
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: 200 * 1024 * 1024,  // 200MB per file
+    files: 50,                     // max 50 files
+  }
+});
 
 const uploadDigitalFile = upload.any();
 

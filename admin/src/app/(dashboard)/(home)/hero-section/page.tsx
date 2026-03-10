@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Typography from '@/components/ui/typography';
 import { addHeroSection, updateHeroSection, deleteHeroSection } from '@/actions/hero-section';
 
+
 interface HeroSlide {
     _id: string;
     title: string;

@@ -108,7 +108,7 @@ class PaymentService {
         key: config.key_id,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
-        name: 'SBBS E-commerce',
+        name: 'Niya Shop',
         description: `Order #${order.invoice_no}`,
         order_id: razorpayOrder.id,
         handler: async (response) => {
@@ -144,11 +144,22 @@ class PaymentService {
           address: `${orderData.shipping_address.street}, ${orderData.shipping_address.city}, ${orderData.shipping_address.state} ${orderData.shipping_address.zipCode}`
         },
         theme: {
-          color: '#2563eb' // Blue theme
+          color: '#1a3c2e'  // ✅ CHANGED: matches your brand (was '#2563eb')
         },
         modal: {
-          ondismiss: () => {
+          ondismiss: async () => {
             toast.error('Payment cancelled by user', { id: 'razorpay-payment' });
+            // ✅ ADDED: tell backend the order was cancelled so it doesn't stay 'payment_pending'
+            if (order?.invoice_no) {
+              await this.handlePaymentFailure({
+                razorpay_order_id: razorpayOrder.id,
+                order_id: order.invoice_no,
+                error_description: 'User dismissed payment modal'
+              });
+            }
+            if (onFailure) {
+              onFailure(new Error('Payment cancelled'));
+            }
           }
         }
       };
@@ -160,6 +171,21 @@ class PaymentService {
       }
 
       const razorpayInstance = new window.Razorpay(options);
+
+      // ✅ ADDED: handle payment.failed event properly
+      razorpayInstance.on('payment.failed', async (response) => {
+        const desc = response.error?.description || 'Payment failed';
+        toast.error(`Payment failed: ${desc}`, { id: 'razorpay-payment' });
+        await this.handlePaymentFailure({
+          razorpay_order_id: razorpayOrder.id,
+          order_id: order.invoice_no,
+          error_description: desc,
+        });
+        if (onFailure) {
+          onFailure(new Error(desc));
+        }
+      });
+
       razorpayInstance.open();
 
     } catch (error) {
