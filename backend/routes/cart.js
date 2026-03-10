@@ -6,14 +6,20 @@ const Stock = require('../models/Stock');
 const { authenticateToken } = require('../middleware/auth');
 const { authenticateHybridToken } = require('../middleware/hybridAuth');
 
+// ✅ Single populate string used everywhere - includes tax_percentage, product_variants, baseStock
+const PRODUCT_POPULATE_FIELDS = 'name slug selling_price image_url tax_percentage baseStock product_variants.stock product_variants.selling_price product_variants.name product_variants.images product_variants.attributes product_variants.status product_variants.published product_variants._id';
+
 // Get cart for authenticated user
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const customerId = req.user.id;
 
-    let cart = await Cart.findOne({ customer_id: customerId })
-      .populate('items.product_id', 'name slug selling_price variants image_url')
-      .lean();
+let cart = await Cart.findOne({ customer_id: customerId })
+  .populate({
+    path: 'items.product_id',
+    select: 'name slug selling_price image_url tax_percentage baseStock product_variants'
+  })
+  .lean();
 
     if (!cart) {
       cart = new Cart({
@@ -129,7 +135,8 @@ router.post('/', authenticateHybridToken, async (req, res) => {
         product_name: product.name,
         product_image: productImage,
         variant_name: variantName,
-        variant_attributes: variantAttributes
+        variant_attributes: variantAttributes,
+        tax_percentage: product.tax_percentage || 0,  // ✅ save tax from product
       });
     }
 
@@ -141,7 +148,7 @@ router.post('/', authenticateHybridToken, async (req, res) => {
     await cart.save();
 
     const updatedCart = await Cart.findById(cart._id)
-      .populate('items.product_id', 'name slug selling_price variants image_url')
+      .populate('items.product_id', PRODUCT_POPULATE_FIELDS)
       .lean();
 
     res.json({ success: true, message: 'Item added to cart successfully', data: updatedCart });
@@ -197,7 +204,7 @@ router.put('/update/:itemId', authenticateHybridToken, async (req, res) => {
     await cart.save();
 
     const updatedCart = await Cart.findById(cart._id)
-      .populate('items.product_id', 'name slug selling_price variants image_url')
+      .populate('items.product_id', PRODUCT_POPULATE_FIELDS)
       .lean();
 
     res.json({ success: true, message: 'Cart item updated successfully', data: updatedCart });
@@ -232,7 +239,7 @@ router.delete('/remove/:itemId', authenticateHybridToken, async (req, res) => {
     await cart.save();
 
     const updatedCart = await Cart.findById(cart._id)
-      .populate('items.product_id', 'name slug selling_price variants image_url')
+      .populate('items.product_id', PRODUCT_POPULATE_FIELDS)
       .lean();
 
     res.json({ success: true, message: 'Item removed from cart successfully', data: updatedCart });
@@ -312,7 +319,8 @@ router.post('/sync', authenticateHybridToken, async (req, res) => {
           product_name: item.name,
           product_image: item.image,
           variant_name: item.variant ? Object.values(item.variant).join(', ') : null,
-          variant_attributes: item.variant || null
+          variant_attributes: item.variant || null,
+          tax_percentage: item.taxRate ? item.taxRate * 100 : 0  // ✅ save tax on sync too
         });
       }
     }
@@ -320,7 +328,7 @@ router.post('/sync', authenticateHybridToken, async (req, res) => {
     await cart.save();
 
     const updatedCart = await Cart.findById(cart._id)
-      .populate('items.product_id', 'name slug selling_price variants image_url')
+      .populate('items.product_id', PRODUCT_POPULATE_FIELDS)
       .lean();
 
     res.json({ success: true, message: 'Cart synced successfully', data: updatedCart });

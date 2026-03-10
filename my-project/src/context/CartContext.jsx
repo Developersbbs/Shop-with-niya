@@ -74,23 +74,46 @@ const initialState = {
   loading: true
 };
 
-// ✅ Shared helper to safely transform cart items (filters out null product_id)
 const transformCartItems = (items) =>
   items
     .filter(item => item.product_id != null)
     .map(item => {
-      const populatedProduct = item.product_id && typeof item.product_id === 'object' ? item.product_id : null;
+      const populatedProduct = item.product_id && typeof item.product_id === 'object'
+        ? item.product_id
+        : null;
+
+      const matchedVariant = item.variant_id && populatedProduct?.product_variants
+        ? populatedProduct.product_variants.find(
+            v => String(v._id) === String(item.variant_id)
+          )
+        : null;
+
+      // Variant product → read variant stock; Simple product → read baseStock
+      const stock = item.variant_id
+        ? (matchedVariant?.stock ?? 0)
+        : (populatedProduct?.baseStock ?? 0);
+
+      // ✅ FIX 1: variant tax takes priority over product-level tax
+      const taxRate = (
+        matchedVariant?.tax_percentage   // variant tax wins
+        ?? item.tax_percentage           // fallback to stored cart value
+        ?? populatedProduct?.tax_percentage // fallback to product
+        ?? 0
+      ) / 100;
+
       return {
         id: populatedProduct?._id || item.product_id,
         cartItemId: item._id,
         name: item.product_name || populatedProduct?.name || 'Unknown Product',
         price: item.price || populatedProduct?.selling_price || 0,
         quantity: item.quantity || 1,
-        // ✅ FIX: read item.product_image first (set by backend from variant), then fallback to product image
         image: item.product_image || populatedProduct?.image_url?.[0] || null,
         variant: item.variant_attributes || {},
         variant_id: item.variant_id || null,
-        stock: item.stock ?? populatedProduct?.stock ?? 999,
+        stock: stock,
+        taxRate: taxRate,
+        // ✅ also expose tax_percentage for CheckoutPage calculations
+        tax_percentage: taxRate * 100,
         slug: populatedProduct?.slug || null
       };
     });
@@ -112,30 +135,16 @@ export const CartProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    console.log('CartContext: Auth state changed:', {
-      user: user ? user.uid : 'null',
-      authLoading,
-      isAuthenticated
-    });
-
-    if (authLoading) {
-      console.log('CartContext: Auth still loading, waiting...');
-      return;
-    }
+    if (authLoading) return;
 
     if (user && user.uid && isAuthenticated) {
-      console.log('CartContext: User authenticated, scheduling cart load for:', user.uid);
-
       const loadTimer = setTimeout(() => {
         if (user && user.uid && isAuthenticated) {
-          console.log('CartContext: Triggering cart load after debounce');
           handleUserLogin();
         }
       }, 500);
-
       return () => clearTimeout(loadTimer);
     } else {
-      console.log('CartContext: User not authenticated, loading guest cart');
       const guestCart = getGuestCart();
       dispatch({ type: CART_ACTIONS.SET_CART, payload: guestCart });
     }
@@ -143,52 +152,34 @@ export const CartProvider = ({ children }) => {
 
   useEffect(() => {
     const handleAuthUserRestored = () => {
-      console.log('CartContext: Auth user restored event received');
       if (user && user.uid && isAuthenticated) {
-        console.log('CartContext: Triggering cart reload after auth restoration');
         handleUserLogin();
       }
     };
-
     window.addEventListener('auth:user-restored', handleAuthUserRestored);
-    return () => {
-      window.removeEventListener('auth:user-restored', handleAuthUserRestored);
-    };
+    return () => window.removeEventListener('auth:user-restored', handleAuthUserRestored);
   }, [user, isAuthenticated]);
 
   const handleUserLogin = async (retryCount = 0) => {
-    if (!user || !user.uid) {
-      console.log('No valid user found, skipping cart load');
-      return;
-    }
+    if (!user || !user.uid) return;
 
-    console.log('User logged in, loading cart from MongoDB for user:', user.uid, 'retry:', retryCount);
     dispatch({ type: CART_ACTIONS.SET_LOADING, payload: true });
 
     try {
       const guestCart = getGuestCart();
-      console.log('Guest cart items to migrate:', guestCart.length);
-
       const backendCart = await cartAPI.getCart();
 
-      if (backendCart.success && backendCart.data && backendCart.data.items && backendCart.data.items.length > 0) {
-        console.log('Cart loaded from MongoDB:', backendCart.data.items.length, 'items');
+      if (backendCart.success && backendCart.data?.items?.length > 0) {
         const transformedItems = transformCartItems(backendCart.data.items);
         dispatch({ type: CART_ACTIONS.SET_CART, payload: transformedItems });
 
         if (guestCart.length > 0) {
-          console.log('User has existing MongoDB cart AND guest cart - migrating guest items...');
           await migrateGuestCartItems(guestCart);
-        } else {
-          console.log('User has existing MongoDB cart, no guest items to migrate');
         }
       } else {
-        console.log('No cart found in MongoDB for user');
         if (guestCart.length > 0) {
-          console.log('Migrating guest cart items to empty MongoDB cart...');
           await migrateGuestCartItems(guestCart);
         } else {
-          console.log('No guest cart items to migrate, starting with empty cart');
           dispatch({ type: CART_ACTIONS.CLEAR_CART });
         }
       }
@@ -196,9 +187,7 @@ export const CartProvider = ({ children }) => {
       console.error('Error loading cart from MongoDB:', error);
 
       if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-        console.warn('Authentication error loading cart, user may need to re-login');
         if (retryCount === 0) {
-          console.log('Retrying cart load after auth error...');
           setTimeout(() => handleUserLogin(1), 1000);
           return;
         } else {
@@ -206,14 +195,12 @@ export const CartProvider = ({ children }) => {
         }
       } else {
         if (retryCount === 0) {
-          console.log('Retrying cart load after error...');
           setTimeout(() => handleUserLogin(1), 500);
           return;
         } else {
           toast.error('Failed to load cart data');
         }
       }
-
       dispatch({ type: CART_ACTIONS.CLEAR_CART });
     } finally {
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
@@ -222,13 +209,10 @@ export const CartProvider = ({ children }) => {
 
   const migrateGuestCartItems = async (guestCartItems) => {
     try {
-      console.log('Starting guest cart migration:', guestCartItems.length, 'items');
       let migratedCount = 0;
 
       for (const guestItem of guestCartItems) {
         try {
-          console.log('Migrating guest cart item:', guestItem);
-
           const cartItem = {
             product_id: guestItem.id,
             variant_id: guestItem.variant_id || null,
@@ -237,47 +221,27 @@ export const CartProvider = ({ children }) => {
             discounted_price: guestItem.price,
             product_name: guestItem.name,
             product_image: guestItem.image,
-            variant_attributes: guestItem.variant || {}
+            variant_attributes: guestItem.variant || {},
+            tax_percentage: guestItem.taxRate ? guestItem.taxRate * 100 : 0,
+            stock: guestItem.stock ?? 999
           };
 
-          console.log('Sending cart item to backend:', cartItem);
           const response = await cartAPI.addToCart(cartItem);
-          console.log('Backend response for cart migration:', response);
-
-          if (response.success) {
-            migratedCount++;
-            console.log('Successfully migrated guest cart item:', guestItem.name);
-          } else {
-            console.error('Failed to migrate guest cart item - backend error:', guestItem.name, response);
-          }
+          if (response.success) migratedCount++;
         } catch (error) {
-          console.error('Failed to migrate guest cart item - exception:', guestItem.name, error);
+          console.error('Failed to migrate guest cart item:', guestItem.name, error);
         }
       }
 
-      console.log('Guest cart migration completed:', migratedCount, 'of', guestCartItems.length, 'items migrated');
-
       if (migratedCount > 0) {
-        try {
-          console.log('Reloading cart from backend after migration...');
-          const backendCart = await cartAPI.getCart();
-          console.log('Backend cart response after migration:', backendCart);
-
-          if (backendCart.success && backendCart.data && backendCart.data.items) {
-            const transformedItems = transformCartItems(backendCart.data.items);
-            console.log('Setting cart with transformed items:', transformedItems);
-            dispatch({ type: CART_ACTIONS.SET_CART, payload: transformedItems });
-            console.log('Clearing guest cart after successful reload');
-            clearGuestCart();
-          } else {
-            console.error('Failed to reload cart after migration - no items in response');
-          }
-        } catch (error) {
-          console.error('Error reloading cart after migration:', error);
+        const backendCart = await cartAPI.getCart();
+        if (backendCart.success && backendCart.data?.items) {
+          const transformedItems = transformCartItems(backendCart.data.items);
+          dispatch({ type: CART_ACTIONS.SET_CART, payload: transformedItems });
+          clearGuestCart();
         }
         toast.success(`${migratedCount} items moved to your cart`);
       } else {
-        console.log('Clearing guest cart - no items migrated');
         clearGuestCart();
       }
     } catch (error) {
@@ -287,61 +251,42 @@ export const CartProvider = ({ children }) => {
 
   const addToCart = async (product, variant = null, quantity = 1) => {
     try {
-      console.log('CartContext: Adding to cart:', product._id);
-
       if (user && user.uid) {
-        // ✅ FIX 1: Use variant price if available
         const basePrice = variant?.selling_price || product.selling_price || product.price || product.mrp || 1;
         const discountedPrice = variant?.selling_price || product.salePrice || product.selling_price || product.price || product.mrp || basePrice;
 
+        // ✅ FIX 2: use variant tax if available, fallback to product tax
+        const taxPercentage = variant?.tax_percentage ?? product.tax_percentage ?? 0;
+
+        const stock = variant ? (variant.stock ?? 0) : (product.baseStock ?? 0);
+
         const cartItem = {
           product_id: product._id,
-          variant_id: variant?._id || null,  // ✅ FIX 2: Send variant_id to backend
-          quantity: quantity,
+          variant_id: variant?._id || null,
+          quantity,
           price: basePrice,
           discounted_price: discountedPrice,
           product_name: product.name || 'Unknown Product',
-          product_image: (product.image_url && product.image_url[0]) || product.images?.[0]?.url || null,
-          variant_attributes: variant || {}
+          product_image: variant?.images?.[0] || product.image_url?.[0] || null,
+          variant_attributes: variant || {},
+          tax_percentage: taxPercentage,
+          stock
         };
-
-        console.log('CartContext: Sending cart item:', cartItem);
-        console.log('CartContext: Original product data:', {
-          _id: product._id,
-          name: product.name,
-          price: product.price,
-          selling_price: product.selling_price,
-          salePrice: product.salePrice,
-          mrp: product.mrp,
-          variant_selling_price: variant?.selling_price
-        });
 
         if (!cartItem.product_id) throw new Error('Product ID is required');
         if (!cartItem.product_name) throw new Error('Product name is required');
-        if (cartItem.price === undefined || cartItem.price === null) throw new Error('Product price is required');
-        if (cartItem.discounted_price === undefined || cartItem.discounted_price === null) throw new Error('Product discounted price is required');
-        if (cartItem.price <= 0) {
-          console.warn('CartContext: Product has zero or negative price, using fallback value of 1');
-          cartItem.price = 1;
-        }
-        if (cartItem.discounted_price <= 0) {
-          console.warn('CartContext: Product has zero or negative discounted price, using price as fallback');
-          cartItem.discounted_price = cartItem.price;
-        }
+        if (cartItem.price <= 0) cartItem.price = 1;
+        if (cartItem.discounted_price <= 0) cartItem.discounted_price = cartItem.price;
 
         const response = await cartAPI.addToCart(cartItem);
 
-        if (response.success && response.data && response.data.items) {
+        if (response.success && response.data?.items) {
           const backendCartItems = transformCartItems(response.data.items);
           dispatch({ type: CART_ACTIONS.SET_CART, payload: backendCartItems });
-          console.log('CartContext: Item added to MongoDB cart successfully');
         }
       } else {
-        console.log('CartContext: Adding to guest cart for non-authenticated user');
         const updatedGuestCart = addToGuestCart(product, variant, quantity);
         dispatch({ type: CART_ACTIONS.SET_CART, payload: updatedGuestCart });
-        console.log('CartContext: Item added to guest cart successfully');
-
         toast.success('Item added to cart! Sign in to save across devices.', {
           duration: 3000,
           icon: '🛒'
@@ -356,21 +301,21 @@ export const CartProvider = ({ children }) => {
 
   const removeFromCart = async (itemId) => {
     try {
-      console.log('CartContext: Removing from cart:', itemId);
-
       if (user && user.uid) {
         const response = await cartAPI.removeFromCart(itemId);
         if (response.success) {
-          await handleUserLogin();
-          console.log('CartContext: Item removed from MongoDB cart successfully');
+          if (response.data?.items) {
+            const transformedItems = transformCartItems(response.data.items);
+            dispatch({ type: CART_ACTIONS.SET_CART, payload: transformedItems });
+          } else {
+            await handleUserLogin();
+          }
         }
       } else {
-        console.log('CartContext: Removing from guest cart for non-authenticated user');
         const currentItem = state.items.find(item => item.cartItemId === itemId || item.id === itemId);
         if (currentItem) {
           const updatedGuestCart = removeFromGuestCart(currentItem.id, currentItem.variant);
           dispatch({ type: CART_ACTIONS.SET_CART, payload: updatedGuestCart });
-          console.log('CartContext: Item removed from guest cart successfully');
         }
       }
     } catch (error) {
@@ -382,21 +327,21 @@ export const CartProvider = ({ children }) => {
 
   const updateQuantity = async (itemId, quantity) => {
     try {
-      console.log('CartContext: Updating cart item quantity:', itemId, quantity);
-
       if (user && user.uid) {
         const response = await cartAPI.updateCartItem(itemId, quantity);
         if (response.success) {
-          await handleUserLogin();
-          console.log('CartContext: Cart item quantity updated in MongoDB successfully');
+          if (response.data?.items) {
+            const transformedItems = transformCartItems(response.data.items);
+            dispatch({ type: CART_ACTIONS.SET_CART, payload: transformedItems });
+          } else {
+            await handleUserLogin();
+          }
         }
       } else {
-        console.log('CartContext: Updating guest cart quantity for non-authenticated user');
         const currentItem = state.items.find(item => item.cartItemId === itemId || item.id === itemId);
         if (currentItem) {
           const updatedGuestCart = updateGuestCartQuantity(currentItem.id, currentItem.variant, quantity);
           dispatch({ type: CART_ACTIONS.SET_CART, payload: updatedGuestCart });
-          console.log('CartContext: Guest cart quantity updated successfully');
         }
       }
     } catch (error) {
@@ -408,24 +353,18 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = async (forceLocalClear = false) => {
     try {
-      console.log('CartContext: Clearing cart');
-
       if (user && user.uid && !forceLocalClear) {
         const response = await cartAPI.clearCart();
         if (response.success) {
           dispatch({ type: CART_ACTIONS.CLEAR_CART });
-          console.log('CartContext: MongoDB cart cleared successfully');
         }
       } else {
         clearGuestCart();
         dispatch({ type: CART_ACTIONS.CLEAR_CART });
-        console.log('CartContext: Guest cart cleared successfully');
       }
     } catch (error) {
       console.error('CartContext: Error clearing cart:', error);
-
       if (forceLocalClear || error.response?.status === 404 || !error.response) {
-        console.log('CartContext: Forcing local cart clear due to API error');
         clearGuestCart();
         dispatch({ type: CART_ACTIONS.CLEAR_CART });
       } else {
@@ -435,23 +374,20 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const getTotal = () => {
-    return state.items.reduce((total, item) => total + (item.price * item.quantity), 0);
-  };
+  const getTotal = () =>
+    state.items.reduce((total, item) => total + (item.price * item.quantity), 0);
 
-  const getDiscountedTotal = () => {
-    return state.items.reduce((total, item) => {
+  const getDiscountedTotal = () =>
+    state.items.reduce((total, item) => {
       const price = item.discounted_price || item.price;
       return total + (price * item.quantity);
     }, 0);
-  };
 
-  const isInCart = (productId, variantAttributes = {}) => {
-    return state.items.some(item =>
+  const isInCart = (productId, variantAttributes = {}) =>
+    state.items.some(item =>
       item.id === productId &&
       JSON.stringify(item.variant || {}) === JSON.stringify(variantAttributes)
     );
-  };
 
   const getItemQuantity = (productId, variantAttributes = {}) => {
     const item = state.items.find(item =>

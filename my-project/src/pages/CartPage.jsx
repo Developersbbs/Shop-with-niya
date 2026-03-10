@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { ShoppingCartIcon } from '@heroicons/react/24/outline';
@@ -7,24 +7,19 @@ import { formatCurrency } from '../utils/format';
 import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import EmptyState from '../components/common/EmptyState';
 import UnauthenticatedEmptyState from '../components/common/UnauthenticatedEmptyState';
 import toast from 'react-hot-toast';
-
-const defaultImage = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9IiNlZWVlZWUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiNlZWVlZWIiLz4KICA8dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZmlsbD0iIzk5OSI+Tm8gSW1hZ2UgQXZhaWxhYmxlPC90ZXh0Pgo8L3N2Zz4=';
 
 const CartPage = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const {
     items: cartItems,
-    itemCount: cartCount,
     loading,
     updateQuantity,
     removeFromCart,
     clearCart,
     getTotal,
-    isUsingCookies
   } = useCart();
 
   const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -49,10 +44,19 @@ const CartPage = () => {
     }
   };
 
-  const subtotal = getTotal();
-  const shipping = subtotal > 0 ? (subtotal > 500 ? 0 : 50) : 0;
+  const subtotal = getTotal(); // price × quantity for all items
+  const shipping = subtotal > 0 ? 50 : 0; // ✅ flat ₹50 always, removed free shipping logic
   const discount = 0;
-  const total = subtotal + shipping - discount;
+
+  // ✅ Tax applied ONCE per product line regardless of quantity
+  // Formula: item.price * item.taxRate (not multiplied by quantity)
+  // e.g. Kurti ₹500 × qty 3 + ₹50 tax = ₹1550
+  const taxTotal = cartItems.reduce((sum, item) => {
+    const taxAmount = item.price * (item.taxRate || 0); // tax on single unit price only
+    return sum + taxAmount;
+  }, 0);
+
+  const total = subtotal + shipping - discount + taxTotal;
 
   if (loading) {
     return (
@@ -68,7 +72,6 @@ const CartPage = () => {
 
         {/* Page Header */}
         <div className="mb-10">
-          {/* Ornament */}
           <div className="flex items-center gap-3 mb-6">
             <div className="h-px w-10 bg-[#1a3c2e]/30" />
             <span className="text-[#1a3c2e]/40 text-sm">✦</span>
@@ -106,7 +109,6 @@ const CartPage = () => {
             )}
           </div>
 
-          {/* Divider */}
           <div className="flex items-center gap-3 mt-6">
             <div className="h-px flex-1 bg-[#1a3c2e]/10" />
             <span className="text-[#1a3c2e]/20 text-lg">❧</span>
@@ -146,7 +148,6 @@ const CartPage = () => {
             {/* Cart Items */}
             <div className="lg:w-2/3">
               <div className="bg-white border border-[#1a3c2e]/10 overflow-hidden">
-                {/* Table header */}
                 <div className="hidden sm:grid grid-cols-12 px-6 py-3 bg-[#1a3c2e]/5 border-b border-[#1a3c2e]/10">
                   <p className="col-span-6 text-xs tracking-widest uppercase text-[#1a3c2e]/50">Product</p>
                   <p className="col-span-2 text-xs tracking-widest uppercase text-[#1a3c2e]/50 text-center">Qty</p>
@@ -155,7 +156,8 @@ const CartPage = () => {
                 </div>
 
                 {cartItems.map((item, index) => (
-                  <div key={`${item.id}-${item.cartItemId || item._id || index}-${item.variant ? JSON.stringify(item.variant) : 'no-variant'}`}
+                  <div
+                    key={`${item.id}-${item.cartItemId || item._id || index}-${item.variant ? JSON.stringify(item.variant) : 'no-variant'}`}
                     className="border-b border-[#1a3c2e]/8 last:border-b-0"
                   >
                     <CartItem
@@ -168,7 +170,6 @@ const CartPage = () => {
                 ))}
               </div>
 
-              {/* Continue shopping */}
               <div className="mt-5">
                 <Link
                   to="/products"
@@ -185,7 +186,6 @@ const CartPage = () => {
             {/* Order Summary */}
             <div className="lg:w-1/3 mt-8 lg:mt-0 sticky top-6">
               <div className="bg-white border border-[#1a3c2e]/10 p-6">
-                {/* Summary header */}
                 <div className="flex items-center gap-3 mb-6">
                   <p
                     className="text-[#1a3c2e]"
@@ -202,23 +202,13 @@ const CartPage = () => {
                   shipping={shipping}
                   discount={discount}
                   total={total}
+                  taxPercentage={0}       // ✅ per-item taxRate used, not global
                   onCheckout={handleCheckout}
                   loading={isCheckingOut}
                 />
 
-                {/* Shipping note */}
-                {shipping > 0 && (
-                  <p className="mt-4 text-center text-xs text-[#1a3c2e]/40 leading-relaxed">
-                    🌿 Add <span className="text-[#1a3c2e] font-medium">₹{500 - subtotal}</span> more for free shipping
-                  </p>
-                )}
-                {shipping === 0 && subtotal > 0 && (
-                  <p className="mt-4 text-center text-xs text-[#1a3c2e]/50">
-                    🎉 You qualify for free shipping!
-                  </p>
-                )}
+                {/* ✅ Removed free shipping note, flat ₹50 always */}
 
-                {/* Trust badges */}
                 <div className="mt-6 pt-5 border-t border-[#1a3c2e]/10 grid grid-cols-3 gap-3 text-center">
                   {[
                     { icon: '🔒', label: 'Secure Payment' },

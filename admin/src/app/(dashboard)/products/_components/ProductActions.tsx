@@ -1,6 +1,6 @@
 "use client";
 
-import { PenSquare, Trash2, Plus } from "lucide-react";
+import { PenSquare, Trash2, Plus, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,24 +10,26 @@ import { ExportDataButtons } from "@/components/shared/ExportDataButtons";
 
 import ProductFormSheet from "./form/ProductFormSheet";
 import ProductBulkActionSheet from "./form/ProductBulkActionSheet";
+import ProductBulkImportSheet from "./form/ProductBulkImportSheet";
 import { addProduct } from "@/actions/products/addProduct";
 import { editProducts } from "@/actions/products/editProducts";
 import { deleteProducts } from "@/actions/products/deleteProducts";
 import { exportProducts } from "@/actions/products/exportProducts";
+import { importProducts } from "@/actions/products/importProducts";
 import { RowSelectionProps } from "@/types/data-table";
 import { useAuthorization } from "@/hooks/use-authorization";
 
 export default function ProductActions({
   rowSelection,
   setRowSelection,
-  products = [], // Add products data as prop
+  products = [],
 }: RowSelectionProps & { products?: any[] }) {
   const { hasPermission } = useAuthorization();
 
   // Helper function to get actual product IDs from row selection
   const getSelectedProductIds = () => {
     return Object.entries(rowSelection)
-      .filter(([index, isSelected]) => isSelected) // Only get actually selected rows
+      .filter(([_, isSelected]) => isSelected)
       .map(([index]) => {
         const productIndex = parseInt(index);
         return products?.[productIndex]?._id || products?.[productIndex]?.id;
@@ -44,6 +46,8 @@ export default function ProductActions({
           hasPermission("products", "canDelete") ||
           hasPermission("products", "canCreate")) && (
           <div className="flex flex-col sm:flex-row gap-4">
+
+            {/* Bulk Edit */}
             {hasPermission("products", "canEdit") && (
               <ProductBulkActionSheet
                 action={(formData) =>
@@ -65,6 +69,7 @@ export default function ProductActions({
               </ProductBulkActionSheet>
             )}
 
+            {/* Delete */}
             {hasPermission("products", "canDelete") && (
               <ActionAlertDialog
                 title={`Delete ${Object.keys(rowSelection).length} products?`}
@@ -88,6 +93,23 @@ export default function ProductActions({
               </ActionAlertDialog>
             )}
 
+            {/* Import CSV */}
+            {hasPermission("products", "canCreate") && (
+              <ProductBulkImportSheet action={importProducts}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    type="button"
+                    className="sm:flex-grow xl:flex-grow-0"
+                  >
+                    <Upload className="mr-2 size-4" /> Import CSV
+                  </Button>
+                </SheetTrigger>
+              </ProductBulkImportSheet>
+            )}
+
+            {/* Add Product */}
             {hasPermission("products", "canCreate") && (
               <ProductFormSheet
                 title="Add Product"
@@ -107,6 +129,7 @@ export default function ProductActions({
                 </SheetTrigger>
               </ProductFormSheet>
             )}
+
           </div>
         )}
       </div>
