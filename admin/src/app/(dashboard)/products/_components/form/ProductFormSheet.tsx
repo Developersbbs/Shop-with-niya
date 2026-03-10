@@ -384,6 +384,15 @@ export default function ProductFormSheet({
     const currentFormData = form.getValues();
     const finalData = { ...data, ...currentFormData };
 
+    // ✅ FIX: Sanitize tags — split any tag that contains semicolons or commas
+    // (happens when user pastes "tag1; tag2; tag3" as a single string)
+    if (finalData.tags && Array.isArray(finalData.tags)) {
+      finalData.tags = finalData.tags
+        .flatMap((tag: string) =>
+          tag.split(/[;,]/).map((t: string) => t.trim()).filter(Boolean)
+        );
+    }
+
     if (
       finalData.productType === "digital" &&
       (!finalData.productStructure ||

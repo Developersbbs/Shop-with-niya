@@ -257,7 +257,8 @@ router.get("/uploads/:filename", (req, res) => {
   res.sendFile(filePath);
 });
 
-// GET export products as CSV
+// GET export products as CSV - replace the existing /export/csv route in products.js
+
 router.get("/export/csv", async (req, res) => {
   try {
     const products = await Product.find({})
@@ -271,53 +272,194 @@ router.get("/export/csv", async (req, res) => {
 
     const rows = [];
 
-    // Header row
+    // ✅ Full header row — covers all Product model fields
     rows.push([
-      "Product Name", "SKU", "Product Type", "Structure", "Status",
-      "Published", "Category", "Cost Price", "Sale Price", "Tax %",
-      "Stock", "Min Stock", "Tags", "Created At"
+      // Identity
+      "Product Name",
+      "SKU",
+      "Slug",
+      "Description",
+      // Type & Structure
+      "Product Type",
+      "Product Structure",
+      "Product Nature",
+      // Status
+      "Status",
+      "Published",
+      // Category
+      "Category",
+      "Subcategories",
+      // Pricing
+      "Cost Price",
+      "Sale Price",
+      "Tax %",
+      // Stock
+      "Stock",
+      "Min Stock",
+      // Physical attributes
+      "Weight",
+      "Color",
+      // Digital fields
+      "File Path",
+      "File Size (MB)",
+      "Download Format",
+      "License Type",
+      "Download Limit",
+      // SEO
+      "SEO Title",
+      "SEO Description",
+      "SEO Keywords",
+      "SEO Canonical",
+      "SEO Robots",
+      "OG Title",
+      "OG Description",
+      "OG Image",
+      // Ratings
+      "Average Rating",
+      "Total Ratings",
+      "Total Reviews",
+      // Tags
+      "Tags",
+      // Variant-specific (only filled for variant rows)
+      "Variant Name",
+      "Variant SKU",
+      "Variant Slug",
+      "Variant Cost Price",
+      "Variant Sale Price",
+      "Variant Stock",
+      "Variant Min Stock",
+      "Variant Status",
+      "Variant Published",
+      "Variant Attributes",
+      // Timestamps
+      "Created At",
+      "Updated At",
     ].join(","));
 
+    const escape = (val) => {
+      if (val === undefined || val === null) return '""';
+      return `"${String(val).replace(/"/g, '""')}"`;
+    };
+
     for (const product of products) {
-      const categoryName = product.categories?.[0]?.category?.name || "—";
+      const categoryName = product.categories?.[0]?.category?.name || "";
+      const subcategoryNames = product.categories?.[0]?.subcategories?.map(s => s.name).filter(Boolean).join("; ") || "";
       const tags = (product.tags || []).join("; ");
+      const seoKeywords = (product.seo?.keywords || []).join("; ");
+      const createdAt = product.created_at ? new Date(product.created_at).toISOString() : "";
+      const updatedAt = product.updated_at ? new Date(product.updated_at).toISOString() : "";
+
+      // Common fields shared by all rows of this product
+      const baseFields = [
+        escape(product.name),
+        escape(product.sku),
+        escape(product.slug),
+        escape(product.description),
+        escape(product.product_type || "physical"),
+        escape(product.product_structure || "simple"),
+        escape(product.product_nature || "normal"),
+      ];
+
+      const seoFields = [
+        escape(product.seo?.title),
+        escape(product.seo?.description),
+        escape(seoKeywords),
+        escape(product.seo?.canonical),
+        escape(product.seo?.robots || "index,follow"),
+        escape(product.seo?.ogTitle),
+        escape(product.seo?.ogDescription),
+        escape(product.seo?.ogImage),
+      ];
+
+      const ratingFields = [
+        escape(product.averageRating ?? 0),
+        escape(product.totalRatings ?? 0),
+        escape(product.totalReviews ?? 0),
+      ];
 
       if (product.product_structure === "variant" && product.product_variants?.length > 0) {
+        // One row per variant — product-level fields repeated, variant fields filled
         for (const variant of product.product_variants) {
-          rows.push([
-            `"${(product.name || "").replace(/"/g, '""')} - ${(variant.name || "").replace(/"/g, '""')}"`,
-            `"${variant.sku || ""}"`,
-            `"${product.product_type || "physical"}"`,
-            `"variant"`,
-            `"${variant.status || ""}"`,
-            `"${variant.published ? "Yes" : "No"}"`,
-            `"${categoryName}"`,
-            variant.cost_price ?? 0,
-            variant.selling_price ?? 0,
-            product.tax_percentage ?? 0,
+          const attributesStr = variant.attributes
+            ? Object.entries(variant.attributes instanceof Map
+                ? Object.fromEntries(variant.attributes)
+                : variant.attributes)
+                .map(([k, v]) => `${k}:${v}`)
+                .join("; ")
+            : "";
 
-            variant.stock ?? 0,
-            variant.minStock ?? 0,
-            `"${tags}"`,
-            `"${product.created_at ? new Date(product.created_at).toISOString().split("T")[0] : ""}"`
+          rows.push([
+            ...baseFields,
+            escape(""),                          // Status — at variant level
+            escape(""),                          // Published — at variant level
+            escape(categoryName),
+            escape(subcategoryNames),
+            escape(""),                          // Cost Price — at variant level
+            escape(""),                          // Sale Price — at variant level
+            escape(product.tax_percentage ?? 0),
+            escape(""),                          // Stock — at variant level
+            escape(""),                          // Min Stock — at variant level
+            escape(product.weight),
+            escape(product.color),
+            escape(""),                          // Digital fields N/A for physical variants
+            escape(""),
+            escape(""),
+            escape(""),
+            escape(""),
+            ...seoFields,
+            ...ratingFields,
+            escape(tags),
+            // Variant-specific columns
+            escape(variant.name || variant.slug),
+            escape(variant.sku),
+            escape(variant.slug),
+            escape(variant.cost_price),
+            escape(variant.selling_price),
+            escape(variant.stock ?? 0),
+            escape(variant.minStock ?? 0),
+            escape(variant.status || "draft"),
+            escape(variant.published ? "Yes" : "No"),
+            escape(attributesStr),
+            escape(createdAt),
+            escape(updatedAt),
           ].join(","));
         }
       } else {
+        // Simple product — one row, no variant columns
         rows.push([
-          `"${(product.name || "").replace(/"/g, '""')}"`,
-          `"${product.sku || ""}"`,
-          `"${product.product_type || "physical"}"`,
-          `"simple"`,
-          `"${product.status || ""}"`,
-          `"${product.published ? "Yes" : "No"}"`,
-          `"${categoryName}"`,
-          product.cost_price ?? 0,
-          product.selling_price ?? 0,
-          product.tax_percentage ?? 0,
-          product.baseStock ?? 0,
-          product.minStock ?? 0,
-          `"${tags}"`,
-          `"${product.created_at ? new Date(product.created_at).toISOString().split("T")[0] : ""}"`
+          ...baseFields,
+          escape(product.status || "draft"),
+          escape(product.published ? "Yes" : "No"),
+          escape(categoryName),
+          escape(subcategoryNames),
+          escape(product.cost_price ?? ""),
+          escape(product.selling_price ?? ""),
+          escape(product.tax_percentage ?? 0),
+          escape(product.baseStock ?? 0),
+          escape(product.minStock ?? 0),
+          escape(product.weight),
+          escape(product.color),
+          escape(product.file_path),
+          escape(product.file_size),
+          escape(product.download_format),
+          escape(product.license_type),
+          escape(product.download_limit),
+          ...seoFields,
+          ...ratingFields,
+          escape(tags),
+          // Variant columns — empty for simple products
+          escape(""),
+          escape(""),
+          escape(""),
+          escape(""),
+          escape(""),
+          escape(""),
+          escape(""),
+          escape(""),
+          escape(""),
+          escape(""),
+          escape(createdAt),
+          escape(updatedAt),
         ].join(","));
       }
     }
