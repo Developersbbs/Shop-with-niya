@@ -29,7 +29,7 @@ const features = [
       </svg>
     ),
     title: "Inclusive Size Range",
-    desc: "From XS to 5XL, fashion that fits every beautiful body",
+    desc: "From XS to 5XL, fashion that fits every beautiful body.",
   },
   {
     icon: (
@@ -41,13 +41,23 @@ const features = [
     title: "Secure Payments",
     desc: "Shop confidently with 100% encrypted and secure payment gateways.",
   },
+  {
+    icon: (
+      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+              d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    title: "Sustainable Fashion",
+    desc: "Ethically sourced, eco-conscious clothing that looks good and does good for the planet.",
+  },
 ];
 
 const WhyUs = () => {
   const refs = useRef([]);
 
   useEffect(() => {
-    const observers = refs.current.map((el, i) => {
+    const observers = refs.current.map((el) => {
       if (!el) return null;
       const observer = new IntersectionObserver(([entry]) => {
         if (entry.isIntersecting) {
@@ -62,6 +72,36 @@ const WhyUs = () => {
     return () => observers.forEach(o => o?.disconnect());
   }, []);
 
+  const topRow = features.slice(0, 3);
+  const bottomRow = features.slice(3, 5);
+
+  const Card = ({ f, refIndex }) => (
+    <div
+      ref={el => refs.current[refIndex] = el}
+      style={{
+        opacity: 0,
+        transform: 'translateY(40px)',
+        transition: `opacity 0.7s ease ${refIndex * 0.12}s, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${refIndex * 0.12}s`,
+      }}
+      className="group bg-white/5 hover:bg-white/10 border border-white/10
+                 hover:border-yellow-400/40 rounded-2xl p-9
+                 transition-all duration-300 cursor-default h-full min-h-[220px]"
+    >
+      <div className="w-14 h-14 rounded-xl bg-yellow-400/10 group-hover:bg-yellow-400/20
+                      flex items-center justify-center text-yellow-400 mb-5
+                      transition-colors duration-300">
+        {f.icon}
+      </div>
+      <h3
+        className="text-white font-bold text-lg mb-2"
+        style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+      >
+        {f.title}
+      </h3>
+      <p className="text-white/50 text-sm leading-relaxed">{f.desc}</p>
+    </div>
+  );
+
   return (
     <>
       <style>{`
@@ -70,7 +110,6 @@ const WhyUs = () => {
 
       <section className="py-20 bg-[#082B27] relative overflow-hidden">
 
-        {/* Decorative background circles */}
         <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full opacity-5 bg-white" />
         <div className="absolute -bottom-20 -right-20 w-96 h-96 rounded-full opacity-5 bg-white" />
 
@@ -90,36 +129,17 @@ const WhyUs = () => {
             </h2>
           </div>
 
-          {/* Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((f, i) => (
-              <div
-                key={i}
-                ref={el => refs.current[i] = el}
-                style={{
-                  opacity: 0,
-                  transform: 'translateY(40px)',
-                  transition: `opacity 0.7s ease ${i * 0.12}s, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${i * 0.12}s`,
-                }}
-                className="group bg-white/5 hover:bg-white/10 border border-white/10
-                           hover:border-yellow-400/40 rounded-2xl p-7
-                           transition-all duration-300 cursor-default"
-              >
-                {/* Icon */}
-                <div className="w-14 h-14 rounded-xl bg-yellow-400/10 group-hover:bg-yellow-400/20
-                                flex items-center justify-center text-yellow-400 mb-5
-                                transition-colors duration-300">
-                  {f.icon}
-                </div>
+          {/* Top Row — 3 equal cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+            {topRow.map((f, i) => (
+              <Card key={i} f={f} refIndex={i} />
+            ))}
+          </div>
 
-                <h3
-                  className="text-white font-bold text-lg mb-2"
-                  style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
-                >
-                  {f.title}
-                </h3>
-                <p className="text-white/50 text-sm leading-relaxed">{f.desc}</p>
-              </div>
+          {/* Bottom Row — 2 cards centered */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:w-2/3 mx-auto">
+            {bottomRow.map((f, i) => (
+              <Card key={i + 3} f={f} refIndex={i + 3} />
             ))}
           </div>
 

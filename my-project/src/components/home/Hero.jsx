@@ -112,27 +112,27 @@ const HeroSkeleton = () => (
   </div>
 );
 
-/* ── Split title: first word white, rest in accent color ── */
-const SplitTitle = ({ title, textColor, accentColor }) => {
-  const words = title.trim().split(' ');
-  const first = words[0];
-  const rest  = words.slice(1).join(' ');
+/* ── Title: max 2 lines ── */
+const SlideTitle = ({ title, textColor }) => {
   return (
     <h1
       className="hero-title"
       style={{
         fontFamily: '"Playfair Display", Georgia, serif',
-        fontSize: 'clamp(3rem, 6vw, 5.5rem)',
+        fontSize: 'clamp(2rem, 3.5vw, 4rem)',
         fontWeight: 900,
-        lineHeight: 1.0,
+        lineHeight: 1.15,
         letterSpacing: '-0.01em',
         margin: 0,
+        color: textColor || '#ffffff',
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical',
+        overflow: 'hidden',
+        maxWidth: '100%',
       }}
     >
-      <span style={{ color: textColor || '#ffffff', display: 'block' }}>{first}</span>
-      {rest && (
-        <span style={{ color: accentColor || textColor || '#f5c518', display: 'block' }}>{rest}</span>
-      )}
+      {title}
     </h1>
   );
 };
@@ -206,8 +206,8 @@ const HeroSlide = ({ slide, isActive }) => {
             </div>
           )}
 
-          {/* Two-tone split title */}
-          <SplitTitle title={slide.title} textColor={textColor} accentColor={accentColor} />
+          {/* ✅ FIXED: Single line title — no word splitting */}
+          <SlideTitle title={slide.title} textColor={textColor} />
 
           {/* Decorative line */}
           <div
@@ -242,7 +242,6 @@ const HeroSlide = ({ slide, isActive }) => {
                 style={getPrimaryBtnStyle(slide)}
               >
                 {slide.primaryCTA.text}
-                {/* Small icon circle */}
                 <span style={{
                   width: '22px', height: '22px', borderRadius: '50%',
                   background: 'rgba(0,0,0,0.15)',
@@ -311,9 +310,8 @@ const Hero = () => {
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0a0a0a', display: 'inline-block' }} />
             New Collection
           </div>
-          <h1 style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(3rem, 6vw, 5rem)', fontWeight: 900, lineHeight: 1.0, margin: '0 0 16px' }}>
-            <span style={{ color: '#fff', display: 'block' }}>Welcome</span>
-            <span style={{ color: '#f5c518', display: 'block' }}>to Niya</span>
+          <h1 style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(2rem, 4vw, 3.5rem)', fontWeight: 900, lineHeight: 1.1, margin: '0 0 16px', color: '#fff', whiteSpace: 'nowrap' }}>
+            Welcome to Niya
           </h1>
           <div style={{ width: '48px', height: '2px', background: '#f5c518', marginBottom: '20px', borderRadius: '2px' }} />
           <p style={{ fontFamily: '"Cormorant Garamond", serif', color: 'rgba(255,255,255,0.7)', fontSize: '1.1rem', fontWeight: 300, marginBottom: '32px' }}>
@@ -350,7 +348,7 @@ const Hero = () => {
         </div>
       )}
 
-      {/* Right arrow only (like reference image) */}
+      {/* Right arrow */}
       {slides.length > 1 && (
         <button
           onClick={next}
@@ -368,7 +366,7 @@ const Hero = () => {
         </button>
       )}
 
-      {/* Dot indicators — bottom left */}
+      {/* Dot indicators */}
       {slides.length > 1 && (
         <div
           className="absolute z-20 flex items-center gap-2"
@@ -391,7 +389,7 @@ const Hero = () => {
         </div>
       )}
 
-      {/* Slide counter — bottom right */}
+      {/* Slide counter */}
       {slides.length > 1 && (
         <div
           className="absolute bottom-8 right-8 z-20"

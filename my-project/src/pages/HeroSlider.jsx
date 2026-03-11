@@ -1,323 +1,331 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, Pagination, EffectFade } from "swiper/modules";
+import { useState, useEffect, useRef, useCallback } from "react";
 
-import "swiper/css";
-import "swiper/css/pagination";
-import "swiper/css/effect-fade";
+const API_URL = (import.meta?.env?.VITE_API_URL || "http://localhost:5000") + "/api";
 
-interface HeroSlide {
-  _id: string;
-  title: string;
-  subtitle?: string;
-  description?: string;
-  image: string;
-  imageMobile?: string;
-  primaryCTA?: { text: string; link: string };
-  secondaryCTA?: { text: string; link: string };
-  gradient?: string;
-  textColor?: string;
-  buttonStyle?: "filled" | "outline" | "ghost";
-  buttonColor?: string;
-  buttonTextColor?: string;
-  templateType?: string;
-  order: number;
-  isActive: boolean;
-}
-
-const SLIDE_DELAY = 5000;
-
-export default function HeroSlider() {
-  const [slides, setSlides] = useState<HeroSlide[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [animKey, setAnimKey] = useState(0);
+// ── Detect mobile ──────────────────────────────────────────────
+const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const progressRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return isMobile;
+};
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-  const API_URL = baseUrl.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
-
-  const resolveUrl = (path?: string) => {
-    if (!path) return "";
-    return path.startsWith("http") ? path : `${API_URL.replace("/api", "")}${path}`;
+// ── Button renderer (mirrors admin buttonStyle) ────────────────
+function CTAButton({ text, link, buttonStyle, buttonColor, buttonTextColor, onClick }) {
+  const base = {
+    display: "inline-block",
+    padding: "13px 34px",
+    fontSize: "11px",
+    fontFamily: "'Cormorant Garamond', serif",
+    fontWeight: 700,
+    letterSpacing: "0.25em",
+    textTransform: "uppercase",
+    textDecoration: "none",
+    cursor: "pointer",
+    transition: "all 0.35s cubic-bezier(0.4,0,0.2,1)",
+    border: "none",
+    outline: "none",
   };
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  let style = { ...base };
+  if (buttonStyle === "filled") {
+    style = { ...style, background: buttonColor || "#fff", color: buttonTextColor || "#000", border: `2px solid ${buttonColor || "#fff"}` };
+  } else if (buttonStyle === "outline") {
+    style = { ...style, background: "transparent", color: buttonColor || "#fff", border: `2px solid ${buttonColor || "#fff"}` };
+  } else {
+    style = { ...style, background: "rgba(255,255,255,0.08)", color: buttonColor || "#fff", border: "2px solid transparent", backdropFilter: "blur(8px)" };
+  }
 
-  useEffect(() => {
-    const fetchSlides = async () => {
-      try {
-        const res = await fetch(`${API_URL}/hero-section`);
-        const data = await res.json();
-        if (data.success) {
-          const active = (data.data as HeroSlide[])
-            .filter((s) => s.isActive)
-            .sort((a, b) => a.order - b.order);
-          setSlides(active);
-        }
-      } catch (err) {
-        console.error("Failed to load hero slides:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSlides();
-  }, [API_URL]);
+  return (
+    <a href={link || "#"} style={style} onClick={onClick}
+      onMouseEnter={e => { e.currentTarget.style.opacity = "0.82"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+      onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
+      {text}
+    </a>
+  );
+}
 
+// ── Template layouts ───────────────────────────────────────────
+function SlideContent({ slide, visible, isMobile }) {
+  const textColor = slide.textColor || "#ffffff";
+
+  const templates = {
+    center: (
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: isMobile ? "0 24px" : "0 80px" }}>
+        {slide.subtitle && (
+          <p style={{ color: textColor, opacity: 0.7, fontSize: isMobile ? "10px" : "12px", letterSpacing: "0.35em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace", marginBottom: "20px", transform: visible ? "translateY(0)" : "translateY(24px)", opacity: visible ? 0.7 : 0, transition: "all 0.7s cubic-bezier(0.4,0,0.2,1) 0.1s" }}>
+            {slide.subtitle}
+          </p>
+        )}
+        <h1 style={{ color: textColor, fontSize: isMobile ? "clamp(22px,6vw,36px)" : "clamp(32px,4vw,60px)", fontFamily: "'Cormorant Garamond', serif", fontWeight: 300, lineHeight: 1.1, letterSpacing: "-0.01em", marginBottom: "20px", transform: visible ? "translateY(0)" : "translateY(40px)", opacity: visible ? 1 : 0, transition: "all 0.85s cubic-bezier(0.4,0,0.2,1) 0.2s", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
+          {slide.title}
+        </h1>
+        {slide.description && (
+          <p style={{ color: textColor, opacity: 0.75, fontSize: isMobile ? "13px" : "15px", fontFamily: "'DM Mono', monospace", fontWeight: 400, maxWidth: "560px", lineHeight: 1.75, marginBottom: "36px", transform: visible ? "translateY(0)" : "translateY(30px)", opacity: visible ? 0.75 : 0, transition: "all 0.85s cubic-bezier(0.4,0,0.2,1) 0.35s" }}>
+            {slide.description}
+          </p>
+        )}
+        <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center", transform: visible ? "translateY(0)" : "translateY(20px)", opacity: visible ? 1 : 0, transition: "all 0.85s cubic-bezier(0.4,0,0.2,1) 0.5s" }}>
+          {slide.primaryCTA?.text && <CTAButton {...slide.primaryCTA} buttonStyle={slide.buttonStyle} buttonColor={slide.buttonColor} buttonTextColor={slide.buttonTextColor} />}
+          {slide.secondaryCTA?.text && <CTAButton {...slide.secondaryCTA} buttonStyle="outline" buttonColor={textColor} buttonTextColor="transparent" />}
+        </div>
+      </div>
+    ),
+
+    full: (
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: isMobile ? "40px 24px" : "80px 100px" }}>
+        <div style={{ maxWidth: "680px" }}>
+          {slide.subtitle && (
+            <p style={{ color: textColor, fontSize: "11px", letterSpacing: "0.4em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace", marginBottom: "16px", transform: visible ? "translateX(0)" : "translateX(-30px)", opacity: visible ? 0.65 : 0, transition: "all 0.7s ease 0.1s" }}>
+              — {slide.subtitle}
+            </p>
+          )}
+          <h1 style={{ color: textColor, fontSize: isMobile ? "clamp(22px,6vw,36px)" : "clamp(32px,4vw,58px)", fontFamily: "'Cormorant Garamond', serif", fontWeight: 300, lineHeight: 1.1, letterSpacing: "-0.02em", marginBottom: "24px", transform: visible ? "translateX(0)" : "translateX(-50px)", opacity: visible ? 1 : 0, transition: "all 0.9s cubic-bezier(0.16,1,0.3,1) 0.2s", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {slide.title}
+          </h1>
+          {slide.description && (
+            <p style={{ color: textColor, opacity: 0.7, fontSize: "14px", fontFamily: "'DM Mono', monospace", maxWidth: "440px", lineHeight: 1.8, marginBottom: "36px", transform: visible ? "translateX(0)" : "translateX(-30px)", opacity: visible ? 0.7 : 0, transition: "all 0.85s ease 0.4s" }}>
+              {slide.description}
+            </p>
+          )}
+          <div style={{ display: "flex", gap: "14px", transform: visible ? "translateX(0)" : "translateX(-20px)", opacity: visible ? 1 : 0, transition: "all 0.85s ease 0.55s" }}>
+            {slide.primaryCTA?.text && <CTAButton {...slide.primaryCTA} buttonStyle={slide.buttonStyle} buttonColor={slide.buttonColor} buttonTextColor={slide.buttonTextColor} />}
+            {slide.secondaryCTA?.text && <CTAButton {...slide.secondaryCTA} buttonStyle="outline" buttonColor={textColor} />}
+          </div>
+        </div>
+      </div>
+    ),
+
+    banner: (
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: isMobile ? "0 20px" : "0 60px" }}>
+        <div style={{ border: `1px solid ${textColor}30`, padding: isMobile ? "32px 24px" : "48px 72px", backdropFilter: "blur(12px)", background: "rgba(0,0,0,0.25)", maxWidth: "700px", transform: visible ? "scale(1)" : "scale(0.94)", opacity: visible ? 1 : 0, transition: "all 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.1s" }}>
+          {slide.subtitle && (
+            <p style={{ color: textColor, opacity: 0.6, fontSize: "10px", letterSpacing: "0.5em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace", marginBottom: "18px" }}>
+              {slide.subtitle}
+            </p>
+          )}
+          <h1 style={{ color: textColor, fontSize: isMobile ? "clamp(20px,5vw,32px)" : "clamp(28px,3.5vw,52px)", fontFamily: "'Cormorant Garamond', serif", fontWeight: 400, lineHeight: 1.1, letterSpacing: "-0.01em", marginBottom: "20px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {slide.title}
+          </h1>
+          {slide.description && (
+            <p style={{ color: textColor, opacity: 0.7, fontSize: "13px", fontFamily: "'DM Mono', monospace", lineHeight: 1.7, marginBottom: "28px" }}>
+              {slide.description}
+            </p>
+          )}
+          <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+            {slide.primaryCTA?.text && <CTAButton {...slide.primaryCTA} buttonStyle={slide.buttonStyle} buttonColor={slide.buttonColor} buttonTextColor={slide.buttonTextColor} />}
+            {slide.secondaryCTA?.text && <CTAButton {...slide.secondaryCTA} buttonStyle="ghost" buttonColor={textColor} />}
+          </div>
+        </div>
+      </div>
+    ),
+
+    split: (
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "stretch" }}>
+        <div style={{ width: isMobile ? "100%" : "50%", display: "flex", flexDirection: "column", justifyContent: "center", padding: isMobile ? "40px 24px" : "80px 72px", background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }}>
+          {slide.subtitle && (
+            <p style={{ color: textColor, opacity: 0.6, fontSize: "10px", letterSpacing: "0.45em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace", marginBottom: "18px", transform: visible ? "translateY(0)" : "translateY(20px)", opacity: visible ? 0.6 : 0, transition: "all 0.7s ease 0.1s" }}>
+              {slide.subtitle}
+            </p>
+          )}
+          <h1 style={{ color: textColor, fontSize: isMobile ? "clamp(22px,6vw,36px)" : "clamp(30px,3.5vw,54px)", fontFamily: "'Cormorant Garamond', serif", fontWeight: 300, lineHeight: 1.1, letterSpacing: "-0.02em", marginBottom: "20px", transform: visible ? "translateY(0)" : "translateY(36px)", opacity: visible ? 1 : 0, transition: "all 0.9s cubic-bezier(0.4,0,0.2,1) 0.2s", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {slide.title}
+          </h1>
+          {slide.description && (
+            <p style={{ color: textColor, opacity: 0.7, fontSize: "13px", fontFamily: "'DM Mono', monospace", lineHeight: 1.8, marginBottom: "32px", maxWidth: "380px", transform: visible ? "translateY(0)" : "translateY(24px)", opacity: visible ? 0.7 : 0, transition: "all 0.85s ease 0.35s" }}>
+              {slide.description}
+            </p>
+          )}
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", transform: visible ? "translateY(0)" : "translateY(16px)", opacity: visible ? 1 : 0, transition: "all 0.85s ease 0.5s" }}>
+            {slide.primaryCTA?.text && <CTAButton {...slide.primaryCTA} buttonStyle={slide.buttonStyle} buttonColor={slide.buttonColor} buttonTextColor={slide.buttonTextColor} />}
+            {slide.secondaryCTA?.text && <CTAButton {...slide.secondaryCTA} buttonStyle="outline" buttonColor={textColor} />}
+          </div>
+        </div>
+      </div>
+    ),
+  };
+
+  return templates[slide.templateType || "center"] || templates.center;
+}
+
+// ── Main HeroSlider ────────────────────────────────────────────
+export default function HeroSlider() {
+  const [slides, setSlides] = useState([]);
+  const [current, setCurrent] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [dragging, setDragging] = useState(false);
+  const [dragStart, setDragStart] = useState(0);
+  const timerRef = useRef(null);
+  const isMobile = useIsMobile();
+
+  // ── Fetch ───────────────────────────────────────────────────
   useEffect(() => {
-    if (!progressRef.current) return;
-    progressRef.current.style.animation = "none";
-    void progressRef.current.offsetHeight;
-    progressRef.current.style.animation = `progressFill ${SLIDE_DELAY}ms linear forwards`;
-  }, [activeIndex]);
+    const device = isMobile ? "mobile" : "desktop";
+    fetch(`${API_URL}/hero-section?device=${device}`)
+      .then(r => r.json())
+      .then(d => { if (d.success) setSlides(d.data); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [isMobile]);
+
+  // ── Track view ─────────────────────────────────────────────
+  useEffect(() => {
+    if (slides[current]?._id) {
+      fetch(`${API_URL}/hero-section/${slides[current]._id}/view`, { method: "POST" }).catch(() => {});
+    }
+  }, [current, slides]);
+
+  // ── Auto-play ──────────────────────────────────────────────
+  const startTimer = useCallback(() => {
+    clearInterval(timerRef.current);
+    if (slides.length > 1) {
+      timerRef.current = setInterval(() => goTo("next"), 5500);
+    }
+  }, [slides.length]);
+
+  useEffect(() => { startTimer(); return () => clearInterval(timerRef.current); }, [startTimer]);
+
+  const goTo = useCallback((dir) => {
+    setVisible(false);
+    setTimeout(() => {
+      setCurrent(prev => {
+        if (dir === "next") return (prev + 1) % slides.length;
+        if (dir === "prev") return (prev - 1 + slides.length) % slides.length;
+        return dir; // number index
+      });
+      setVisible(true);
+    }, 420);
+    startTimer();
+  }, [slides.length, startTimer]);
+
+  // ── Drag / swipe ───────────────────────────────────────────
+  const onDragStart = (e) => { setDragging(true); setDragStart(e.touches ? e.touches[0].clientX : e.clientX); };
+  const onDragEnd = (e) => {
+    if (!dragging) return;
+    const end = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    const delta = dragStart - end;
+    if (Math.abs(delta) > 50) goTo(delta > 0 ? "next" : "prev");
+    setDragging(false);
+  };
+
+  // ── Track click ────────────────────────────────────────────
+  const trackClick = (id) => {
+    fetch(`${API_URL}/hero-section/${id}/click`, { method: "POST" }).catch(() => {});
+  };
 
   if (loading) {
     return (
-      <div className="relative w-full h-screen bg-black flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+      <div style={{ width: "100%", height: isMobile ? "100svh" : "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 36, height: 36, border: "1px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.9s linear infinite" }} />
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
 
-  if (slides.length === 0) return null;
+  if (!slides.length) return null;
 
-  const current = slides[activeIndex] || slides[0];
-  const accent = current.buttonColor || "#f59e0b";
+  const slide = slides[current];
+  const imageUrl = (() => {
+    const src = (isMobile && slide.imageMobile) ? slide.imageMobile : slide.image;
+    if (!src) return "";
+    if (src.startsWith("http")) return src;
+    return `${API_URL.replace("/api", "")}${src}`;
+  })();
 
   return (
     <>
-      <style>{`
-        .kb-img {
-          transform: scale(1.06);
-          transition: transform ${SLIDE_DELAY}ms ease-out;
-        }
-        .swiper-slide-active .kb-img {
-          transform: scale(1);
-        }
-        .slide-overlay {
-          background: linear-gradient(
-            105deg,
-            rgba(5, 20, 15, 0.55) 0%,
-            rgba(5, 20, 15, 0.30) 50%,
-            rgba(5, 20, 15, 0.65) 100%
+      {/* Google Fonts */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+
+      <section
+        style={{ position: "relative", width: "100%", height: isMobile ? "100svh" : "100vh", overflow: "hidden", userSelect: "none", cursor: dragging ? "grabbing" : "grab" }}
+        onMouseDown={onDragStart} onMouseUp={onDragEnd} onMouseLeave={() => setDragging(false)}
+        onTouchStart={onDragStart} onTouchEnd={onDragEnd}
+      >
+        {/* ── Background image ── */}
+        {slides.map((s, i) => {
+          const src = (() => {
+            const img = (isMobile && s.imageMobile) ? s.imageMobile : s.image;
+            if (!img) return "";
+            return img.startsWith("http") ? img : `${API_URL.replace("/api", "")}${img}`;
+          })();
+          return (
+            <div key={s._id} style={{ position: "absolute", inset: 0, transition: "opacity 0.7s cubic-bezier(0.4,0,0.2,1)", opacity: i === current ? 1 : 0, zIndex: i === current ? 1 : 0 }}>
+              <img src={src} alt={s.title} style={{ width: "100%", height: "100%", objectFit: "cover", transform: i === current && visible ? "scale(1.04)" : "scale(1)", transition: "transform 6s cubic-bezier(0.4,0,0.2,1)" }} />
+              <div style={{ position: "absolute", inset: 0, backgroundImage: `linear-gradient(to right, ${s.gradient || "from-black/90 via-black/40 to-transparent"})`.replace(/from-|via-|to-/g, "").replace(/\//g, ", 0.").replace(/black/g, "#000").replace(/transparent/g, "transparent") }} />
+              {/* Safe fallback gradient overlay */}
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.18) 55%, rgba(0,0,0,0.05) 100%)" }} />
+            </div>
           );
-        }
-        .slide-vignette {
-          background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 40%);
-        }
-        @keyframes progressFill {
-          from { width: 0%; }
-          to   { width: 100%; }
-        }
-        .hero-swiper .swiper-pagination { bottom: 24px; }
-        .hero-swiper .swiper-pagination-bullet {
-          width: 6px; height: 6px;
-          background: rgba(255,255,255,0.35);
-          opacity: 1; transition: all 0.3s ease;
-        }
-        .hero-swiper .swiper-pagination-bullet-active {
-          width: 24px; border-radius: 3px; background: white;
-        }
-        .btn-shine { position: relative; overflow: hidden; }
-        .btn-shine::after {
-          content: '';
-          position: absolute;
-          top: 0; left: -100%; width: 60%; height: 100%;
-          background: linear-gradient(120deg, transparent, rgba(255,255,255,0.25), transparent);
-          transition: left 0.5s ease;
-        }
-        .btn-shine:hover::after { left: 150%; }
-        @keyframes floatDot {
-          0%, 100% { transform: translateY(0); }
-          50%       { transform: translateY(-6px); }
-        }
-        .float-dot { animation: floatDot 2.5s ease-in-out infinite; }
-        .slide-indicator { transition: height 0.3s ease, background 0.3s ease; }
-      `}</style>
+        })}
 
-      <div className="relative w-full h-screen overflow-hidden">
-        <Swiper
-          modules={[Autoplay, Pagination, EffectFade]}
-          effect="fade"
-          fadeEffect={{ crossFade: true }}
-          slidesPerView={1}
-          loop
-          autoplay={{ delay: SLIDE_DELAY, disableOnInteraction: false }}
-          pagination={{ clickable: true }}
-          onSlideChange={(s) => {
-            setActiveIndex(s.realIndex);
-            setAnimKey((k) => k + 1);
-          }}
-          className="h-full hero-swiper"
-        >
-          {slides.map((slide, i) => (
-            <SwiperSlide key={slide._id || i} className="relative overflow-hidden">
-
-              <img
-                src={slide.imageMobile && isMobile ? resolveUrl(slide.imageMobile) : resolveUrl(slide.image)}
-                alt={slide.title}
-                className="kb-img absolute inset-0 w-full h-full object-cover object-top"
-              />
-
-              <div className="slide-overlay absolute inset-0" />
-              <div className="slide-vignette absolute inset-0" />
-            </SwiperSlide>
-          ))}
-        </Swiper>
-
-        {/* ── Animated text overlay ── */}
-        <div
-          key={animKey}
-          className="absolute inset-0 z-10 pointer-events-none
-                     flex flex-col justify-center items-end
-                     px-10 md:px-16 lg:px-24 pb-16 md:pb-0"
-        >
-          <div className="flex flex-col items-start" style={{ maxWidth: "520px", marginRight: "9vw" }}>
-
-            {/* Tag */}
-            <div
-              className="animate-fade-up mb-6 pointer-events-auto"
-              style={{ animationDelay: "0.1s", animationFillMode: "both" }}
-            >
-              <span
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full
-                           text-[11px] font-bold uppercase tracking-[0.15em]"
-                style={{
-                  color: accent,
-                  background: `${accent}25`,
-                  border: `1px solid ${accent}60`,
-                }}
-              >
-                <span className="float-dot w-1.5 h-1.5 rounded-full" style={{ background: accent }} />
-                {current.subtitle || current.title}
-              </span>
-            </div>
-
-            {/* Heading */}
-            <div className="overflow-hidden">
-              <h1
-                className="animate-slide-in-left font-black text-white leading-[0.95] tracking-tight"
-                style={{
-                  fontSize: "clamp(3.5rem, 8vw, 6rem)",
-                  animationDelay: "0.2s",
-                  animationFillMode: "both",
-                  color: current.textColor || "#ffffff",
-                  textShadow: "0 2px 20px rgba(0,0,0,0.5)",
-                }}
-              >
-                {current.title}
-              </h1>
-            </div>
-
-            {/* Divider */}
-            <div
-              className="animate-zoom-in h-0.5 w-14 mb-5 mt-4 rounded-full"
-              style={{
-                background: `linear-gradient(to right, ${accent}, transparent)`,
-                animationDelay: "0.45s",
-                animationFillMode: "both",
-              }}
-            />
-
-            {/* Description */}
-            {current.description && (
-              <p
-                className="animate-fade-up text-white/90 mb-8 leading-relaxed"
-                style={{
-                  fontSize: "clamp(0.9rem, 1.5vw, 1.05rem)",
-                  animationDelay: "0.55s",
-                  animationFillMode: "both",
-                  textShadow: "0 1px 10px rgba(0,0,0,0.6)",
-                }}
-              >
-                {current.description}
-              </p>
-            )}
-
-            {/* Buttons */}
-            <div
-              className="animate-fade-up flex flex-wrap items-center gap-4 pointer-events-auto"
-              style={{ animationDelay: "0.7s", animationFillMode: "both" }}
-            >
-              {current.primaryCTA && (
-                <a
-                  href={current.primaryCTA.link}
-                  className="btn-shine group inline-flex items-center gap-2.5
-                             px-6 py-3 rounded-full font-semibold text-sm
-                             transition-all duration-300 hover:scale-105 active:scale-95"
-                  style={{
-                    background: current.buttonStyle === "outline" ? "transparent"
-                      : current.buttonStyle === "ghost" ? "rgba(0,0,0,0.08)"
-                      : accent,
-                    color: current.buttonStyle === "filled"
-                      ? current.buttonTextColor || "#000"
-                      : accent,
-                    border: `2px solid ${accent}`,
-                    boxShadow: current.buttonStyle === "filled" ? `0 6px 24px ${accent}55` : "none",
-                  }}
-                >
-                  {current.primaryCTA.text}
-                  <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center
-                                   group-hover:bg-white/30 transition-colors">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
-                            d="M13 7l5 5-5 5M6 12h12" />
-                    </svg>
-                  </span>
-                </a>
-              )}
-
-              {current.secondaryCTA && (
-                <a
-                  href={current.secondaryCTA.link}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full
-                             text-sm font-medium text-white hover:text-white
-                             border border-white/25 hover:border-white/50
-                             backdrop-blur-sm bg-white/8 hover:bg-white/15
-                             transition-all duration-300"
-                >
-                  {current.secondaryCTA.text}
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </a>
-              )}
-            </div>
-
+        {/* ── Slide content ── */}
+        <div style={{ position: "absolute", inset: 0, zIndex: 10, pointerEvents: "none" }}>
+          <div style={{ opacity: visible ? 1 : 0, transition: "opacity 0.42s ease", height: "100%", pointerEvents: "auto" }}>
+            <SlideContent slide={slide} visible={visible} isMobile={isMobile} />
           </div>
         </div>
 
-        {/* ── Vertical slide indicators — desktop only ── */}
-        <div className="absolute right-6 top-1/2 -translate-y-1/2 z-20
-                        hidden lg:flex flex-col gap-2 items-center">
-          {slides.map((_, i) => (
-            <div
-              key={i}
-              className="slide-indicator rounded-full"
-              style={{
-                width: "3px",
-                height: i === activeIndex ? "32px" : "8px",
-                background: i === activeIndex ? accent : "rgba(255,255,255,0.25)",
-              }}
-            />
-          ))}
-        </div>
+        {/* ── Slide counter (top right) ── */}
+        {slides.length > 1 && (
+          <div style={{ position: "absolute", top: isMobile ? 20 : 36, right: isMobile ? 20 : 48, zIndex: 20, display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "10px", color: "rgba(255,255,255,0.5)", letterSpacing: "0.2em" }}>
+              {String(current + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}
+            </span>
+          </div>
+        )}
+
+        {/* ── Arrow navigation ── */}
+        {slides.length > 1 && !isMobile && (
+          <>
+            <button onClick={() => goTo("prev")} aria-label="Previous" style={{ position: "absolute", left: 32, top: "50%", transform: "translateY(-50%)", zIndex: 20, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)", color: "#fff", width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(10px)", transition: "all 0.25s ease" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button onClick={() => goTo("next")} aria-label="Next" style={{ position: "absolute", right: 32, top: "50%", transform: "translateY(-50%)", zIndex: 20, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)", color: "#fff", width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(10px)", transition: "all 0.25s ease" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </>
+        )}
+
+        {/* ── Dot navigation ── */}
+        {slides.length > 1 && (
+          <div style={{ position: "absolute", bottom: isMobile ? 32 : 44, left: "50%", transform: "translateX(-50%)", zIndex: 20, display: "flex", gap: "10px", alignItems: "center" }}>
+            {slides.map((_, i) => (
+              <button key={i} onClick={() => goTo(i)} aria-label={`Slide ${i + 1}`} style={{ padding: 0, border: "none", background: "none", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                <span style={{
+                  display: "block",
+                  width: i === current ? (isMobile ? 24 : 32) : 6,
+                  height: 2,
+                  background: i === current ? "#fff" : "rgba(255,255,255,0.35)",
+                  transition: "all 0.4s cubic-bezier(0.4,0,0.2,1)",
+                  borderRadius: 2,
+                }} />
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* ── Progress bar ── */}
-        <div className="absolute bottom-0 left-0 right-0 z-20 h-[2px] bg-white/10">
-          <div
-            ref={progressRef}
-            className="h-full rounded-full"
-            style={{ background: accent }}
-          />
-        </div>
-      </div>
+        {slides.length > 1 && (
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20, height: "2px", background: "rgba(255,255,255,0.1)" }}>
+            <div key={current} style={{ height: "100%", background: "rgba(255,255,255,0.6)", animation: "progress 5.5s linear forwards" }} />
+          </div>
+        )}
+
+        <style>{`
+          @keyframes progress { from { width: 0% } to { width: 100% } }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+        `}</style>
+      </section>
     </>
   );
 }

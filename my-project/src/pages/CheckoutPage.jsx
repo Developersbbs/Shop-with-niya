@@ -35,7 +35,7 @@ const CheckoutPage = () => {
       try {
         const config = await paymentService.getRazorpayConfig();
         setRazorpayAvailable(config.configured || false);
-      } catch { setRazorpayAvailable(false); }
+      } catch { setRazorpayAvailable(true); }
     };
     checkRazorpay();
   }, []);
@@ -143,7 +143,8 @@ const CheckoutPage = () => {
           product_id: item.id || item.product_id,
           variant_id: item.variant_id || null,
           quantity: item.quantity,
-          unit_price: item.price
+          unit_price: item.price,
+           taxRate: item.taxRate || 0,
         })),
         shipping_cost: shipping,
         // ✅ FIX: Send taxTotal to backend so Razorpay charges exactly what
@@ -432,18 +433,7 @@ const CheckoutPage = () => {
                     </div>
                   </label>
 
-                  {['Credit Card', 'PayPal'].map(method => (
-                    <div key={method} className="flex items-center gap-4 p-4 border-2 border-[#1a3c2e]/8 opacity-40 cursor-not-allowed">
-                      <div className="w-4 h-4 rounded-full border-2 border-[#1a3c2e]/20 flex-shrink-0" />
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="w-9 h-9 bg-[#1a3c2e]/5 flex items-center justify-center flex-shrink-0">
-                          <CreditCardIcon className="w-5 h-5 text-[#1a3c2e]/20" />
-                        </div>
-                        <p className="text-sm text-[#1a3c2e]/30">{method}</p>
-                        <span className="ml-auto text-[10px] tracking-widest px-2.5 py-1 uppercase bg-[#1a3c2e]/5 text-[#1a3c2e]/30">Soon</span>
-                      </div>
-                    </div>
-                  ))}
+
                 </div>
               </div>
             </div>

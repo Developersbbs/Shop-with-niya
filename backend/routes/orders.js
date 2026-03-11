@@ -187,59 +187,81 @@ router.get("/customer/:customerId", authenticateHybridToken, async (req, res) =>
 });
 
 // GET orders by Firebase UID (for frontend compatibility)
+// GET orders by Firebase UID (for frontend compatibility)
 router.get("/customer/firebase/:firebaseUid", authenticateHybridToken, async (req, res) => {
   console.log('Firebase orders route called with UID:', req.params.firebaseUid);
   try {
     const Customer = require('../models/Customer');
+    const Product = require('../models/Product');
 
-    // Find customer by Firebase UID
     const customer = await Customer.findOne({ firebase_uid: req.params.firebaseUid });
-    console.log('Customer found:', customer ? customer._id : 'Not found');
-    if (!customer) {
-      return res.status(404).json({ error: "Customer not found" });
-    }
+    if (!customer) return res.status(404).json({ error: "Customer not found" });
 
     const orders = await Order.find({ customer_id: customer._id.toString() })
       .sort({ order_time: -1 });
 
-    console.log('Orders found:', orders.length);
-
-    // Enhance items with product information (items are now embedded in order)
     const ordersWithItems = await Promise.all(
       orders.map(async (order) => {
-        const enhancedItems = await Promise.all(
-          order.items.map(async (item) => {
-            try {
-              const Product = require('../models/Product');
-              const product = await Product.findById(item.product_id);
-              return {
-                ...item.toObject(),
-                id: item._id,
-                name: product ? product.name : 'Product Not Found',
-                slug: product ? product.slug : null,
-                image: product && product.image_url && product.image_url.length > 0
-                  ? product.image_url[0]
-                  : '/images/products/placeholder-product.svg',
-                sku: product ? product.sku : 'N/A',
-                price: item.price || 0 // Use price field from new schema
-              };
-            } catch (error) {
-              return {
-                ...item.toObject(),
-                id: item._id,
-                name: 'Product Not Found',
-                image: '/images/products/placeholder-product.svg',
-                sku: 'N/A',
-                price: item.price || 0
-              };
-            }
-          })
-        );
 
+        // ✅ FIX 3: For Razorpay orders, items are in OrderItem collection, not embedded
+        let rawItems = order.items && order.items.length > 0
+          ? order.items
+          : await OrderItem.find({ order_id: order.invoice_no });
+
+// ── In orders.js, inside the firebase route ──
+
+const enhancedItems = await Promise.all(
+  rawItems.map(async (item) => {
+    try {
+      const product = await Product.findById(item.product_id);
+      if (!product) throw new Error('Product not found');
+
+      let image = '/images/products/placeholder-product.svg';
+
+      // ✅ FIX: correct field is product_variants (not variants)
+      // ✅ FIX: variant images are plain strings: images: [String]
+      if (item.variant_id) {
+        const variant = product.product_variants?.find(
+          v => v._id.toString() === item.variant_id.toString()
+        );
+        if (variant?.images?.length > 0) {
+          image = variant.images[0]; // plain string, no .url needed
+        }
+      }
+
+      // Fallback to product-level image_url (also plain strings array)
+      if (image === '/images/products/placeholder-product.svg') {
+        image = product.image_url?.[0] || image;
+      }
+
+      return {
+        ...item.toObject(),
+        id: item._id,
+        name: product.name || 'Product Not Found',
+        slug: product.slug || null,
+        image,
+        sku: product.sku || 'N/A',
+        price: item.unit_price || item.price || 0,
+        quantity: item.quantity || 1,
+        variant_id: item.variant_id || null,
+      };
+    } catch (error) {
+      return {
+        ...item.toObject(),
+        id: item._id,
+        name: 'Product Not Found',
+        image: '/images/products/placeholder-product.svg',
+        sku: 'N/A',
+        price: item.unit_price || item.price || 0,
+        quantity: item.quantity || 1,
+      };
+    }
+  })
+);
         return {
           ...order.toObject(),
           items: enhancedItems,
-          shipping_address: order.shipping_address || {} // Include shipping address if stored
+          shipping_address: order.shipping_address || {}
         };
       })
     );
@@ -865,6 +887,7 @@ router.get("/:id/invoice", authenticateHybridToken, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 // DELETE order
 router.delete("/:id", async (req, res) => {
   try {

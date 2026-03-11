@@ -28,12 +28,12 @@ const orderSchema = new mongoose.Schema(
     shipping_cost: { type: Number, default: 0 },
     total_amount: { type: Number, required: true },
 
-    payment_method: { type: String, enum: ["cash", "online"], required: true },
+    payment_method: { type: String, enum: ["cash", "online","razorpay"], required: true },
     payment_status: { type: String, default: "pending" },
 
     status: {
       type: String,
-      enum: ["processing", "shipped", "delivered", "cancelled"],
+      enum: ["processing", "shipped", "delivered", "cancelled","payment_pending"],
       default: "processing",
     },
 
