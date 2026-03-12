@@ -11,12 +11,12 @@ export default function StockTable({
   pagination,
   rowSelection,
   setRowSelection,
-}: DataTableWithRowSelectionProps<any>) {
+}: DataTableWithRowSelectionProps<Record<string, unknown>>) {
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getRowId: (row) => row.id,
+    getRowId: (row) => String(row.id || row._id || ""),
     state: {
       rowSelection,
     },

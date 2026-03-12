@@ -3,6 +3,7 @@
 import { useCallback, useState, forwardRef, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { XCircle, UploadCloud } from "lucide-react";
+import Image from "next/image";
 
 import { cn } from "@/lib/utils";
 
@@ -61,8 +62,8 @@ export const ImageDropzone = forwardRef<
               ? "border-primary/80 bg-black/10 dark:bg-white/10"
               : "border-input"
           ),
-          ref: ref,
         })}
+        ref={ref}
       >
         <input {...getInputProps()} />
 
@@ -79,10 +80,10 @@ export const ImageDropzone = forwardRef<
         </div>
       </div>
 
-      {preview && (typeof preview === 'string' ? preview.trim() !== '' : true) && (
+      {preview && preview.trim() !== '' && (
         <div className="size-28 p-2 rounded-md relative border border-input mt-4">
-          <img
-            src={typeof preview === 'string' ? preview : URL.createObjectURL(preview)}
+          <Image
+            src={preview}
             alt="Preview"
             width={96}
             height={96}

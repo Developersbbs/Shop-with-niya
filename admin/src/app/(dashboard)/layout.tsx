@@ -1,7 +1,4 @@
-import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-
-import isAuth from "@/helpers/isAuth";
 import Header from "@/components/shared/header";
 import Container from "@/components/ui/container";
 import AppSidebar from "@/components/shared/sidebar/AppSidebar";
@@ -29,3 +26,4 @@ export default async function RootLayout({
     </SidebarProvider>
   );
 }
+

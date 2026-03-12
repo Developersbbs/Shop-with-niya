@@ -13,12 +13,11 @@ import {
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import FetchDropdownContainer from "@/components/shared/FetchDropdownContainer";
 
 import { sortToParamsMap, getSortFromParams } from "./sortParams";
 import { fetchCategoriesDropdown, fetchSubcategoriesByCategorySlug } from "@/services/categories";
-import type { CategoryDropdown } from "@/types/api";
+import type { CategoryDropdown, Subcategory } from "@/types/api";
 
 export default function ProductFilters() {
   const router = useRouter();
@@ -47,7 +46,6 @@ export default function ProductFilters() {
     data: subcategories,
     isLoading: subcategoriesLoading,
     isError: subcategoriesError,
-    refetch: refetchSubcategories,
   } = useQuery({
     queryKey: ["subcategories", filters.category],
     queryFn: () => fetchSubcategoriesByCategorySlug(filters.category),
@@ -86,7 +84,7 @@ export default function ProductFilters() {
     if (filters.search !== (searchParams.get("search") || "")) {
       updateURL(filters);
     }
-  }, [filters.search, updateURL, searchParams]);
+  }, [filters.search, updateURL, searchParams, filters]);
 
   // Update URL when category, subcategory, productType or sort changes
   useEffect(() => {
@@ -96,28 +94,22 @@ export default function ProductFilters() {
     const currentSort = getSortFromParams(searchParams) || "";
 
     if (filters.category !== currentCategory || filters.subcategory !== currentSubcategory ||
-        filters.productType !== currentProductType || filters.sort !== currentSort) {
+      filters.productType !== currentProductType || filters.sort !== currentSort) {
       updateURL(filters);
     }
-  }, [filters.category, filters.subcategory, filters.productType, filters.sort, updateURL, searchParams]);
+  }, [filters.category, filters.subcategory, filters.productType, filters.sort, updateURL, searchParams, filters]);
 
-  // Reset subcategory when category changes
-  useEffect(() => {
-    if (filters.category && filters.category !== "all") {
-      // Reset subcategory selection when category changes
-      setFilters(prev => ({ ...prev, subcategory: "all" }));
-    }
-  }, [filters.category]);
 
   const handleFilterChange = (key: keyof typeof filters, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters(prev => {
+      const next = { ...prev, [key]: value };
+      if (key === "category") {
+        next.subcategory = "all";
+      }
+      return next;
+    });
   };
 
-  const handleReset = () => {
-    const resetFilters = { search: "", category: "all", subcategory: "all", productType: "all", sort: "none" };
-    setFilters(resetFilters);
-    router.push("/products");
-  };
 
   return (
     <Card className="mb-5">
@@ -195,7 +187,7 @@ export default function ProductFilters() {
 
             {/* Show subcategories when loaded */}
             {!subcategoriesLoading && !subcategoriesError && subcategories && subcategories.length > 0 && (
-              subcategories.map((subcategory: any) => (
+              subcategories.map((subcategory: Subcategory) => (
                 <SelectItem key={subcategory.slug} value={subcategory.slug}>
                   {subcategory.name}
                 </SelectItem>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useTransition, useRef, useEffect, useCallback } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, FieldErrors } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
@@ -67,7 +67,6 @@ export default function CategoryFormSheet({
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [isAddMode, setIsAddMode] = useState(true);
   const imageDropzoneRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<CategoryFormData>({
@@ -81,32 +80,29 @@ export default function CategoryFormSheet({
     },
   });
 
-// ✅ Fixed useEffect
-useEffect(() => {
-  if (!isSheetOpen) return;
+  useEffect(() => {
+    if (!isSheetOpen) return;
 
-  const hasInitialData = initialData && Object.keys(initialData).length > 0;
-  setIsAddMode(!hasInitialData);
+    const hasInitialData = initialData && Object.keys(initialData).length > 0;
 
-  if (hasInitialData) {
-    console.log('Resetting form with subcategories:', initialData.subcategories);
-    form.reset({
-      name: initialData.name || "",
-      description: initialData.description || "",
-      image: initialData.image || undefined,
-      slug: initialData.slug || "",
-      subcategories: initialData.subcategories || [],  // ← make sure this has data
-    });
-  } else {
-    form.reset({
-      name: "",
-      description: "",
-      image: undefined,
-      slug: "",
-      subcategories: [],
-    });
-  }
-}, [isSheetOpen]); // keep as-is
+    if (hasInitialData) {
+      form.reset({
+        name: initialData.name || "",
+        description: initialData.description || "",
+        image: initialData.image || undefined,
+        slug: initialData.slug || "",
+        subcategories: initialData.subcategories || [],
+      });
+    } else {
+      form.reset({
+        name: "",
+        description: "",
+        image: undefined,
+        slug: "",
+        subcategories: [],
+      });
+    }
+  }, [isSheetOpen, initialData, form]);
 
   const onSubmit = (data: CategoryFormData) => {
     console.log('=== FORM SUBMIT DEBUG ===');
@@ -160,10 +156,14 @@ useEffect(() => {
     });
   };
 
-  const onInvalid = (errors: FieldErrors<CategoryFormData>) => {
+  const onInvalid = useCallback((errors: FieldErrors<CategoryFormData>) => {
     if (errors.image) {
       imageDropzoneRef.current?.focus();
     }
+  }, []);
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    form.handleSubmit(onSubmit, onInvalid)(e);
   };
 
   return (
@@ -173,7 +173,7 @@ useEffect(() => {
       <SheetContent className="w-[90%] max-w-5xl">
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(onSubmit, onInvalid)}
+            onSubmit={handleFormSubmit}
             className="size-full"
           >
             <FormSheetContent>

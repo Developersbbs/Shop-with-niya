@@ -11,7 +11,7 @@ type FormMultipleImageInputProps<TFormData extends FieldValues> = {
   control: Control<TFormData>;
   name: Path<TFormData>;
   label: string;
-  placeholder?: string;
+
   previewImages?: string[];
   maxImages?: number;
   acceptedTypes?: string;
@@ -21,7 +21,7 @@ type FormMultipleImageInputProps<TFormData extends FieldValues> = {
 const getDisplayUrl = (url: string): string => {
   if (!url) return '';
   if (url.startsWith('http')) return url;
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
   return `${baseUrl}${url.startsWith('/') ? url : `/${url}`}`;
 };
 
@@ -29,34 +29,34 @@ export default function FormMultipleImageInput<TFormData extends FieldValues>({
   control,
   name,
   label,
-  placeholder = "Upload product images",
+
   previewImages = [],
   maxImages = Infinity,
   acceptedTypes = "image/jpeg,image/jpg,image/png,image/webp",
 }: FormMultipleImageInputProps<TFormData>) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
+  const hasInitialized = useRef(false);
 
   const {
     field: { value, onChange },
-    fieldState: { error },
   } = useController({ name, control });
 
-  // ✅ FIX: Initialize existing preview URLs into form field on mount
   useEffect(() => {
-    if (previewImages && previewImages.length > 0) {
-      const currentValue: any[] = value || [];
-      const hasExistingUrls = currentValue.some((item: any) => typeof item === 'string');
+    if (!hasInitialized.current && previewImages && previewImages.length > 0) {
+      const currentValue: (string | File)[] = Array.isArray(value) ? value : [];
+      const hasExistingUrls = currentValue.some((item) => typeof item === 'string');
       if (!hasExistingUrls) {
         // Store original URLs (not display URLs) so backend receives correct paths
-        onChange([...previewImages, ...currentValue.filter((item: any) => item instanceof File)]);
+        onChange([...previewImages, ...currentValue.filter((item) => item instanceof File)]);
       }
+      hasInitialized.current = true;
     }
-  }, [previewImages.join(',')]);
+  }, [previewImages, value, onChange]);
 
-  const currentImages: any[] = value || [];
-  const existingUrlImages = currentImages.filter((img: any) => typeof img === 'string');
-  const newFileImages = currentImages.filter((img: any) => img instanceof File);
+  const currentImages: (string | File)[] = Array.isArray(value) ? value : [];
+  const existingUrlImages = currentImages.filter((img): img is string => typeof img === 'string');
+  const newFileImages = currentImages.filter((img): img is File => img instanceof File);
   const totalCount = currentImages.length;
   const remainingSlots = maxImages === Infinity ? Infinity : maxImages - newFileImages.length;
   const canAddMore = newFileImages.length < maxImages || maxImages === Infinity;
@@ -97,12 +97,12 @@ export default function FormMultipleImageInput<TFormData extends FieldValues>({
   };
 
   const removeExistingImage = (urlIndex: number) => {
-    const updatedExisting = existingUrlImages.filter((_: any, i: number) => i !== urlIndex);
+    const updatedExisting = existingUrlImages.filter((_, i) => i !== urlIndex);
     onChange([...updatedExisting, ...newFileImages]);
   };
 
   const removeNewImage = (fileIndex: number) => {
-    const updatedFiles = newFileImages.filter((_: any, i: number) => i !== fileIndex);
+    const updatedFiles = newFileImages.filter((_, i) => i !== fileIndex);
     onChange([...existingUrlImages, ...updatedFiles]);
   };
 
@@ -164,19 +164,20 @@ export default function FormMultipleImageInput<TFormData extends FieldValues>({
                     {existingUrlImages.map((imageUrl: string, index: number) => (
                       <div key={`existing-${index}`} className="relative group">
                         <div className="aspect-square rounded-lg overflow-hidden border bg-muted">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={getDisplayUrl(imageUrl)}
                             alt={`Existing ${index + 1}`}
                             className="w-full h-full object-cover"
-                     // Replace the onError handler
-onError={(e) => {
-  const target = e.target as HTMLImageElement;
-  // Stop infinite loop — only set fallback once
-  if (!target.dataset.errored) {
-    target.dataset.errored = 'true';
-    target.style.display = 'none'; // just hide broken image instead
-  }
-}}
+                            // Replace the onError handler
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              // Stop infinite loop — only set fallback once
+                              if (!target.dataset.errored) {
+                                target.dataset.errored = 'true';
+                                target.style.display = 'none'; // just hide broken image instead
+                              }
+                            }}
                           />
                         </div>
                         <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-end justify-center pb-1">
@@ -198,6 +199,7 @@ onError={(e) => {
                     {newFileImages.map((file: File, index: number) => (
                       <div key={`new-${index}`} className="relative group">
                         <div className="aspect-square rounded-lg overflow-hidden border bg-muted border-primary/50">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={URL.createObjectURL(file)}
                             alt={`New ${index + 1}`}

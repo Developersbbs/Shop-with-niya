@@ -24,10 +24,11 @@ export async function changeOrderStatus(
     revalidatePath(`/orders/${orderId}`);
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Order status update error:", error);
+    const err = error as { response?: { data?: { error?: string } } };
     return {
-      dbError: error.response?.data?.error || "Failed to update order status."
+      dbError: err.response?.data?.error || "Failed to update order status."
     };
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Control, FieldValues, Path, UseFormSetValue } from "react-hook-form";
+import { Control, FieldValues, Path, UseFormSetValue, PathValue } from "react-hook-form";
 import { X, Plus } from "lucide-react";
 
 import {
@@ -42,13 +42,13 @@ export default function FormTagsInput<TFormData extends FieldValues>({
         const handleAddTag = () => {
           const trimmedValue = inputValue.trim().toLowerCase();
           if (trimmedValue && !tags.includes(trimmedValue)) {
-            setValue(name, [...tags, trimmedValue] as any);
+            setValue(name, [...tags, trimmedValue] as PathValue<TFormData, Path<TFormData>>);
             setInputValue("");
           }
         };
 
         const handleRemoveTag = (tagToRemove: string) => {
-          setValue(name, tags.filter(tag => tag !== tagToRemove) as any);
+          setValue(name, tags.filter(tag => tag !== tagToRemove) as PathValue<TFormData, Path<TFormData>>);
         };
 
         const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

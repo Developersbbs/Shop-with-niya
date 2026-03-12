@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { FaPlus, FaTrash, FaEdit, FaSave, FaTimes, FaTag, FaPercent, FaImage, FaCalendarAlt, FaChevronUp, FaChevronDown, FaBox, FaUpload, FaGift } from 'react-icons/fa';
+import { useState, useEffect, useCallback } from 'react';
+import { FaPlus, FaTrash, FaEdit, FaSave, FaTimes, FaPercent, FaCalendarAlt, FaChevronUp, FaChevronDown, FaUpload, FaGift } from 'react-icons/fa';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import Typography from '@/components/ui/typography';
-import { cn } from '@/lib/utils';
 import { addComboOffer, updateComboOffer, deleteComboOffer } from '@/actions/combo-offers/index';
 import { uploadFile } from '@/lib/firebase/storage';
 import { toast } from 'sonner';
@@ -33,6 +32,18 @@ interface ComboOffer {
         quantity: number;
     }>;
     savingsPercent?: number;
+}
+
+interface Product {
+    _id: string;
+    name: string;
+    sku?: string;
+    image_url?: string[];
+    selling_price?: number;
+    product_variants?: {
+        _id: string;
+        selling_price?: number;
+    }[];
 }
 
 export default function ComboOffersPage() {
@@ -70,14 +81,10 @@ export default function ComboOffersPage() {
         }>
     });
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const baseUrl = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
 
-    useEffect(() => {
-        fetchOffers();
-    }, []);
-
-    const fetchOffers = async () => {
+    const fetchOffers = useCallback(async () => {
         try {
             const res = await fetch(`${baseUrl}/combo-offers/admin`);
             const data = await res.json();
@@ -89,7 +96,11 @@ export default function ComboOffersPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [baseUrl]);
+
+    useEffect(() => {
+        fetchOffers();
+    }, [fetchOffers]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -263,9 +274,9 @@ export default function ComboOffersPage() {
             } else {
                 toast.error(result.message || 'Operation failed');
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error saving offer:', error);
-            toast.error(`Error saving offer: ${error.message}`);
+            toast.error(`Error saving offer: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
             setIsSubmitting(false);
         }
@@ -314,11 +325,11 @@ export default function ComboOffersPage() {
     // State for existing product search
     const [showProductSearch, setShowProductSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searchResults, setSearchResults] = useState<Product[]>([]);
     const [loadingSearch, setLoadingSearch] = useState(false);
 
     // Calculate original price from products
-    const calculateOriginalPrice = () => {
+    const calculateOriginalPrice = useCallback(() => {
         return formData.products.reduce((total, product) => {
             let productPrice = 0;
 
@@ -330,18 +341,16 @@ export default function ComboOffersPage() {
 
             return total + (productPrice * product.quantity);
         }, 0);
-    };
+    }, [formData.products]);
 
     // Update original price when products change
     useEffect(() => {
         const calculatedPrice = calculateOriginalPrice();
-        if (calculatedPrice > 0) {
-            setFormData(prev => ({
-                ...prev,
-                originalPrice: calculatedPrice.toFixed(2)
-            }));
-        }
-    }, [formData.products]);
+        setFormData(prev => ({
+            ...prev,
+            originalPrice: calculatedPrice.toFixed(2)
+        }));
+    }, [formData.products, calculateOriginalPrice]);
     const [newProductForm, setNewProductForm] = useState({
         name: '',
         thumbnail: null as File | null,
@@ -414,7 +423,7 @@ export default function ComboOffersPage() {
         searchProducts(query);
     };
 
-    const selectExistingProduct = (product: any) => {
+    const selectExistingProduct = (product: Product) => {
         // Handle price for variant products
         let price = product.selling_price;
         if ((price === undefined || price === null) && product.product_variants && product.product_variants.length > 0) {
@@ -439,7 +448,7 @@ export default function ComboOffersPage() {
     };
 
     // New product handlers
-    const handleNewProductFormChange = (field: string, value: any) => {
+    const handleNewProductFormChange = (field: string, value: string | number | boolean) => {
         setNewProductForm(prev => ({
             ...prev,
             [field]: value
@@ -961,8 +970,8 @@ export default function ComboOffersPage() {
 
                                     {/* Badge */}
                                     <div className={`absolute top-3 right-3 text-white text-xs font-bold px-3 py-1 rounded-lg ${offer.badgeType === 'LIMITED_TIME' ? 'bg-rose-600' :
-                                            offer.badgeType === 'BEST_VALUE' ? 'bg-emerald-600' :
-                                                'bg-orange-600'
+                                        offer.badgeType === 'BEST_VALUE' ? 'bg-emerald-600' :
+                                            'bg-orange-600'
                                         }`}>
                                         {offer.badgeType?.replace('_', ' ')}
                                     </div>
@@ -1081,7 +1090,7 @@ export default function ComboOffersPage() {
                                 <div className="text-center py-4">Searching...</div>
                             ) : searchResults.length > 0 ? (
                                 <div className="space-y-2">
-                                    {searchResults.map((product: any) => (
+                                    {searchResults.map((product: Product) => (
                                         <div
                                             key={product._id}
                                             onClick={() => selectExistingProduct(product)}

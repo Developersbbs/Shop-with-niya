@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { Search } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 // Debounce hook
@@ -59,29 +58,13 @@ export default function StockFilters() {
     router.push(`/stock?${params.toString()}`);
   }, [debouncedSearch, stockFilter, router, searchParams]);
 
-  // Clear search
-  const handleClearSearch = () => {
-    setSearch("");
-  };
 
-  // Check if any filters are active
-  const hasActiveFilters = searchParams.get("search") || 
-    searchParams.get("category") || 
-    searchParams.get("subcategory") || 
-    searchParams.get("productType") ||
-    searchParams.get("lowStock") === "true";
 
   // Handle stock filter change
   const handleStockFilterChange = (value: string) => {
     setStockFilter(value as "all" | "low");
   };
 
-  // Clear all filters
-  const handleClearAllFilters = () => {
-    setSearch("");
-    setStockFilter("all");
-    router.push("/stock?page=1&limit=10");
-  };
 
   return (
     <Card className="mb-5">

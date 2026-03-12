@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ZoomIn, PenSquare, Trash2 } from "lucide-react";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, Row } from "@tanstack/react-table";
 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -17,12 +17,11 @@ import { TableSwitch } from "@/components/shared/table/TableSwitch";
 import { SheetTooltip } from "@/components/shared/table/TableActionTooltip";
 import { TableActionAlertDialog } from "@/components/shared/table/TableActionAlertDialog";
 import { EditProductSheet } from "../../[slug]/_components/EditProductSheet";
-import { ProductBadgeVariants } from "@/constants/badge";
 import { Product } from "@/services/products/types";
+import { ProductVariant } from "@/types/api";
 import { SkeletonColumn } from "@/types/skeleton";
 import { ServerActionResponse } from "@/types/server-action";
 
-import { editProduct } from "@/actions/products/editProduct";
 import { deleteProduct } from "@/actions/products/deleteProduct";
 import { toggleProductPublishedStatus } from "@/actions/products/toggleProductStatus";
 import { HasPermission } from "@/hooks/use-authorization";
@@ -30,7 +29,7 @@ import { HasPermission } from "@/hooks/use-authorization";
 type TransformedProduct = Product & {
   _isVariant?: boolean;
   _variantIndex?: number;
-  _variantData?: any;
+  _variantData?: ProductVariant;
   _originalProductId?: string;
   _parentProduct?: Product;
 };
@@ -88,18 +87,17 @@ export const getColumns = ({
       cell: ({ row }) => {
         const product = row.original;
         const isVariant = product._isVariant;
-        const variantData = product._variantData;
         const parentProduct = product._parentProduct;
 
         return (
           <div className="flex gap-2 items-center">
             <div className="flex flex-col">
               <Link
-                href={`/products/${parentProduct?.slug || product.slug}${isVariant && variantData ? `?variant=${variantData.slug}` : ''}`}
+                href={`/products/${parentProduct?.slug || product.slug}${isVariant && product._variantData ? `?variant=${product._variantData.slug}` : ''}`}
                 className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
               >
                 {isVariant ? (
-                  variantData?.name || variantData?.slug || `Variant ${product._variantIndex !== undefined ? product._variantIndex + 1 : 1}`
+                  product._variantData?.name || product._variantData?.slug || `Variant ${product._variantIndex !== undefined ? product._variantIndex + 1 : 1}`
                 ) : (
                   product.name
                 )}
@@ -214,7 +212,7 @@ export const getColumns = ({
   if (hasPermission("products", "canTogglePublished")) {
     columns.splice(8, 0, {
       header: "published",
-      cell: ({ row }: { row: any }) => {
+      cell: ({ row }: { row: Row<TransformedProduct> }) => {
         const product = row.original;
         const isVariant = product._isVariant;
         const variantData = product._variantData;
@@ -230,7 +228,7 @@ export const getColumns = ({
           try {
             const targetId = parentProduct?._id || product._id;
             const variantId = isVariant && variantData?._id ? variantData._id.toString() : undefined;
-            const result = await toggleProductPublishedStatus(targetId, isPublished, variantId);
+            const result = await toggleProductPublishedStatus(targetId, !!isPublished, variantId);
 
             if ('success' in result && result.success) {
               toast.success(
@@ -271,7 +269,7 @@ export const getColumns = ({
         return (
           <div className="pl-5">
             <TableSwitch
-              checked={isPublished}
+              checked={!!isPublished}
               toastSuccessMessage={
                 isVariant
                   ? `✅ Variant ${isPublished ? 'unpublished' : 'published'}. Stock: ${stockInfo.baseStock} / Min: ${stockInfo.minStock}.`
@@ -316,7 +314,6 @@ export const getColumns = ({
       cell: ({ row }) => {
         const product = row.original;
         const isVariant = product._isVariant;
-        const variantData = product._variantData;
         const parentProduct = product._parentProduct;
 
         return (

@@ -7,7 +7,7 @@ import { RowSelectionProps } from "@/types/data-table";
 import { useAuthorization } from "@/hooks/use-authorization";
 
 interface AllStockProps extends RowSelectionProps {
-  stock?: any[];
+  stock?: Record<string, unknown>[];
   pagination?: {
     pages: number;
     current: number;

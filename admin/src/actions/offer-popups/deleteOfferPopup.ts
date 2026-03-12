@@ -12,7 +12,7 @@ export async function deleteOfferPopup(
   try {
     // First, get the popup to find the image URL
     const getResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/offer-popups/${id}`);
-    
+
     if (!getResponse.ok) {
       return {
         success: false,
@@ -23,17 +23,17 @@ export async function deleteOfferPopup(
       };
     }
 
-    const getData: ApiResponse<any> = await getResponse.json();
+    const getData: ApiResponse<{ image?: string }> = await getResponse.json();
     const popup = getData.data;
 
     // Delete the image from Firebase Storage if it exists
-    if (popup.image) {
+    if (popup?.image) {
       try {
         // Extract the file path from the Firebase Storage URL
         const imageUrl = popup.image;
         const baseUrl = "https://firebasestorage.googleapis.com/v0/b/";
-        const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-        
+        const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "";
+
         if (imageUrl.includes(baseUrl) && imageUrl.includes(projectId)) {
           // Extract the path from the URL
           const urlParts = imageUrl.split('/o/');
@@ -41,7 +41,7 @@ export async function deleteOfferPopup(
             const filePath = urlParts[1].split('?')[0];
             const decodedPath = decodeURIComponent(filePath);
             const storageRef = ref(storage, decodedPath);
-            
+
             await deleteObject(storageRef);
           }
         }

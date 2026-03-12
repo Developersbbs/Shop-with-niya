@@ -20,7 +20,6 @@ export default function Products() {
     data: products,
     isLoading,
     isError,
-    error,
     refetch,
   } = useQuery({
     queryKey: [

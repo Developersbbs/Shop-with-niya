@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -27,17 +27,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  ChevronsLeft, 
-  ChevronsRight,
-  Eye,
-  Edit,
-  Copy,
-  Power,
-  PowerOff,
-  Trash2
+import {
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import { Offer } from "@/services/offers/offers";
@@ -130,9 +122,9 @@ export default function AllOffers({
 
   const getUsageStatus = (offer: Offer) => {
     if (!offer.usage_limit) return { label: "Unlimited", color: "bg-gray-100 text-gray-800" };
-    
+
     const percentage = getUsagePercentage(offer);
-    
+
     if (percentage >= 100) return { label: "Exhausted", color: "bg-red-100 text-red-800" };
     if (percentage >= 80) return { label: "Near Limit", color: "bg-orange-100 text-orange-800" };
     if (percentage >= 30) return { label: "Low Usage", color: "bg-blue-100 text-blue-800" };
@@ -155,7 +147,7 @@ export default function AllOffers({
         hour: "2-digit",
         minute: "2-digit",
       });
-    } catch (error) {
+    } catch {
       return "-";
     }
   };
@@ -222,10 +214,10 @@ export default function AllOffers({
         const status = row.getValue("status") as string;
         const endDate = row.original.end_date;
         const startDate = row.original.start_date;
-        
+
         let statusColor = getStatusColor(status);
         let statusLabel = getStatusLabel(status);
-        
+
         if (status === "active") {
           if (isExpired(endDate)) {
             statusColor = "bg-gray-100 text-gray-800";
@@ -235,7 +227,7 @@ export default function AllOffers({
             statusLabel = "Scheduled";
           }
         }
-        
+
         return (
           <Badge className={statusColor}>
             {statusLabel}
@@ -261,7 +253,7 @@ export default function AllOffers({
       cell: ({ row }) => {
         const date = row.getValue("end_date") as string;
         const expired = isExpired(date);
-        
+
         return (
           <div className={`text-sm ${expired ? "text-red-600 font-medium" : ""}`}>
             {formatDate(date)}
@@ -292,7 +284,7 @@ export default function AllOffers({
         const offer = row.original;
         const usageStatus = getUsageStatus(offer);
         const percentage = getUsagePercentage(offer);
-        
+
         return (
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -305,8 +297,8 @@ export default function AllOffers({
               {offer.usage_limit && ` / ${offer.usage_limit}`}
               {offer.usage_limit && (
                 <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                  <div 
-                    className="bg-blue-600 h-2 rounded-full" 
+                  <div
+                    className="bg-blue-600 h-2 rounded-full"
                     style={{ width: `${Math.min(percentage, 100)}%` }}
                   />
                 </div>
@@ -345,12 +337,12 @@ export default function AllOffers({
       header: "Actions",
       cell: ({ row }) => {
         const offer = row.original;
-        
+
         return (
           <SingleOfferActions
             offer={offer}
-            onView={() => window.location.href = `/offers/${offer._id}`}
-            onEdit={() => window.location.href = `/offers/${offer._id}/edit`}
+            onView={() => { window.location.href = `/offers/${offer._id}`; }}
+            onEdit={() => { window.location.href = `/offers/${offer._id}/edit`; }}
             onDuplicate={() => console.log("Duplicate offer:", offer._id)}
           />
         );
@@ -418,9 +410,9 @@ export default function AllOffers({
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                   </TableHead>
                 ))}
               </TableRow>

@@ -12,7 +12,7 @@ export async function deleteCategory(
   try {
     // First fetch category to check if it exists and get image info
     const categoryResponse = await apiGet<ApiResponse<Category>>(`/api/categories/${categoryId}`);
-    
+
     if (!categoryResponse.success) {
       console.error("Failed to fetch category for deletion:", categoryResponse.error);
       return { dbError: "Could not find the category to delete." };
@@ -37,7 +37,7 @@ export async function deleteCategory(
 
     revalidatePath("/categories");
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("API request failed:", error);
     return { dbError: "Failed to connect to server. Please try again later." };
   }

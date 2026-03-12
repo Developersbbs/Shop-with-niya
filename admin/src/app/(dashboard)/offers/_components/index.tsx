@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, Fragment, useEffect, useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useState, Fragment, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 // Import offers components
@@ -14,7 +14,6 @@ import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Offers() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [rowSelection, setRowSelection] = useState({});
 
@@ -39,22 +38,24 @@ export default function Offers() {
   const sortBy = rawSortBy || "priority";
   const order = rawOrder || "desc";
 
-  // Reset row selection when page changes
-  useEffect(() => {
+  const [lastPage, setLastPage] = useState(page);
+
+  if (page !== lastPage) {
+    setLastPage(page);
     setRowSelection({});
-  }, [page]);
+  }
 
   // Create stable query key
   const queryKey = useMemo(() => [
-    "offers", 
-    page, 
-    limit, 
-    search, 
-    offerType, 
-    status, 
-    priority, 
-    usageThreshold, 
-    sortBy, 
+    "offers",
+    page,
+    limit,
+    search,
+    offerType,
+    status,
+    priority,
+    usageThreshold,
+    sortBy,
     order
   ], [page, limit, search, offerType, status, priority, usageThreshold, sortBy, order]);
 
@@ -66,16 +67,16 @@ export default function Offers() {
     error,
   } = useQuery({
     queryKey,
-    queryFn: () => fetchOffers({ 
-      page, 
-      limit, 
-      search, 
-      offerType, 
-      status, 
-      priority, 
-      usageThreshold, 
-      sortBy, 
-      order 
+    queryFn: () => fetchOffers({
+      page,
+      limit,
+      search,
+      offerType,
+      status,
+      priority,
+      usageThreshold,
+      sortBy,
+      order
     }),
     staleTime: 30000,
     gcTime: 300000,
@@ -90,7 +91,7 @@ export default function Offers() {
   // Show search results info
   const searchResultsInfo = search && data?.meta ? (
     <div className="mb-4 text-sm text-muted-foreground">
-      Found {data.meta.total} result{data.meta.total !== 1 ? 's' : ''} for "{search}"
+      Found {data.meta.total} result{data.meta.total !== 1 ? 's' : ''} for &quot;{search}&quot;
     </div>
   ) : null;
 

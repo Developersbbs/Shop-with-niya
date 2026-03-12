@@ -12,10 +12,11 @@ export async function exportCustomers() {
     }
 
     return { data: data.data };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Customers export error:", error);
+    const err = error as { response?: { data?: { error?: string } } };
     return {
-      error: error.response?.data?.error || "Failed to fetch data for customers."
+      error: err.response?.data?.error || "Failed to fetch data for customers."
     };
   }
 }

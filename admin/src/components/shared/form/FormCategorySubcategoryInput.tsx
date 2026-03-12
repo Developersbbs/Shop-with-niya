@@ -1,8 +1,8 @@
 "use client";
 
-import { forwardRef, Ref, useState, useEffect } from "react";
+import { forwardRef, Ref, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Control, FieldValues, Path, UseFormSetValue } from "react-hook-form";
+import { Control, FieldValues, Path, PathValue, UseFormSetValue } from "react-hook-form";
 
 import {
   FormField,
@@ -85,7 +85,7 @@ const FormCategorySubcategoryInput = forwardRef(function FormCategorySubcategory
                   field.onChange(value);
                   setSelectedCategoryId(value);
                   // Reset subcategory when category changes
-                  setValue(subcategoryName, "" as any);
+                  setValue(subcategoryName, "" as PathValue<TFormData, Path<TFormData>>);
                 }}
               >
                 <FormControl>
@@ -136,12 +136,12 @@ const FormCategorySubcategoryInput = forwardRef(function FormCategorySubcategory
               >
                 <FormControl>
                   <SelectTrigger className="md:basis-1/5">
-                    <SelectValue 
+                    <SelectValue
                       placeholder={
-                        !selectedCategoryId 
-                          ? "Select category first" 
+                        !selectedCategoryId
+                          ? "Select category first"
                           : "Select Subcategory"
-                      } 
+                      }
                     />
                   </SelectTrigger>
                 </FormControl>
@@ -156,18 +156,18 @@ const FormCategorySubcategoryInput = forwardRef(function FormCategorySubcategory
                       !subcategoriesError &&
                       subcategories &&
                       subcategories.length > 0 ? (
-                        subcategories.map((subcategory: any) => (
-                          <SelectItem key={subcategory._id} value={subcategory._id}>
-                            {subcategory.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        !subcategoriesLoading && (
-                          <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                            No subcategories available
-                          </div>
-                        )
-                      )}
+                      subcategories.map((subcategory: { _id: string, name: string }) => (
+                        <SelectItem key={subcategory._id} value={subcategory._id}>
+                          {subcategory.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      !subcategoriesLoading && (
+                        <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                          No subcategories available
+                        </div>
+                      )
+                    )}
                   </FetchDropdownContainer>
                 </SelectContent>
               </Select>

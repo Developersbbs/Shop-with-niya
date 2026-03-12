@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, LegacyRef, useState, useTransition, useEffect } from "react";
+import { useRef, useState, useTransition, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, FieldErrors } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,8 +36,6 @@ import { FormSubmitButton } from "@/components/shared/form/FormSubmitButton";
 import { productFormSchema, ProductFormData } from "./schema";
 import { objectToFormData } from "@/helpers/objectToFormData";
 import { ProductServerActionResponse } from "@/types/server-action";
-import { VariantManager } from "@/types/variants";
-import { getStockStatus } from "@/utils/stockStatus";
 
 type ProductFormProps = {
   title: string;
@@ -65,7 +63,6 @@ export default function ProductFormSheet({
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [container, setContainer] = useState(null);
   const imageDropzoneRef = useRef<HTMLDivElement>(null);
   const categoryRef = useRef<HTMLButtonElement>(null);
 
@@ -263,7 +260,7 @@ export default function ProductFormSheet({
   useEffect(() => {
     if (slug) {
       const baseUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+        process.env.NEXT_PUBLIC_SITE_URL;
       const canonical = `${baseUrl}/products/${slug}`;
       form.setValue("seoCanonical", canonical, {
         shouldValidate: true,   // ← was false; triggers re-render so value shows
@@ -296,7 +293,7 @@ export default function ProductFormSheet({
               });
             } else {
               const baseUrl =
-                process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+                process.env.NEXT_PUBLIC_API_URL;
               form.setValue(
                 "seoOgImage",
                 `${baseUrl}${firstVariantImage}`,
@@ -319,7 +316,7 @@ export default function ProductFormSheet({
           });
         } else {
           const baseUrl =
-            process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+            process.env.NEXT_PUBLIC_API_URL;
           form.setValue("seoOgImage", `${baseUrl}${firstImage}`, {
             shouldValidate: false,
             shouldDirty: false,
@@ -338,7 +335,7 @@ export default function ProductFormSheet({
       )
         return currentOgImage;
       const baseUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:5000";
+        process.env.NEXT_PUBLIC_SITE_URL;
       return `${baseUrl}${currentOgImage}`;
     }
     const productStructure = form.watch("productStructure");
@@ -353,7 +350,7 @@ export default function ProductFormSheet({
           if (typeof firstVariantImage === "string") {
             if (firstVariantImage.startsWith("http")) return firstVariantImage;
             const baseUrl =
-              process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:5000";
+              process.env.NEXT_PUBLIC_SITE_URL;
             return `${baseUrl}${firstVariantImage}`;
           }
           return `Variant has ${variant.images.length} image(s) - first will be used for social sharing`;
@@ -365,7 +362,7 @@ export default function ProductFormSheet({
       if (typeof firstImage === "string") {
         if (firstImage.startsWith("http")) return firstImage;
         const baseUrl =
-          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:5000";
+          process.env.NEXT_PUBLIC_SITE_URL;
         return `${baseUrl}${firstImage}`;
       }
       return `${images.length} image(s) uploaded - first will be used for social sharing`;
@@ -406,13 +403,13 @@ export default function ProductFormSheet({
       const currentDownloadFormat = form.getValues("downloadFormat");
       const currentLicenseType = form.getValues("licenseType");
       const currentDownloadLimit = form.getValues("downloadLimit");
-      if (currentFileSize !== undefined && currentFileSize !== "")
+      if (currentFileSize !== undefined && currentFileSize !== null)
         finalData.fileSize = currentFileSize;
       if (currentDownloadFormat && currentDownloadFormat !== "")
         finalData.downloadFormat = currentDownloadFormat;
       if (currentLicenseType && currentLicenseType !== "")
         finalData.licenseType = currentLicenseType;
-      if (currentDownloadLimit !== undefined && currentDownloadLimit !== "")
+      if (currentDownloadLimit !== undefined && currentDownloadLimit !== null)
         finalData.downloadLimit = currentDownloadLimit;
     }
 
@@ -447,7 +444,7 @@ export default function ProductFormSheet({
     const isBaseInStock = (currentStock || 0) > (currentMinStock || 0);
     const hasVariantsInStock =
       currentVariants?.combinations?.some(
-        (variant: any) =>
+        (variant: { stock?: number; minStock?: number }) =>
           variant.stock !== undefined &&
           variant.minStock !== undefined &&
           variant.stock > variant.minStock
@@ -470,7 +467,7 @@ export default function ProductFormSheet({
     const product_variants = form.getValues("product_variants");
     const {
       images: formImages,
-      product_variants: _unused,
+      product_variants: _product_variants, // eslint-disable-line @typescript-eslint/no-unused-vars
       ...dataWithoutFiles
     } = finalData;
     const formData = objectToFormData(dataWithoutFiles);
@@ -481,7 +478,7 @@ export default function ProductFormSheet({
     const existingImageUrls: string[] = [];
 
     if (formImages && formImages.length > 0) {
-      formImages.forEach((img: any) => {
+      formImages.forEach((img) => {
         if (img instanceof File) newImageFiles.push(img);
         else if (typeof img === "string") existingImageUrls.push(img);
       });
@@ -503,19 +500,19 @@ export default function ProductFormSheet({
       const variantsForJson = {
         ...product_variants,
         combinations:
-          product_variants.combinations?.map((combo: any) => {
-            const { images: comboImages, ...comboWithoutImages } = combo;
+          product_variants.combinations?.map((combo: { images?: (string | File)[];[key: string]: unknown }) => {
+            const { images: _images, ...comboWithoutImages } = combo; // eslint-disable-line @typescript-eslint/no-unused-vars
             return comboWithoutImages;
           }) || [],
       };
       formData.append("product_variants", JSON.stringify(variantsForJson));
 
       product_variants.combinations?.forEach(
-        (combo: any, comboIdx: number) => {
+        (combo, comboIdx: number) => {
           let newFileIdx = 0;
           let existingUrlIdx = 0;
-          const comboImages = combo.images || [];
-          comboImages.forEach((img: any) => {
+          const comboImages = (combo as { images?: (string | File)[] }).images || [];
+          comboImages.forEach((img) => {
             if (img instanceof File) {
               formData.append(`variantImages[${comboIdx}][${newFileIdx}]`, img);
               newFileIdx++;
@@ -596,7 +593,7 @@ export default function ProductFormSheet({
               },
             });
             toast.success(
-              `Product "${result.product.name}" ${actionVerb} successfully!`,
+              `Product "${result.product?.name || "updated"}" ${actionVerb} successfully!`,
               { position: "top-center" }
             );
             queryClient.invalidateQueries({ queryKey: ["products"] });
@@ -648,7 +645,6 @@ export default function ProductFormSheet({
               <FormSheetBody>
                 <div
                   className="space-y-6"
-                  ref={setContainer as LegacyRef<HTMLDivElement>}
                 >
                   <FormTextInput
                     control={form.control}
@@ -936,7 +932,7 @@ export default function ProductFormSheet({
                     name="seoOgTitle"
                     label="Open Graph Title"
                     placeholder="Open Graph title for social media"
-                    // ← no readOnly here
+                  // ← no readOnly here
                   />
 
                   <FormTextarea
@@ -944,7 +940,7 @@ export default function ProductFormSheet({
                     name="seoOgDescription"
                     label="Open Graph Description"
                     placeholder="Open Graph description for social media"
-                    // ← no readOnly here
+                  // ← no readOnly here
                   />
 
                   <FormTextInput
@@ -957,7 +953,7 @@ export default function ProductFormSheet({
                           getOgImagePreview() ||
                           "Auto-generated from product/variant images"
                         );
-                      } catch (error) {
+                      } catch {
                         return "Auto-generated from product/variant images";
                       }
                     })()}

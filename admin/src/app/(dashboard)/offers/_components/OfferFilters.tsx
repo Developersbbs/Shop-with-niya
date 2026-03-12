@@ -17,35 +17,31 @@ export default function OfferFilters() {
 
   // Debounce search input - wait 500ms after user stops typing
   useEffect(() => {
-    if (search !== debouncedSearch) {
-      setIsSearching(true);
-    }
-    
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       setIsSearching(false);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [search, debouncedSearch]);
+  }, [search]);
 
   // Update URL when debounced search changes
   useEffect(() => {
     // Normalize values - treat null and empty string as the same
     const currentSearch = searchParams.get("search") || "";
-    
+
     if (debouncedSearch !== currentSearch) {
       const params = new URLSearchParams(searchParams.toString());
-      
+
       if (debouncedSearch) {
         params.set("search", debouncedSearch);
       } else {
         params.delete("search");
       }
-      
+
       // Reset to page 1 when search changes
       params.set("page", "1");
-      
+
       router.replace(`/offers?${params.toString()}`);
     }
   }, [debouncedSearch, router, searchParams]);
@@ -53,7 +49,7 @@ export default function OfferFilters() {
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams(searchParams.toString());
-    
+
     if (search) {
       params.set("search", search);
     } else {
@@ -64,10 +60,6 @@ export default function OfferFilters() {
     router.replace(`/offers?${params.toString()}`);
   };
 
-  const handleReset = () => {
-    setSearch("");
-    router.replace("/offers?page=1&limit=10");
-  };
 
   return (
     <Card className="mb-5">
@@ -81,7 +73,12 @@ export default function OfferFilters() {
             placeholder="Search offers by title or description..."
             className="h-12"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              if (e.target.value !== debouncedSearch) {
+                setIsSearching(true);
+              }
+            }}
           />
           {isSearching && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">

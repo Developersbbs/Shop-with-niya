@@ -9,22 +9,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
+import {
   ArrowLeft, Edit3, Package, FileText, Layers, Search,
   Tag, BarChart3, AlertCircle, CheckCircle2, DollarSign,
   Archive, Download
 } from "lucide-react";
 import { EditProductSheet } from "./EditProductSheet";
-import { ProductDetails } from "@/types/api";
+import { ProductDetails, ProductVariant } from "@/types/api";
 import { getStockStatus, getStockDisplayText } from "@/utils/stockStatus";
 
 type ProductDetailsClientProps = {
   product: ProductDetails;
 };
 
-const ProductImageGallery = memo(({ product, displayImages, displayName }: { product: any; displayImages: string[]; displayName: string }) => {
+const ProductImageGallery = memo(({ product, displayImages, displayName }: { product: ProductDetails | ProductVariant; displayImages: string[]; displayName: string }) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const images = displayImages.length > 0 ? displayImages : product.image_url || [];
+  const images = displayImages.length > 0 ? displayImages : ('image_url' in product ? product.image_url : (product as ProductVariant).images) || [];
 
   return (
     <div className="w-full">
@@ -45,11 +45,10 @@ const ProductImageGallery = memo(({ product, displayImages, displayName }: { pro
               {images.map((image: string, index: number) => (
                 <button
                   key={index}
-                  className={`flex-shrink-0 w-16 h-16 rounded border-2 overflow-hidden transition-all ${
-                    selectedImageIndex === index
-                      ? 'border-blue-600 ring-2 ring-blue-100 dark:ring-blue-900'
-                      : 'border-gray-200 dark:border-[#2e2e2e] hover:border-gray-300 dark:hover:border-[#3a3a3a]'
-                  }`}
+                  className={`flex-shrink-0 w-16 h-16 rounded border-2 overflow-hidden transition-all ${selectedImageIndex === index
+                    ? 'border-blue-600 ring-2 ring-blue-100 dark:ring-blue-900'
+                    : 'border-gray-200 dark:border-[#2e2e2e] hover:border-gray-300 dark:hover:border-[#3a3a3a]'
+                    }`}
                   onClick={() => setSelectedImageIndex(index)}
                 >
                   <Image
@@ -76,6 +75,10 @@ const ProductImageGallery = memo(({ product, displayImages, displayName }: { pro
 ProductImageGallery.displayName = "ProductImageGallery";
 
 export default function ProductDetailsClient({ product }: ProductDetailsClientProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const variantSlug = searchParams.get('variant');
+
   if (!product) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center">
@@ -87,12 +90,8 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
     );
   }
 
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const variantSlug = searchParams.get('variant');
-
   const selectedVariant = variantSlug && product.product_variants
-    ? product.product_variants.find((v: any) => v.slug === variantSlug)
+    ? product.product_variants.find((v: ProductVariant) => v.slug === variantSlug)
     : null;
 
   const defaultVariant = !selectedVariant && product.product_structure === 'variant' && product.product_variants && product.product_variants.length > 0
@@ -102,9 +101,16 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
   const currentProduct = selectedVariant || defaultVariant || product;
   const safeCurrentProduct = currentProduct || product || {};
 
-  const displayImages = safeCurrentProduct.image_url && Array.isArray(safeCurrentProduct.image_url) && safeCurrentProduct.image_url.length > 0
-    ? safeCurrentProduct.image_url
-    : (product?.image_url && Array.isArray(product.image_url) ? product.image_url : []);
+  const getProductImages = (p: ProductDetails | ProductVariant) => {
+    if ('image_url' in p && Array.isArray(p.image_url)) return p.image_url;
+    if ('images' in p && Array.isArray(p.images)) return p.images;
+    return [];
+  };
+
+  const currentProductImages = getProductImages(safeCurrentProduct as ProductDetails | ProductVariant);
+  const displayImages = currentProductImages.length > 0
+    ? currentProductImages
+    : getProductImages(product);
 
   const displayName = safeCurrentProduct.name || product?.name || 'Unnamed Product';
 
@@ -121,8 +127,8 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
     ? Math.min((currentStock / (currentMinStock * 2)) * 100, 100)
     : 0;
 
-  const profitMargin = safeCurrentProduct.cost_price && safeCurrentProduct.selling_price
-    ? (((safeCurrentProduct.selling_price - safeCurrentProduct.cost_price) / safeCurrentProduct.selling_price) * 100).toFixed(1)
+  const profitMargin = (safeCurrentProduct as ProductDetails).cost_price && (safeCurrentProduct as ProductDetails).selling_price
+    ? ((((safeCurrentProduct as ProductDetails).selling_price - (safeCurrentProduct as ProductDetails).cost_price) / (safeCurrentProduct as ProductDetails).selling_price) * 100).toFixed(1)
     : "0";
 
   const handleBack = () => router.push('/products');
@@ -173,13 +179,12 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
               <div className="flex items-center gap-2">
                 <Badge
                   variant={stockStatusInfo.visibility === 'visible' ? "default" : "secondary"}
-                  className={`border ${
-                    stockStatusInfo.color === 'green'
-                      ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-900'
-                      : stockStatusInfo.color === 'yellow'
+                  className={`border ${stockStatusInfo.color === 'green'
+                    ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-900'
+                    : stockStatusInfo.color === 'yellow'
                       ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-900'
                       : 'bg-gray-100 dark:bg-[#252525] text-gray-600 dark:text-[#aaa] border-gray-200 dark:border-[#3a3a3a]'
-                  }`}
+                    }`}
                 >
                   {stockStatusInfo.status === 'published' ? (
                     <><CheckCircle2 className="w-3 h-3 mr-1" />{stockStatusInfo.label}</>
@@ -270,25 +275,22 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
                         <div className="space-y-1.5">
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-gray-600 dark:text-[#888]">Status</span>
-                            <span className={`font-medium ${
-                              stockStatusInfo.color === 'green' ? 'text-green-600 dark:text-green-400' :
+                            <span className={`font-medium ${stockStatusInfo.color === 'green' ? 'text-green-600 dark:text-green-400' :
                               stockStatusInfo.color === 'yellow' ? 'text-yellow-600 dark:text-yellow-400' :
-                              'text-gray-600 dark:text-[#888]'
-                            }`}>
+                                'text-gray-600 dark:text-[#888]'
+                              }`}>
                               {stockStatusInfo.label}
                             </span>
                           </div>
-                          <div className={`h-2 rounded-full ${
-                            stockStatusInfo.color === 'green' ? 'bg-green-100 dark:bg-green-900/20' :
+                          <div className={`h-2 rounded-full ${stockStatusInfo.color === 'green' ? 'bg-green-100 dark:bg-green-900/20' :
                             stockStatusInfo.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900/20' :
-                            'bg-gray-100 dark:bg-[#252525]'
-                          }`}>
+                              'bg-gray-100 dark:bg-[#252525]'
+                            }`}>
                             <div
-                              className={`h-full rounded-full transition-all ${
-                                stockStatusInfo.color === 'green' ? 'bg-green-600 dark:bg-green-500' :
+                              className={`h-full rounded-full transition-all ${stockStatusInfo.color === 'green' ? 'bg-green-600 dark:bg-green-500' :
                                 stockStatusInfo.color === 'yellow' ? 'bg-yellow-600 dark:bg-yellow-500' :
-                                'bg-gray-400 dark:bg-[#555]'
-                              }`}
+                                  'bg-gray-400 dark:bg-[#555]'
+                                }`}
                               style={{ width: `${stockPercentage}%` }}
                             />
                           </div>
@@ -309,34 +311,34 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
                         <div className="flex justify-between items-baseline">
                           <span className="text-sm text-gray-600 dark:text-[#888]">File Type</span>
                           <span className="text-base font-semibold text-gray-900 dark:text-white uppercase">
-                            {(product as any).download_format || 'N/A'}
+                            {product.download_format || 'N/A'}
                           </span>
                         </div>
-                        {(product as any).file_size && (
+                        {product.file_size && (
                           <div className="flex justify-between items-baseline">
                             <span className="text-sm text-gray-600 dark:text-[#888]">File Size</span>
                             <span className="text-base text-gray-700 dark:text-[#ccc]">
-                              {((product as any).file_size / (1024 * 1024)).toFixed(2)} MB
+                              {(product.file_size / (1024 * 1024)).toFixed(2)} MB
                             </span>
                           </div>
                         )}
-                        {(product as any).license_type && (
+                        {product.license_type && (
                           <div className="flex justify-between items-baseline">
                             <span className="text-sm text-gray-600 dark:text-[#888]">License</span>
                             <span className="text-base text-gray-700 dark:text-[#ccc] capitalize">
-                              {(product as any).license_type}
+                              {product.license_type}
                             </span>
                           </div>
                         )}
-                        {(product as any).download_limit && (
+                        {product.download_limit && (
                           <div className="flex justify-between items-baseline">
                             <span className="text-sm text-gray-600 dark:text-[#888]">Download Limit</span>
                             <span className="text-base text-gray-700 dark:text-[#ccc]">
-                              {(product as any).download_limit} downloads
+                              {product.download_limit} downloads
                             </span>
                           </div>
                         )}
-                        {(product as any).file_path && (
+                        {product.file_path && (
                           <div className="pt-4 border-t border-gray-200 dark:border-[#2e2e2e]">
                             <Button className="w-full gap-2 bg-blue-600 hover:bg-blue-700 text-white" size="sm">
                               <Download className="w-4 h-4" /> Download Digital File
@@ -463,25 +465,22 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
                         <div>
                           <div className="flex justify-between items-center mb-2">
                             <span className="text-sm text-gray-600 dark:text-[#888]">Stock Health</span>
-                            <span className={`text-sm font-medium ${
-                              stockStatusInfo.color === 'green' ? 'text-green-600 dark:text-green-400' :
+                            <span className={`text-sm font-medium ${stockStatusInfo.color === 'green' ? 'text-green-600 dark:text-green-400' :
                               stockStatusInfo.color === 'yellow' ? 'text-yellow-600 dark:text-yellow-400' :
-                              'text-gray-600 dark:text-[#888]'
-                            }`}>
+                                'text-gray-600 dark:text-[#888]'
+                              }`}>
                               {stockStatusInfo.label}
                             </span>
                           </div>
-                          <div className={`h-2.5 rounded-full ${
-                            stockStatusInfo.color === 'green' ? 'bg-green-100 dark:bg-green-900/20' :
+                          <div className={`h-2.5 rounded-full ${stockStatusInfo.color === 'green' ? 'bg-green-100 dark:bg-green-900/20' :
                             stockStatusInfo.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900/20' :
-                            'bg-gray-100 dark:bg-[#252525]'
-                          }`}>
+                              'bg-gray-100 dark:bg-[#252525]'
+                            }`}>
                             <div
-                              className={`h-full rounded-full transition-all ${
-                                stockStatusInfo.color === 'green' ? 'bg-green-600 dark:bg-green-500' :
+                              className={`h-full rounded-full transition-all ${stockStatusInfo.color === 'green' ? 'bg-green-600 dark:bg-green-500' :
                                 stockStatusInfo.color === 'yellow' ? 'bg-yellow-600 dark:bg-yellow-500' :
-                                'bg-gray-400 dark:bg-[#555]'
-                              }`}
+                                  'bg-gray-400 dark:bg-[#555]'
+                                }`}
                               style={{ width: `${stockPercentage}%` }}
                             />
                           </div>
@@ -501,42 +500,42 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
                         <div className="flex justify-between">
                           <dt className="text-sm text-gray-600 dark:text-[#888]">File Path</dt>
                           <dd className="text-sm font-mono text-gray-900 dark:text-white bg-gray-50 dark:bg-[#252525] px-2 py-1 rounded">
-                            {(product as any).file_path ? (product as any).file_path.split('/').pop() : 'No file uploaded'}
+                            {product.file_path ? product.file_path.split('/').pop() : 'No file uploaded'}
                           </dd>
                         </div>
-                        {(product as any).file_size && (
+                        {product.file_size && (
                           <div className="flex justify-between">
                             <dt className="text-sm text-gray-600 dark:text-[#888]">File Size</dt>
                             <dd className="text-sm font-semibold text-gray-900 dark:text-white">
-                              {((product as any).file_size / (1024 * 1024)).toFixed(2)} MB
+                              {(product.file_size / (1024 * 1024)).toFixed(2)} MB
                             </dd>
                           </div>
                         )}
-                        {(product as any).download_format && (
+                        {product.download_format && (
                           <div className="flex justify-between">
                             <dt className="text-sm text-gray-600 dark:text-[#888]">Format</dt>
                             <dd className="text-sm font-semibold text-gray-900 dark:text-white uppercase">
-                              {(product as any).download_format}
+                              {product.download_format}
                             </dd>
                           </div>
                         )}
-                        {(product as any).license_type && (
+                        {product.license_type && (
                           <div className="flex justify-between">
                             <dt className="text-sm text-gray-600 dark:text-[#888]">License Type</dt>
                             <dd className="text-sm font-semibold text-gray-900 dark:text-white capitalize">
-                              {(product as any).license_type}
+                              {product.license_type}
                             </dd>
                           </div>
                         )}
-                        {(product as any).download_limit && (
+                        {product.download_limit && (
                           <div className="flex justify-between">
                             <dt className="text-sm text-gray-600 dark:text-[#888]">Download Limit</dt>
                             <dd className="text-sm font-semibold text-gray-900 dark:text-white">
-                              {(product as any).download_limit} downloads
+                              {product.download_limit} downloads
                             </dd>
                           </div>
                         )}
-                        {(product as any).file_path && (
+                        {product.file_path && (
                           <div className="pt-4 border-t border-gray-200 dark:border-[#2e2e2e]">
                             <Button className="w-full gap-2 bg-blue-600 hover:bg-blue-700 text-white" size="sm">
                               <Download className="w-4 h-4" /> Download Digital File
@@ -556,14 +555,14 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
                     <CardContent className="pt-6">
                       <div className="text-center py-12">
                         <FileText className="w-12 h-12 text-gray-300 dark:text-[#444] mx-auto mb-3" />
-                        <p className="text-sm text-gray-500 dark:text-[#888]">Digital products don't have variants</p>
+                        <p className="text-sm text-gray-500 dark:text-[#888]">Digital products don&apos;t have variants</p>
                         <p className="text-xs text-gray-400 dark:text-[#555] mt-1">Variants are only available for physical products</p>
                       </div>
                     </CardContent>
                   </Card>
                 ) : product.product_variants && Array.isArray(product.product_variants) && product.product_variants.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {product.product_variants.map((variant: any, idx: number) => (
+                    {product.product_variants.map((variant: ProductVariant, idx: number) => (
                       <Card key={idx} className={`border-gray-200 dark:border-[#2e2e2e] dark:bg-[#1a1a1a] ${selectedVariant && selectedVariant.slug === variant.slug ? 'ring-2 ring-blue-500 bg-blue-50/30 dark:bg-blue-900/10' : ''}`}>
                         <CardContent className="pt-6">
                           <div className="space-y-3">
@@ -619,7 +618,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
                                     <div className="flex gap-2 overflow-x-auto">
                                       {variant.images.slice(0, 5).map((image: string, imgIdx: number) => (
                                         <div key={imgIdx} className="w-12 h-12 rounded border border-gray-200 dark:border-[#2e2e2e] overflow-hidden flex-shrink-0">
-                                          <img src={image} alt={`Variant image ${imgIdx + 1}`} className="w-full h-full object-cover" />
+                                          <Image src={image} alt={`Variant image ${imgIdx + 1}`} width={48} height={48} className="w-full h-full object-cover" />
                                         </div>
                                       ))}
                                       {variant.images.length > 5 && (

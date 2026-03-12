@@ -25,11 +25,11 @@ const UserContext = createContext<UserContextType>({
   user: null,
   profile: null,
   isLoading: true,
-  refetch: () => {},
+  refetch: () => { },
 });
 
 // Type guard function to check if role is an object with name property
-function isRoleObject(role: any): role is { name: string; display_name: string; is_default: boolean } {
+function isRoleObject(role: unknown): role is { name: string; display_name: string; is_default: boolean } {
   return typeof role === 'object' && role !== null && 'name' in role;
 }
 
@@ -49,7 +49,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, []); // ← Remove queryClient from dependencies
+  }, [queryClient]);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["user-profile"],

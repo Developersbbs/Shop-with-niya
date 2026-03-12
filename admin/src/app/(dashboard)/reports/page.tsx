@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { addDays, format } from "date-fns"
+import { useState, useEffect, useCallback } from "react"
+import { addDays } from "date-fns"
 import { DateRange } from "react-day-picker"
 import { DatePickerWithRange } from "@/components/reports/DateRangeFilter"
 import { SalesChart } from "@/components/reports/SalesChart"
@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 
 const getApiUrl = () => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
     return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
 };
 
@@ -27,7 +27,7 @@ export default function ReportsPage() {
     const [topProductsData, setTopProductsData] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         if (!date?.from) return;
 
         setLoading(true);
@@ -67,11 +67,11 @@ export default function ReportsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [date]);
 
     useEffect(() => {
         fetchData();
-    }, [date]);
+    }, [fetchData]);
 
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">

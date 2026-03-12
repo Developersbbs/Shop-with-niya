@@ -12,12 +12,12 @@ export async function deleteRating(
         const response = await apiDelete<RatingsResponse>(`/api/ratings/${ratingId}`);
 
         if (!response.success) {
-            return { dbError: response.error || "Failed to delete rating" };
+            return { dbError: "Failed to delete rating" };
         }
 
         revalidatePath("/reviews");
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Delete rating failed:", error);
         return { dbError: "Failed to connect to server" };
     }

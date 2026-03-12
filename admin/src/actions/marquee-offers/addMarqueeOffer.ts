@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { formatValidationErrors } from "@/helpers/formatValidationErrors";
 import { EnhancedServerActionResponse } from "@/types/server-action";
 import { ApiResponse } from "@/types/api";
 
@@ -39,9 +38,9 @@ export async function addMarqueeOffer(
     // Get current offers to calculate next order
     const offersResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/marquee-offers/admin`);
     if (offersResponse.ok) {
-      const offersData: ApiResponse<any[]> = await offersResponse.json();
+      const offersData: ApiResponse<{ order?: number }[]> = await offersResponse.json();
       let nextOrder = 0;
-      
+
       if (offersData.success && offersData.data && offersData.data.length > 0) {
         const highestOrder = Math.max(...offersData.data.map(o => o.order || 0));
         nextOrder = highestOrder + 1;
@@ -74,7 +73,7 @@ export async function addMarqueeOffer(
         };
       }
 
-      const data: ApiResponse<any> = await response.json();
+      const data: ApiResponse<Record<string, unknown>> = await response.json();
 
       // Revalidate the marquee offers page
       revalidatePath("/marquee-offers");

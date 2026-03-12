@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, LegacyRef, useState, useTransition, useEffect } from "react";
+import { useRef, useState, useTransition, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, FieldErrors, useWatch } from "react-hook-form";
+import { useForm, FieldErrors } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -32,21 +32,16 @@ import {
   FormTextarea,
   FormSlugInput,
   FormSelect,
-  FormSwitch,
-  FormDatetimeInput,
   FormNumberInput,
   FormImageInput,
 } from "@/components/shared/form";
 import { DatePicker } from "@/components/shared/DatePicker";
-import { TimePicker } from "@/components/shared/TimePicker";
 import FormSearchableSelect from "@/components/shared/form/FormSearchableSelect";
-import FormMultipleCategorySubcategoryInput from "@/components/shared/form/FormMultipleCategorySubcategoryInput";
 import { FormSubmitButton } from "@/components/shared/form/FormSubmitButton";
 import { Switch } from "@/components/ui/switch";
 import { uploadFile } from "@/lib/firebase/storage";
 import { offerFormSchema, OfferFormData } from "./schema";
 import { createOffer, updateOffer } from "@/services/offers/offers";
-import { Offer } from "@/services/offers/offers";
 
 type OfferFormProps = {
   title: string;
@@ -70,7 +65,6 @@ export default function OfferFormSheet({
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [container, setContainer] = useState(null);
   const imageDropzoneRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<OfferFormData>({
@@ -229,12 +223,12 @@ export default function OfferFormSheet({
         // Prepare submission data with uploaded URLs
         const submissionData = {
           ...data,
-          image_url: imageUrl,
-          banner_image: bannerImageUrl,
+          image_url: imageUrl as string | undefined,
+          banner_image: bannerImageUrl as string | undefined,
         };
 
         // Remove File objects from submission data and filter configs based on offer type
-        const { image_url: _img, banner_image: _banner, ...cleanData } = submissionData;
+        const { image_url: _, banner_image: __, ...cleanData } = submissionData;
 
         // Only include the relevant configuration based on offer type
         const filteredData = {
@@ -383,7 +377,6 @@ export default function OfferFormSheet({
               <FormSheetBody>
                 <div
                   className="space-y-6"
-                  ref={setContainer as LegacyRef<HTMLDivElement>}
                 >
                   {/* Basic Information Section */}
                   <div className="border rounded-lg p-4 space-y-4 mb-6">

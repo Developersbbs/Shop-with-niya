@@ -8,18 +8,18 @@ export async function toggleCategoryPublishedStatus(
   currentPublishedStatus: boolean
 ): Promise<ServerActionResponse> {
   try {
-    const res = await fetch(`http://localhost:5000/api/categories/${categoryId}`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories/${categoryId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ published: !currentPublishedStatus }),
     });
 
-    if (!res.ok) return { error: "Failed to update category status." };
+    if (!res.ok) return { dbError: "Failed to update category status." };
 
     revalidatePath("/categories");
     return { success: true };
   } catch (err) {
     console.error("Error updating category:", err);
-    return { error: "Something went wrong." };
+    return { dbError: "Something went wrong." };
   }
 }

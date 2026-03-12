@@ -6,7 +6,7 @@ import { z, ZodSchema } from "zod";
  * @param inputs - The form data to validate.
  * @returns An object containing validation errors or null if no errors were found.
  */
-export default function validateFormData<T extends ZodSchema<any>>(
+export default function validateFormData<T extends ZodSchema>(
   formSchema: T,
   inputs: z.infer<typeof formSchema>
 ): {
@@ -18,14 +18,19 @@ export default function validateFormData<T extends ZodSchema<any>>(
   try {
     // Attempt to parse the form data using the provided schema.
     formSchema.parse(inputs);
-  } catch (err: any) {
-    // If a validation error is caught, extract field-specific errors.
-    const { fieldErrors } = err.flatten();
+  } catch (err: unknown) {
+    if (err instanceof z.ZodError) {
+      // If a validation error is caught, extract field-specific errors.
+      const { fieldErrors } = err.flatten();
 
-    // Iterate through the field errors and store the first error for each field.
-    for (const key in fieldErrors) {
-      if (fieldErrors.hasOwnProperty(key)) {
-        errors[key] = fieldErrors[key][0];
+      // Iterate through the field errors and store the first error for each field.
+      for (const key in fieldErrors) {
+        if (fieldErrors.hasOwnProperty(key)) {
+          const fieldError = fieldErrors[key];
+          if (fieldError && fieldError.length > 0) {
+            errors[key] = fieldError[0] as string;
+          }
+        }
       }
     }
   }

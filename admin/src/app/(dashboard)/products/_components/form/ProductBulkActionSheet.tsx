@@ -41,7 +41,7 @@ export default function ProductBulkActionSheet({
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [container, setContainer] = useState(null);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const categoryRef = useRef<HTMLButtonElement>(null);
 
   const form = useForm<ProductBulkFormData>({
@@ -76,7 +76,7 @@ export default function ProductBulkActionSheet({
         });
         queryClient.invalidateQueries({ queryKey: ["products"] });
         setIsSheetOpen(false);
-        onSuccess && onSuccess();
+        onSuccess?.();
       }
     });
   };

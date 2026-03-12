@@ -2,7 +2,6 @@ import axiosInstance, { serverAxiosInstance } from "@/helpers/axiosInstance";
 import {
   Product,
   ProductDetails,
-  PaginatedResponse,
 } from "@/types/api";
 
 export interface FetchProductsParams {
@@ -82,11 +81,14 @@ export async function fetchProductDetails({ slug }: { slug: string }): Promise<{
     const serializableProduct = data.data ? JSON.parse(JSON.stringify(data.data)) : null;
 
     return { product: serializableProduct };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error fetching product details:', error);
     console.error('❌ Request URL:', `/api/products/slug/${encodeURIComponent(slug)}`);
-    console.error('❌ Response status:', error.response?.status);
-    console.error('❌ Response data:', error.response?.data);
+    if (error && typeof error === 'object' && 'response' in error) {
+      const err = error as { response: { status: number; data: unknown } };
+      console.error('❌ Response status:', err.response?.status);
+      console.error('❌ Response data:', err.response?.data);
+    }
     console.error('❌ Is server-side:', typeof window === 'undefined');
     throw error;
   }

@@ -1,7 +1,6 @@
 "use client";
 
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { useSearchParams } from "next/navigation";
 
 import DataTable from "@/components/shared/table/DataTable";
 import { DataTableWithRowSelectionProps } from "@/types/data-table";
@@ -14,7 +13,6 @@ export default function ReviewsTable({
     rowSelection,
     setRowSelection,
 }: DataTableWithRowSelectionProps<Rating>) {
-    const searchParams = useSearchParams();
 
     const safeData = Array.isArray(data) ? data : [];
 

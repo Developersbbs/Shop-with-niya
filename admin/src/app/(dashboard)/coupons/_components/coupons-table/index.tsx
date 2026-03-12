@@ -11,6 +11,7 @@ import TableError from "@/components/shared/table/TableError";
 
 import { getSearchParams } from "@/helpers/getSearchParams";
 import { fetchCoupons } from "@/services/coupons";
+import { Coupon } from "@/services/coupons/types";
 import { RowSelectionProps } from "@/types/data-table";
 import { useAuthorization } from "@/hooks/use-authorization";
 
@@ -18,7 +19,7 @@ export default function AllCoupons({
   rowSelection,
   setRowSelection,
   onDataChange,
-}: RowSelectionProps & { onDataChange?: (data: any[]) => void }) {
+}: RowSelectionProps & { onDataChange?: (data: Coupon[]) => void }) {
   const { hasPermission } = useAuthorization();
   const columns = getColumns({ hasPermission });
   const { page, limit, search } = getSearchParams(useSearchParams());

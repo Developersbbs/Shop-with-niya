@@ -4,13 +4,13 @@ import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 
 import DataTable from "@/components/shared/table/DataTable";
 import { DataTableWithRowSelectionProps } from "@/types/data-table";
-import { Product } from "@/services/products/types";
+import { Product, ProductVariant } from "@/types/api";
 
 // Type for transformed product data (includes variants as separate rows)
 type TransformedProduct = Product & {
   _isVariant?: boolean;
   _variantIndex?: number;
-  _variantData?: any;
+  _variantData?: ProductVariant;
   _originalProductId?: string;
   _parentProduct?: Product;
 };
@@ -39,15 +39,15 @@ export default function ProductsTable({
   });
 
   return <DataTable
-  table={table}
-  pagination={{
-    pages: pagination.pages,
-    current: pagination.current,
-    prev: pagination.prev,
-    next: pagination.next,
-    limit: pagination.limit,
-    items: pagination.items,
-  }}
-/>
-;
+    table={table}
+    pagination={{
+      pages: pagination.pages,
+      current: pagination.current,
+      prev: pagination.prev,
+      next: pagination.next,
+      limit: pagination.limit,
+      items: pagination.items,
+    }}
+  />
+    ;
 }

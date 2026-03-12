@@ -1,8 +1,6 @@
 "use client";
 
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { useSearchParams } from "next/navigation";
-
 import DataTable from "@/components/shared/table/DataTable";
 import { DataTableWithRowSelectionProps } from "@/types/data-table";
 import { Category } from "@/services/categories/types";
@@ -14,7 +12,6 @@ export default function CategoryTable({
   rowSelection,
   setRowSelection,
 }: DataTableWithRowSelectionProps<Category>) {
-  const searchParams = useSearchParams();
 
   // Ensure data is always an array
   const safeData = Array.isArray(data) ? data : [];
@@ -52,12 +49,12 @@ export default function CategoryTable({
 
   // Map pagination properties flexibly to handle different naming conventions
   const mappedPagination = {
-    pages: safePagination.pages ?? safePagination.totalPages ?? 0,
-    current: safePagination.current ?? safePagination.currentPage ?? 1,
-    prev: safePagination.prev ?? safePagination.prevPage ?? null,
-    next: safePagination.next ?? safePagination.nextPage ?? null,
+    pages: safePagination.pages ?? 0,
+    current: safePagination.current ?? 1,
+    prev: safePagination.prev ?? null,
+    next: safePagination.next ?? null,
     limit: safePagination.limit ?? 10,
-    items: safePagination.items ?? safePagination.totalItems ?? 0,
+    items: safePagination.items ?? 0,
   };
 
   return (

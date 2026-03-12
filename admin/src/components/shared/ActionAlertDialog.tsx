@@ -56,7 +56,7 @@ export function ActionAlertDialog({
         toast.success(toastSuccessMessage, { position: "top-center" });
         queryClient.invalidateQueries({ queryKey: [queryKey] });
         setIsDialogOpen(false);
-        onSuccess && onSuccess();
+        if (onSuccess) onSuccess();
       }
     });
   };

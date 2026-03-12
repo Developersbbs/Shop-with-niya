@@ -11,7 +11,7 @@ export async function deleteProducts(
 ): Promise<ServerActionResponse> {
   try {
     // Fetch products to get their file paths before deletion
-    const productsData: any[] = [];
+    const productsData: { image_url?: string | string[], product_type?: string, file_path?: string }[] = [];
 
     for (const productId of productIds) {
       try {
@@ -80,8 +80,8 @@ export async function deleteProducts(
             // Delete file using promises API
             await fs.unlink(filePath);
             console.log(`Deleted file: ${relativePath}`);
-          } catch (accessError) {
-            if ((accessError as any).code === 'ENOENT') {
+          } catch (accessError: unknown) {
+            if ((accessError as { code?: string }).code === 'ENOENT') {
               console.log(`File not found, skipping: ${relativePath}`);
             } else {
               throw accessError;

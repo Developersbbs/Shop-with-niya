@@ -31,7 +31,7 @@ export async function createStaff(
     const { image, ...staffData } = parsedData.data;
 
     try {
-        const createData: any = {
+        const createData: Record<string, unknown> = {
             name: staffData.name,
             phone: staffData.phone,
             role_id: staffData.role_id,
@@ -57,10 +57,11 @@ export async function createStaff(
         revalidatePath("/staff");
         return { success: true, staff: data.data };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Staff create error:", error);
+        const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Something went wrong. Please try again later.";
         return {
-            dbError: error.response?.data?.error || "Something went wrong. Please try again later."
+            dbError: errorMessage
         };
     }
 }

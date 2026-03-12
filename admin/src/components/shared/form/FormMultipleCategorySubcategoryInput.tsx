@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Control, FieldValues, Path, UseFormSetValue, UseFormWatch } from "react-hook-form";
+import { Control, FieldValues, Path, UseFormSetValue, UseFormWatch, PathValue } from "react-hook-form";
 import { X, Plus, Edit, Check, X as XIcon } from "lucide-react";
 
 import {
@@ -33,6 +33,12 @@ type CategorySubcategorySelection = {
   subcategoryNames?: string[];
 };
 
+interface Subcategory {
+  _id: string;
+  name: string;
+  published: boolean;
+}
+
 type FormMultipleCategorySubcategoryInputProps<TFormData extends FieldValues> = {
   control: Control<TFormData>;
   name: Path<TFormData>;
@@ -57,7 +63,7 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingSubcategoryIds, setEditingSubcategoryIds] = useState<string[]>([]);
 
-  const currentSelections = watch(name) as CategorySubcategorySelection[] || [];
+  const currentSelections = useMemo(() => watch(name) as CategorySubcategorySelection[] || [], [watch, name]);
 
   // Clean initial data by removing inactive subcategories
   useEffect(() => {
@@ -72,20 +78,20 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
           // Fetch current subcategories for this category
           const { data } = await axiosInstance.get(`/api/categories/${selection.categoryId}`);
           const activeSubcategories = (data.data.subcategories || [])
-            .filter((subcategory: any) => subcategory?.published)
-            .map((subcategory: any) => subcategory._id);
+            .filter((subcategory: Subcategory) => subcategory?.published)
+            .map((subcategory: Subcategory) => subcategory._id);
 
           // Filter out inactive subcategories
-          const activeSubcategoryIds = selection.subcategoryIds.filter(id => 
+          const activeSubcategoryIds = selection.subcategoryIds.filter(id =>
             activeSubcategories.includes(id)
           );
-          
+
           // Get subcategory names for the active subcategories
           const activeSubcategoryNames = (data.data.subcategories || [])
-            .filter((subcategory: any) => 
+            .filter((subcategory: Subcategory) =>
               subcategory?.published && activeSubcategoryIds.includes(subcategory._id)
             )
-            .map((subcategory: any) => subcategory.name);
+            .map((subcategory: Subcategory) => subcategory.name);
 
           // Check if any subcategories were removed
           if (activeSubcategoryIds.length !== selection.subcategoryIds.length) {
@@ -117,7 +123,7 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
       // Update form if changes were made
       if (hasChanges) {
         console.log('Cleaning inactive subcategories from form data');
-        setValue(name, cleanedSelections as any, {
+        setValue(name, cleanedSelections as PathValue<TFormData, Path<TFormData>>, {
           shouldDirty: true,
           shouldTouch: true,
           shouldValidate: true,
@@ -126,7 +132,7 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
     };
 
     cleanSelections();
-  }, []); // Run only once on mount
+  }, [currentSelections, name, setValue]); // Run only once on mount
 
   // Fetch categories
   const {
@@ -149,7 +155,7 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
     queryFn: async () => {
       if (!selectedCategoryId) return [];
       const { data } = await axiosInstance.get(`/api/categories/${selectedCategoryId}`);
-      return (data.data.subcategories || []).filter((subcategory: any) => subcategory?.published);
+      return (data.data.subcategories || []).filter((subcategory: Subcategory) => subcategory?.published);
     },
     enabled: !!selectedCategoryId,
     staleTime: 5 * 60 * 1000,
@@ -165,7 +171,7 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
       if (editingIndex === null || !currentSelections[editingIndex]) return [];
       const categoryId = currentSelections[editingIndex].categoryId;
       const { data } = await axiosInstance.get(`/api/categories/${categoryId}`);
-      return (data.data.subcategories || []).filter((subcategory: any) => subcategory?.published);
+      return (data.data.subcategories || []).filter((subcategory: Subcategory) => subcategory?.published);
     },
     enabled: editingIndex !== null,
     staleTime: 5 * 60 * 1000,
@@ -175,7 +181,7 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
     if (!selectedCategoryId) return;
 
     const category = categories?.find((c) => c._id === selectedCategoryId);
-    const selectedSubcategories = subcategories?.filter((s: any) =>
+    const selectedSubcategories = subcategories?.filter((s: Subcategory) =>
       selectedSubcategoryIds.includes(s._id)
     );
 
@@ -183,13 +189,13 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
       categoryId: selectedCategoryId,
       categoryName: category?.name,
       subcategoryIds: selectedSubcategoryIds,
-      subcategoryNames: selectedSubcategories?.map((s: any) => s.name) || [],
+      subcategoryNames: selectedSubcategories?.map((s: Subcategory) => s.name) || [],
     };
 
     console.log('Adding selection:', newSelection);
     const updatedSelections = [...currentSelections, newSelection];
     console.log('Updated selections:', updatedSelections);
-    setValue(name, updatedSelections as any, {
+    setValue(name, updatedSelections as PathValue<TFormData, Path<TFormData>>, {
       shouldDirty: true,
       shouldTouch: true,
       shouldValidate: true,
@@ -202,7 +208,7 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
 
   const handleRemoveSelection = (index: number) => {
     const updatedSelections = currentSelections.filter((_, i) => i !== index);
-    setValue(name, updatedSelections as any);
+    setValue(name, updatedSelections as PathValue<TFormData, Path<TFormData>>);
   };
 
   const handleEditSelection = (index: number) => {
@@ -215,20 +221,19 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
     if (editingIndex === null) return;
 
     const selection = currentSelections[editingIndex];
-    const category = categories?.find((c) => c._id === selection.categoryId);
-    const editedSubcategories = editingSubcategories?.filter((s: any) =>
+    const editedSubcategories = editingSubcategories?.filter((s: Subcategory) =>
       editingSubcategoryIds.includes(s._id)
     );
 
     const updatedSelection: CategorySubcategorySelection = {
       ...selection,
       subcategoryIds: editingSubcategoryIds,
-      subcategoryNames: editedSubcategories?.map((s: any) => s.name) || [],
+      subcategoryNames: editedSubcategories?.map((s: Subcategory) => s.name) || [],
     };
 
     const updatedSelections = [...currentSelections];
     updatedSelections[editingIndex] = updatedSelection;
-    setValue(name, updatedSelections as any);
+    setValue(name, updatedSelections as PathValue<TFormData, Path<TFormData>>);
 
     // Reset editing state
     setEditingIndex(null);
@@ -264,17 +269,17 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
         <FormItem className="flex flex-col md:flex-row md:gap-x-4 md:space-y-0">
           {label && <FormLabel className="md:flex-shrink-0 md:w-1/4 md:mt-2 leading-snug">{label}</FormLabel>}
           <div className="space-y-6 w-full">
-              {/* Display selected categories and subcategories */}
-              {currentSelections.length > 0 && (
-                <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
-                  {currentSelections.map((selection, index) => {
-                    const category = categories?.find((c) => c._id === selection.categoryId);
-                    const displayName = selection.categoryName || category?.name || `Category (${selection.categoryId?.slice(0, 8)}...)`;
-                    
-                    return (
-                      <div key={index} className="flex items-start justify-between gap-2 p-3 bg-background rounded border">
-                        <div className="flex-1">
-                          <div className="font-medium text-sm mb-2">{displayName}</div>
+            {/* Display selected categories and subcategories */}
+            {currentSelections.length > 0 && (
+              <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
+                {currentSelections.map((selection, index) => {
+                  const category = categories?.find((c) => c._id === selection.categoryId);
+                  const displayName = selection.categoryName || category?.name || `Category (${selection.categoryId?.slice(0, 8)}...)`;
+
+                  return (
+                    <div key={index} className="flex items-start justify-between gap-2 p-3 bg-background rounded border">
+                      <div className="flex-1">
+                        <div className="font-medium text-sm mb-2">{displayName}</div>
 
                         {editingIndex === index ? (
                           // Edit mode
@@ -283,12 +288,11 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
                               <div className="text-sm text-muted-foreground">Loading subcategories...</div>
                             ) : editingSubcategories && editingSubcategories.length > 0 ? (
                               <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg bg-muted/20">
-                                {editingSubcategories.map((subcategory: any) => (
+                                {editingSubcategories.map((subcategory: Subcategory) => (
                                   <label
                                     key={subcategory._id}
-                                    className={`flex items-center space-x-2 p-2 rounded ${
-                                      disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'
-                                    }`}
+                                    className={`flex items-center space-x-2 p-2 rounded ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'
+                                      }`}
                                   >
                                     <input
                                       type="checkbox"
@@ -384,111 +388,110 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
                         </div>
                       )}
                     </div>
-                    );
-                  })}
-                </div>
-              )}
+                  );
+                })}
+              </div>
+            )}
 
-              {/* Category Selection */}
+            {/* Category Selection */}
+            <div className="space-y-2">
+              <Select
+                value={selectedCategoryId}
+                onValueChange={(value) => {
+                  if (!disabled) {
+                    setSelectedCategoryId(value);
+                    setSelectedSubcategoryIds([]);
+                  }
+                }}
+                disabled={disabled}
+              >
+                <FormControl>
+                  <SelectTrigger disabled={disabled}>
+                    <SelectValue placeholder="Select Category" />
+                  </SelectTrigger>
+                </FormControl>
+
+                <SelectContent portalContainer={container}>
+                  <FetchDropdownContainer
+                    isLoading={categoriesLoading}
+                    isError={categoriesError}
+                    errorMessage="Failed to load categories"
+                  >
+                    {!categoriesLoading &&
+                      !categoriesError &&
+                      categories &&
+                      categories
+                        .filter((category) => !currentSelections.some((selection) => selection.categoryId === category._id))
+                        .map((category) => (
+                          <SelectItem key={category._id} value={category._id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                    {!categoriesLoading &&
+                      !categoriesError &&
+                      categories &&
+                      categories.filter((category) => !currentSelections.some((selection) => selection.categoryId === category._id))
+                        .length === 0 && (
+                        <div className="p-2 text-sm text-muted-foreground text-center">
+                          All categories have been selected
+                        </div>
+                      )}
+                  </FetchDropdownContainer>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Subcategory Multi-Selection */}
+            {selectedCategoryId && (
               <div className="space-y-2">
-                <Select
-                  value={selectedCategoryId}
-                  onValueChange={(value) => {
-                    if (!disabled) {
-                      setSelectedCategoryId(value);
-                      setSelectedSubcategoryIds([]);
-                    }
-                  }}
+                <div className="text-sm font-medium">Select Subcategories:</div>
+                {subcategoriesLoading ? (
+                  <div className="text-sm text-muted-foreground">Loading subcategories...</div>
+                ) : subcategoriesError ? (
+                  <div className="text-sm text-red-500">Error loading subcategories</div>
+                ) : subcategories && subcategories.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg bg-muted/20">
+                    {subcategories.map((subcategory: Subcategory) => (
+                      <label
+                        key={subcategory._id}
+                        className={`flex items-center space-x-2 p-2 rounded ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'
+                          }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedSubcategoryIds.includes(subcategory._id)}
+                          onChange={() => !disabled && handleToggleSubcategory(subcategory._id)}
+                          className="h-4 w-4"
+                          disabled={disabled}
+                        />
+                        <span className="text-sm">{subcategory.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground p-3 border rounded-lg text-center">
+                    No subcategories available for this category
+                  </div>
+                )}
+
+                <Button
+                  type="button"
+                  onClick={handleAddSelection}
+                  className="w-full"
+                  variant={selectedSubcategoryIds.length > 0 ? "outline" : "secondary"}
                   disabled={disabled}
                 >
-                  <FormControl>
-                    <SelectTrigger disabled={disabled}>
-                      <SelectValue placeholder="Select Category" />
-                    </SelectTrigger>
-                  </FormControl>
-
-                  <SelectContent portalContainer={container}>
-                    <FetchDropdownContainer
-                      isLoading={categoriesLoading}
-                      isError={categoriesError}
-                      errorMessage="Failed to load categories"
-                    >
-                      {!categoriesLoading &&
-                        !categoriesError &&
-                        categories &&
-                        categories
-                          .filter((category) => !currentSelections.some((selection) => selection.categoryId === category._id))
-                          .map((category) => (
-                            <SelectItem key={category._id} value={category._id}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                      {!categoriesLoading &&
-                        !categoriesError &&
-                        categories &&
-                        categories.filter((category) => !currentSelections.some((selection) => selection.categoryId === category._id))
-                          .length === 0 && (
-                          <div className="p-2 text-sm text-muted-foreground text-center">
-                            All categories have been selected
-                          </div>
-                        )}
-                    </FetchDropdownContainer>
-                  </SelectContent>
-                </Select>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {selectedSubcategoryIds.length > 0
+                    ? `Add Category with ${selectedSubcategoryIds.length} Subcategor${selectedSubcategoryIds.length === 1 ? 'y' : 'ies'}`
+                    : "Add Category without subcategories"}
+                </Button>
               </div>
+            )}
 
-              {/* Subcategory Multi-Selection */}
-              {selectedCategoryId && (
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Select Subcategories:</div>
-                  {subcategoriesLoading ? (
-                    <div className="text-sm text-muted-foreground">Loading subcategories...</div>
-                  ) : subcategoriesError ? (
-                    <div className="text-sm text-red-500">Error loading subcategories</div>
-                  ) : subcategories && subcategories.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg bg-muted/20">
-                      {subcategories.map((subcategory: any) => (
-                        <label
-                          key={subcategory._id}
-                          className={`flex items-center space-x-2 p-2 rounded ${
-                            disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedSubcategoryIds.includes(subcategory._id)}
-                            onChange={() => !disabled && handleToggleSubcategory(subcategory._id)}
-                            className="h-4 w-4"
-                            disabled={disabled}
-                          />
-                          <span className="text-sm">{subcategory.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground p-3 border rounded-lg text-center">
-                      No subcategories available for this category
-                    </div>
-                  )}
-
-                  <Button
-                    type="button"
-                    onClick={handleAddSelection}
-                    className="w-full"
-                    variant={selectedSubcategoryIds.length > 0 ? "outline" : "secondary"}
-                    disabled={disabled}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    {selectedSubcategoryIds.length > 0
-                      ? `Add Category with ${selectedSubcategoryIds.length} Subcategor${selectedSubcategoryIds.length === 1 ? 'y' : 'ies'}`
-                      : "Add Category without subcategories"}
-                  </Button>
-                </div>
-              )}
-
-              <FormMessage />
-            </div>
-          </FormItem>
+            <FormMessage />
+          </div>
+        </FormItem>
       )}
     />
   );

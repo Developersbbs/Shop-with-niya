@@ -24,8 +24,8 @@ export async function deleteProduct(
     revalidatePath("/products");
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Unexpected error in deleteProduct:", error);
-    return { dbError: error.message || "An unexpected error occurred." };
+    return { dbError: (error as Error).message || "An unexpected error occurred." };
   }
 }

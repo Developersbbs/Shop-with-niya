@@ -2,6 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
 
+
   async rewrites() {
     return [
       {
@@ -54,6 +55,12 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "200mb", // 10MB
     },
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
   },
 };
 

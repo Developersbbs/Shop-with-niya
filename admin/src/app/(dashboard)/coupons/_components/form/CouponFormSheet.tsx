@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, LegacyRef, useState, useTransition, useEffect } from "react";
+import { useRef, useState, useTransition, useEffect, useCallback } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, FieldErrors, useWatch } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
@@ -23,13 +23,10 @@ import {
 import {
   FormTextInput,
   FormImageInput,
-  FormDatetimeInput,
   FormDiscountInput,
   FormTextarea,
   FormSelect,
   FormNumberInput,
-  FormSwitch,
-  FormTagsInput,
 } from "@/components/shared/form";
 import { DatePicker } from "@/components/shared/DatePicker";
 import { TimePicker } from "@/components/shared/TimePicker";
@@ -41,11 +38,7 @@ import { couponFormSchema, CouponFormData } from "./schema";
 import { CouponServerActionResponse } from "@/types/server-action";
 import { Switch } from "@/components/ui/switch";
 
-// Fetch functions for FormSearchableSelect
-const fetchProducts = async (search?: string) => {
-  const { fetchProductsDropdown } = await import("@/services/products/products");
-  return fetchProductsDropdown(search);
-};
+
 
 const fetchVariants = async (search?: string) => {
   const { fetchVariantsDropdown } = await import("@/services/variants/variants");
@@ -129,34 +122,12 @@ export default function CouponFormSheet({
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [container, setContainer] = useState(null);
   const imageDropzoneRef = useRef<HTMLDivElement>(null);
 
   // Format initial data dates if they exist
-  const getInitialValues = () => {
+  const getInitialValues = useCallback(() => {
     if (!initialData) return defaultValues;
-    
-    // Helper function to map backend category format to frontend format
-    const mapCategories = (backendCategories: any[]) => {
-      console.log("mapCategories - input:", backendCategories);
-      if (!backendCategories || !Array.isArray(backendCategories)) {
-        console.log("mapCategories - returning empty array");
-        return [];
-      }
-      
-      const mapped = backendCategories.map(cat => ({
-        categoryId: typeof cat.category === 'string' ? cat.category : cat.category?.$oid || cat.category?.toString(),
-        categoryName: cat.categoryName || undefined, // Will be populated by FormMultipleCategorySubcategoryInput
-        subcategoryIds: (cat.subcategories || []).map((sub: any) => 
-          typeof sub === 'string' ? sub : sub.$oid || sub.toString()
-        ),
-        subcategoryNames: [], // Will be populated by FormMultipleCategorySubcategoryInput
-      }));
-      
-      console.log("mapCategories - output:", mapped);
-      return mapped;
-    };
-    
+
     const mappedData = {
       ...defaultValues,
       ...initialData,
@@ -164,28 +135,28 @@ export default function CouponFormSheet({
       applicableCategories: initialData.applicableCategories || [],
       excludedCategories: initialData.excludedCategories || [],
       // Only map if the fields don't already exist (data coming directly from table)
-      applicableProducts: initialData.applicableProducts || ((initialData as any).applied_products || []).map((item: any) => 
-        typeof item === 'string' ? item : item.$oid || item.toString()
+      applicableProducts: initialData.applicableProducts || ((initialData as unknown as Record<string, unknown>).applied_products as Array<unknown> || []).map((item: unknown) =>
+        typeof item === 'string' ? item : (item as { $oid?: string })?.$oid || (item as object).toString()
       ),
-      applicableVariants: initialData.applicableVariants || ((initialData as any).applied_variants || []).map((item: any) => 
-        typeof item === 'string' ? item : item.$oid || item.toString()
+      applicableVariants: initialData.applicableVariants || ((initialData as unknown as Record<string, unknown>).applied_variants as Array<unknown> || []).map((item: unknown) =>
+        typeof item === 'string' ? item : (item as { $oid?: string })?.$oid || (item as object).toString()
       ),
-      excludedProducts: initialData.excludedProducts || ((initialData as any).excluded_products || []).map((item: any) => 
-        typeof item === 'string' ? item : item.$oid || item.toString()
+      excludedProducts: initialData.excludedProducts || ((initialData as unknown as Record<string, unknown>).excluded_products as Array<unknown> || []).map((item: unknown) =>
+        typeof item === 'string' ? item : (item as { $oid?: string })?.$oid || (item as object).toString()
       ),
-      excludedVariants: initialData.excludedVariants || ((initialData as any).excluded_variants || []).map((item: any) => 
-        typeof item === 'string' ? item : item.$oid || item.toString()
+      excludedVariants: initialData.excludedVariants || ((initialData as unknown as Record<string, unknown>).excluded_variants as Array<unknown> || []).map((item: unknown) =>
+        typeof item === 'string' ? item : (item as { $oid?: string })?.$oid || (item as object).toString()
       ),
       // Ensure dates are Date objects for the form
       startDate: initialData.startDate ? new Date(initialData.startDate) : new Date(),
       endDate: initialData.endDate ? new Date(initialData.endDate) : new Date(new Date().setDate(new Date().getDate() + 7)),
     };
-    
+
     console.log("getInitialValues - final mappedData.applicableCategories:", mappedData.applicableCategories);
     console.log("getInitialValues - final mappedData.excludedCategories:", mappedData.excludedCategories);
     console.log("getInitialValues - mappedData:", mappedData);
     return mappedData;
-  };
+  }, [initialData]);
 
   const form = useForm<CouponFormData>({
     resolver: zodResolver(couponFormSchema),
@@ -202,7 +173,7 @@ export default function CouponFormSheet({
     } else {
       console.log("No initialData provided");
     }
-  }, [initialData, form]);
+  }, [initialData, form, getInitialValues]);
 
   // Watch applicableCategories to disable excludedCategories when needed
   const applicableCategories = useWatch({
@@ -258,10 +229,11 @@ export default function CouponFormSheet({
     name: "excludedProducts",
   });
 
-  // Check if any selected products are variant products
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedProductDetails, setSelectedProductDetails] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [excludedProductDetails, setExcludedProductDetails] = useState<any[]>([]);
-  
+
   // Fetch product details when selected products change
   useEffect(() => {
     const fetchProductDetails = async () => {
@@ -269,7 +241,7 @@ export default function CouponFormSheet({
         setSelectedProductDetails([]);
         return;
       }
-      
+
       try {
         const { fetchProductsDropdown } = await import("@/services/products/products");
         const products = await fetchProductsDropdown();
@@ -280,7 +252,7 @@ export default function CouponFormSheet({
         setSelectedProductDetails([]);
       }
     };
-    
+
     fetchProductDetails();
   }, [selectedProducts]);
 
@@ -291,7 +263,7 @@ export default function CouponFormSheet({
         setExcludedProductDetails([]);
         return;
       }
-      
+
       try {
         const { fetchProductsDropdown } = await import("@/services/products/products");
         const products = await fetchProductsDropdown();
@@ -302,7 +274,7 @@ export default function CouponFormSheet({
         setExcludedProductDetails([]);
       }
     };
-    
+
     fetchExcludedProductDetails();
   }, [excludedProducts]);
 
@@ -327,49 +299,49 @@ export default function CouponFormSheet({
   // Smart fetch function that filters products by selected categories
   const fetchProductsFiltered = async (search?: string) => {
     const { fetchProductsDropdown } = await import("@/services/products/products");
-    
+
     // If applicable categories selected, filter products by those categories
     if (applicableCategories && applicableCategories.length > 0) {
       console.log('Fetching products for categories:', applicableCategories);
       const allProducts = await fetchProductsDropdown(search);
       console.log('All products fetched:', allProducts.length);
-      
+
       // Extract category IDs from the selected categories
-      const selectedCategoryIds = applicableCategories.map(item => 
+      const selectedCategoryIds = applicableCategories.map(item =>
         typeof item === 'string' ? item : item.categoryId
       ).filter(Boolean);
       console.log('Selected category IDs:', selectedCategoryIds);
-      
+
       // Filter products to only those in selected categories
       const filteredProducts = allProducts.filter(product => {
         console.log('Checking product:', product.name, 'categories:', product.categories);
-        
+
         if (!product.categories || product.categories.length === 0) {
           console.log('Product has no categories:', product.name);
           return false;
         }
-        
+
         // Check if product belongs to any selected category
         const belongsToCategory = product.categories.some(productCategory => {
-          const categoryId = typeof productCategory.category === 'string' 
-            ? productCategory.category 
-            : productCategory.category?._id || productCategory.category?.id;
+          const categoryId = typeof productCategory.category === 'string'
+            ? productCategory.category
+            : (productCategory.category as { _id?: string; id?: string })?._id || (productCategory.category as { _id?: string; id?: string })?.id;
           return categoryId && selectedCategoryIds.includes(categoryId);
         });
-        
+
         console.log('Product category check:', product.name, 'belongsToCategory:', belongsToCategory);
-        
+
         if (belongsToCategory) {
           console.log('Product matches category:', product.name, product.categories);
         }
-        
+
         return belongsToCategory;
       });
-      
+
       console.log('Filtered products:', filteredProducts.length);
       return filteredProducts;
     }
-    
+
     // If no categories selected, return all products
     console.log('No categories selected, returning all products');
     return fetchProductsDropdown(search);
@@ -378,34 +350,34 @@ export default function CouponFormSheet({
   // Smart fetch function that filters excluded products by selected excluded categories
   const fetchExcludedProductsFiltered = async (search?: string) => {
     const { fetchProductsDropdown } = await import("@/services/products/products");
-    
+
     // If excluded categories selected, filter products by those categories
     if (excludedCategories && excludedCategories.length > 0) {
       const allProducts = await fetchProductsDropdown(search);
-      
+
       // Extract category IDs from the selected excluded categories
-      const selectedCategoryIds = excludedCategories.map(item => 
+      const selectedCategoryIds = excludedCategories.map(item =>
         typeof item === 'string' ? item : item.categoryId
       ).filter(Boolean);
-      
+
       // Filter products to only those in selected excluded categories
       const filteredProducts = allProducts.filter(product => {
         if (!product.categories || product.categories.length === 0) {
           return false;
         }
-        
+
         // Check if product belongs to any selected excluded category
         return product.categories.some(productCategory => {
-          const categoryId = typeof productCategory.category === 'string' 
-            ? productCategory.category 
-            : productCategory.category?._id || productCategory.category?.id;
+          const categoryId = typeof productCategory.category === 'string'
+            ? productCategory.category
+            : (productCategory.category as { _id?: string; id?: string })?._id || (productCategory.category as { _id?: string; id?: string })?.id;
           return categoryId && selectedCategoryIds.includes(categoryId);
         });
       });
-      
+
       return filteredProducts;
     }
-    
+
     // If no excluded categories selected, return all products
     return fetchProductsDropdown(search);
   };
@@ -455,8 +427,6 @@ export default function CouponFormSheet({
   }, [form, initialData]);
 
   const discountType = form.watch("discountType");
-  const visibilityOptions = form.watch("visibilityOptions");
-  const bogoConfig = form.watch("bogoConfig");
 
   // Watch applicability fields
   const applicableProducts = form.watch("applicableProducts");
@@ -466,14 +436,14 @@ export default function CouponFormSheet({
   const excludedVariants = form.watch("excludedVariants");
 
   // Check if any applicability values are selected
-  const hasApplicabilityValues = 
+  const hasApplicabilityValues =
     (applicableCategories && applicableCategories.length > 0) ||
     (applicableProducts && applicableProducts.length > 0) ||
     (applicableVariants && applicableVariants.length > 0) ||
     (applicableUsers && applicableUsers.length > 0);
 
   // Check if any exclusion values are selected
-  const hasExclusionValues = 
+  const hasExclusionValues =
     (excludedCategories && excludedCategories.length > 0) ||
     (excludedProducts && excludedProducts.length > 0) ||
     (excludedVariants && excludedVariants.length > 0);
@@ -489,7 +459,7 @@ export default function CouponFormSheet({
     console.log("Applicable Products:", data.applicableProducts);
     console.log("Excluded Products:", data.excludedProducts);
     console.log("Applicable Users:", data.applicableUsers);
-    
+
     startTransition(async () => {
       // Pass the raw form data directly to the action
       // The action will handle the transformation to backend format
@@ -532,19 +502,19 @@ export default function CouponFormSheet({
 
   const onInvalid = (errors: FieldErrors<CouponFormData>) => {
     console.log("Form validation errors:", errors);
-    
+
     // Focus on the first error field
     const firstErrorField = Object.keys(errors)[0] as keyof CouponFormData;
     if (firstErrorField) {
       form.setFocus(firstErrorField);
     }
-    
+
     // Show toast with validation error summary
-    const errorMessages = Object.entries(errors)
-      .filter(([_, error]) => error?.message)
-      .map(([field, error]) => `${field}: ${error.message}`)
+    const errorMessages = Object.values(errors)
+      .filter((error) => error?.message)
+      .map((error) => `${error!.message as string}`)
       .join(', ');
-    
+
     if (errorMessages) {
       toast.error(`Please fix the following errors: ${errorMessages}`);
     }
@@ -554,566 +524,568 @@ export default function CouponFormSheet({
     <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
       {children}
 
-          <SheetContent className="w-[90%] max-w-4xl">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit, onInvalid)}
-                className="size-full"
-              >
-                <FormSheetContent>
-                  <FormSheetHeader>
-                    <div className="flex flex-col">
-                      <SheetTitle>{title}</SheetTitle>
-                      <SheetDescription>{description}</SheetDescription>
+      <SheetContent className="w-[90%] max-w-4xl">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit, onInvalid)}
+            className="size-full"
+          >
+            <FormSheetContent>
+              <FormSheetHeader>
+                <div className="flex flex-col">
+                  <SheetTitle>{title}</SheetTitle>
+                  <SheetDescription>{description}</SheetDescription>
+                </div>
+              </FormSheetHeader>
+
+              <FormSheetBody>
+                <div
+                  className="space-y-6"
+                >
+                  {/* Basic Information Section */}
+                  <div className="border rounded-lg p-4 space-y-4 mb-6">
+                    <div className="space-y-4">
+                      <FormTextInput
+                        control={form.control}
+                        name="campaignName"
+                        label="Campaign Name"
+                        placeholder="Campaign Name"
+                      />
+                      <FormTextInput
+                        control={form.control}
+                        name="code"
+                        label="Campaign Code"
+                        placeholder="Campaign Code"
+                      />
+                      <FormTextarea
+                        control={form.control}
+                        name="description"
+                        label="Description"
+                        placeholder="Describe the campaign"
+                      />
+                      <FormImageInput
+                        control={form.control}
+                        name="image"
+                        label="Coupon Image"
+                        previewImage={previewImage}
+                        ref={imageDropzoneRef}
+                      />
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <FormLabel>Start Date</FormLabel>
+                          <FormField
+                            control={form.control}
+                            name="startDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <DatePicker
+                                    date={field.value ? field.value.toISOString().split('T')[0] : undefined}
+                                    setDate={(date) => {
+                                      if (date) {
+                                        const newDate = new Date(date);
+                                        const currentTime = field.value ? field.value.toTimeString().split(' ')[0].substring(0, 5) : '00:00';
+                                        newDate.setHours(parseInt(currentTime.split(':')[0]), parseInt(currentTime.split(':')[1]));
+                                        field.onChange(newDate);
+                                      }
+                                    }}
+                                    className="w-full"
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <FormLabel>Start Time</FormLabel>
+                          <FormField
+                            control={form.control}
+                            name="startDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <TimePicker
+                                    time={field.value ? field.value.toTimeString().split(' ')[0].substring(0, 5) : undefined}
+                                    setTime={(time) => {
+                                      if (time) {
+                                        const newDate = field.value ? new Date(field.value) : new Date();
+                                        const [hours, minutes] = time.split(':');
+                                        newDate.setHours(parseInt(hours), parseInt(minutes));
+                                        field.onChange(newDate);
+                                      }
+                                    }}
+                                    className="w-full"
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <FormLabel>End Date</FormLabel>
+                          <FormField
+                            control={form.control}
+                            name="endDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <DatePicker
+                                    date={field.value ? field.value.toISOString().split('T')[0] : undefined}
+                                    setDate={(date) => {
+                                      if (date) {
+                                        const newDate = new Date(date);
+                                        const currentTime = field.value ? field.value.toTimeString().split(' ')[0].substring(0, 5) : '00:00';
+                                        newDate.setHours(parseInt(currentTime.split(':')[0]), parseInt(currentTime.split(':')[1]));
+                                        field.onChange(newDate);
+                                      }
+                                    }}
+                                    className="w-full"
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <FormLabel>End Time</FormLabel>
+                          <FormField
+                            control={form.control}
+                            name="endDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <TimePicker
+                                    time={field.value ? field.value.toTimeString().split(' ')[0].substring(0, 5) : undefined}
+                                    setTime={(time) => {
+                                      if (time) {
+                                        const newDate = field.value ? new Date(field.value) : new Date();
+                                        const [hours, minutes] = time.split(':');
+                                        newDate.setHours(parseInt(hours), parseInt(minutes));
+                                        field.onChange(newDate);
+                                      }
+                                    }}
+                                    className="w-full"
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </FormSheetHeader>
+                  </div>
+                </div>
 
-                  <FormSheetBody>
-                    <div
-                      className="space-y-6"
-                      ref={setContainer as LegacyRef<HTMLDivElement>}
-                    >
-                      {/* Basic Information Section */}
-                      <div className="border rounded-lg p-4 space-y-4 mb-6">
-                        <div className="space-y-4">
-                          <FormTextInput
-                            control={form.control}
-                            name="campaignName"
-                            label="Campaign Name"
-                            placeholder="Campaign Name"
-                          />
-                          <FormTextInput
-                            control={form.control}
-                            name="code"
-                            label="Campaign Code"
-                            placeholder="Campaign Code"
-                          />
-                          <FormTextarea
-                            control={form.control}
-                            name="description"
-                            label="Description"
-                            placeholder="Describe the campaign"
-                          />
-                          <FormImageInput
-                            control={form.control}
-                            name="image"
-                            label="Coupon Image"
-                            previewImage={previewImage}
-                            ref={imageDropzoneRef}
-                          />
-                          <div className="grid md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <FormLabel>Start Date</FormLabel>
-                              <FormField
-                                control={form.control}
-                                name="startDate"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <DatePicker
-                                        date={field.value ? field.value.toISOString().split('T')[0] : undefined}
-                                        setDate={(date) => {
-                                          if (date) {
-                                            const newDate = new Date(date);
-                                            const currentTime = field.value ? field.value.toTimeString().split(' ')[0].substring(0, 5) : '00:00';
-                                            newDate.setHours(parseInt(currentTime.split(':')[0]), parseInt(currentTime.split(':')[1]));
-                                            field.onChange(newDate);
-                                          }
-                                        }}
-                                        className="w-full"
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
+                {/* Discount Configuration Section */}
+                <div className="border rounded-lg p-4 space-y-4 mb-6">
+                  <h3 className="text-lg font-medium">Discount Configuration</h3>
+                  <div className={discountType === "free_shipping" || discountType === "bogo" ? "space-y-4" : "grid md:grid-cols-2 gap-4"}>
+                    <FormSelect
+                      control={form.control}
+                      name="discountType"
+                      label="Discount Type"
+                      options={[
+                        { label: "Percentage", value: "percentage" },
+                        { label: "Fixed Amount", value: "fixed" },
+                        { label: "Free Shipping", value: "free_shipping" },
+                        { label: "Cashback", value: "cashback" },
+                      ]}
+                    />
+                    {(discountType === "percentage" || discountType === "fixed") && (
+                      <FormDiscountInput
+                        control={form.control}
+                        name="discountValue"
+                        label={discountType === "percentage" ? "Discount (%)" : "Discount Amount"}
+                        placeholder={
+                          discountType === "percentage"
+                            ? "Percentage discount"
+                            : "Fixed discount amount"
+                        }
+                        isPercentageField={"discountType"}
+                        form={form}
+                      />
+                    )}
+                    {discountType === "cashback" && (
+                      <FormNumberInput
+                        control={form.control}
+                        name="cashbackAmount"
+                        label="Cashback Amount"
+                        placeholder="Enter cashback amount"
+                        min={0}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Usage Rules Section */}
+                <div className="border rounded-lg p-4 space-y-4 mb-6">
+                  <h3 className="text-lg font-medium">Usage Rules</h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <FormNumberInput
+                      control={form.control}
+                      name="minPurchase"
+                      label="Minimum Purchase Amount"
+                      placeholder="0"
+                      min={0}
+                    />
+                    {(discountType === "percentage" || discountType === "fixed") && (
+                      <FormNumberInput
+                        control={form.control}
+                        name="maxDiscount"
+                        label="Maximum Discount Amount"
+                        placeholder="0"
+                        min={0}
+                      />
+                    )}
+                    <FormNumberInput
+                      control={form.control}
+                      name="usageLimit"
+                      label="Global Usage Limit"
+                      placeholder="Unlimited"
+                      min={1}
+                    />
+                    <FormNumberInput
+                      control={form.control}
+                      name="limitPerUser"
+                      label="Per User Limit"
+                      placeholder="Unlimited"
+                      min={1}
+                    />
+                  </div>
+                  <FormNumberInput
+                    control={form.control}
+                    name="priority"
+                    label="Coupon Priority"
+                    placeholder="0"
+                    min={0}
+                  />
+                </div>
+
+                {/* Eligibility Rules Section */}
+                <div className="border rounded-lg p-4 space-y-4 mb-6">
+                  <h3 className="text-lg font-medium">Eligibility Rules</h3>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="flex items-center gap-2">
+                      <FormField
+                        control={form.control}
+                        name="isActive"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
                               />
-                            </div>
-                            <div className="space-y-2">
-                              <FormLabel>Start Time</FormLabel>
-                              <FormField
-                                control={form.control}
-                                name="startDate"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <TimePicker
-                                        time={field.value ? field.value.toTimeString().split(' ')[0].substring(0, 5) : undefined}
-                                        setTime={(time) => {
-                                          if (time) {
-                                            const newDate = field.value ? new Date(field.value) : new Date();
-                                            const [hours, minutes] = time.split(':');
-                                            newDate.setHours(parseInt(hours), parseInt(minutes));
-                                            field.onChange(newDate);
-                                          }
-                                        }}
-                                        className="w-full"
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
+                            </FormControl>
+                            <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              Active
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FormField
+                        control={form.control}
+                        name="autoApply"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                disabled={discountType === "percentage" || discountType === "fixed"}
                               />
-                            </div>
-                          </div>
-                            <div className="grid md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <FormLabel>End Date</FormLabel>
-                              <FormField
-                                control={form.control}
-                                name="endDate"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <DatePicker
-                                        date={field.value ? field.value.toISOString().split('T')[0] : undefined}
-                                        setDate={(date) => {
-                                          if (date) {
-                                            const newDate = new Date(date);
-                                            const currentTime = field.value ? field.value.toTimeString().split(' ')[0].substring(0, 5) : '00:00';
-                                            newDate.setHours(parseInt(currentTime.split(':')[0]), parseInt(currentTime.split(':')[1]));
-                                            field.onChange(newDate);
-                                          }
-                                        }}
-                                        className="w-full"
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
+                            </FormControl>
+                            <FormLabel className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed ${(discountType === "percentage" || discountType === "fixed") ? "opacity-50" : ""}`}>
+                              Auto Apply
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FormField
+                        control={form.control}
+                        name="firstOrderOnly"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                disabled={isFirstOrderOnlyFullyDisabled}
                               />
-                            </div>
-                            <div className="space-y-2">
-                              <FormLabel>End Time</FormLabel>
-                              <FormField
-                                control={form.control}
-                                name="endDate"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <TimePicker
-                                        time={field.value ? field.value.toTimeString().split(' ')[0].substring(0, 5) : undefined}
-                                        setTime={(time) => {
-                                          if (time) {
-                                            const newDate = field.value ? new Date(field.value) : new Date();
-                                            const [hours, minutes] = time.split(':');
-                                            newDate.setHours(parseInt(hours), parseInt(minutes));
-                                            field.onChange(newDate);
-                                          }
-                                        }}
-                                        className="w-full"
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
+                            </FormControl>
+                            <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              First Order Only
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FormField
+                        control={form.control}
+                        name="newUserOnly"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                disabled={isNewUserOnlyFullyDisabled}
                               />
-                            </div>
-                          </div>
-                          </div>
-                        </div>
+                            </FormControl>
+                            <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              New User Only
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="min-w-[120px]">
+                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Specific Users
+                      </label>
+                    </div>
+                    <div className="flex-1">
+                      <FormSearchableSelect
+                        control={form.control}
+                        name="applicableUsers"
+                        label="Applicable Users"
+                        placeholder="Select users"
+                        fetchOptions={async (search) => {
+                          const { fetchUsersDropdown } = await import("@/services/users/users");
+                          return fetchUsersDropdown(search);
+                        }}
+                        itemType="user"
+                        disabled={shouldDisableApplicability}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Visibility Settings Section */}
+                <div className="border rounded-lg p-4 space-y-4 mb-6">
+                  <h3 className="text-lg font-medium">Visibility Settings</h3>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="flex items-center gap-2">
+                      <FormField
+                        control={form.control}
+                        name="visibilityOptions.showOnCheckout"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              Show on Checkout
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FormField
+                        control={form.control}
+                        name="visibilityOptions.showOnHomepage"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              Show on Homepage
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FormField
+                        control={form.control}
+                        name="visibilityOptions.showOnProductPage"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              Show on Product Page
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FormField
+                        control={form.control}
+                        name="visibilityOptions.showInCart"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              Show in Cart
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Applicability Section */}
+                <div className="border rounded-lg p-4 space-y-4 mb-6">
+                  <h3 className="text-lg font-medium">Applicability</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="col-span-1">
+                        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          Applicable Categories
+                        </label>
                       </div>
-
-                      {/* Discount Configuration Section */}
-                      <div className="border rounded-lg p-4 space-y-4 mb-6">
-                        <h3 className="text-lg font-medium">Discount Configuration</h3>
-                        <div className={discountType === "free_shipping" || discountType === "bogo" ? "space-y-4" : "grid md:grid-cols-2 gap-4"}>
-                          <FormSelect
-                            control={form.control}
-                            name="discountType"
-                            label="Discount Type"
-                            options={[
-                              { label: "Percentage", value: "percentage" },
-                              { label: "Fixed Amount", value: "fixed" },
-                              { label: "Free Shipping", value: "free_shipping" },
-                              { label: "Cashback", value: "cashback" },
-                            ]}
-                          />
-                          {(discountType === "percentage" || discountType === "fixed") && (
-                            <FormDiscountInput
-                              control={form.control}
-                              name="discountValue"
-                              label={discountType === "percentage" ? "Discount (%)" : "Discount Amount"}
-                              placeholder={
-                                discountType === "percentage"
-                                  ? "Percentage discount"
-                                  : "Fixed discount amount"
-                              }
-                              isPercentageField={"discountType" as any}
-                              form={form}
-                            />
-                          )}
-                          {discountType === "cashback" && (
-                            <FormNumberInput
-                              control={form.control}
-                              name="cashbackAmount"
-                              label="Cashback Amount"
-                              placeholder="Enter cashback amount"
-                              min={0}
-                            />
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Usage Rules Section */}
-                      <div className="border rounded-lg p-4 space-y-4 mb-6">
-                        <h3 className="text-lg font-medium">Usage Rules</h3>
-                        <div className="grid md:grid-cols-2 gap-4">
-                          <FormNumberInput
-                            control={form.control}
-                            name="minPurchase"
-                            label="Minimum Purchase Amount"
-                            placeholder="0"
-                            min={0}
-                          />
-                          {(discountType === "percentage" || discountType === "fixed") && (
-                            <FormNumberInput
-                              control={form.control}
-                              name="maxDiscount"
-                              label="Maximum Discount Amount"
-                              placeholder="0"
-                              min={0}
-                            />
-                          )}
-                          <FormNumberInput
-                            control={form.control}
-                            name="usageLimit"
-                            label="Global Usage Limit"
-                            placeholder="Unlimited"
-                            min={1}
-                          />
-                          <FormNumberInput
-                            control={form.control}
-                            name="limitPerUser"
-                            label="Per User Limit"
-                            placeholder="Unlimited"
-                            min={1}
-                          />
-                        </div>
-                        <FormNumberInput
+                      <div className="col-span-3">
+                        <FormMultipleCategorySubcategoryInput
                           control={form.control}
-                          name="priority"
-                          label="Coupon Priority"
-                          placeholder="0"
-                          min={0}
+                          name="applicableCategories"
+                          setValue={form.setValue}
+                          watch={form.watch}
+                          disabled={shouldDisableApplicability}
                         />
                       </div>
-
-                      {/* Eligibility Rules Section */}
-                      <div className="border rounded-lg p-4 space-y-4 mb-6">
-                        <h3 className="text-lg font-medium">Eligibility Rules</h3>
-                        <div className="grid grid-cols-2 gap-6">
-                          <div className="flex items-center gap-2">
-                            <FormField
-                              control={form.control}
-                              name="isActive"
-                              render={({ field }) => (
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                  <FormControl>
-                                    <Switch 
-                                      checked={field.value} 
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Active
-                                  </FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <FormField
-                              control={form.control}
-                              name="autoApply"
-                              render={({ field }) => (
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                  <FormControl>
-                                    <Switch 
-                                      checked={field.value} 
-                                      onCheckedChange={field.onChange}
-                                      disabled={discountType === "percentage" || discountType === "fixed"}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed ${(discountType === "percentage" || discountType === "fixed") ? "opacity-50" : ""}`}>
-                                    Auto Apply
-                                  </FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <FormField
-                              control={form.control}
-                              name="firstOrderOnly"
-                              render={({ field }) => (
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                  <FormControl>
-                                    <Switch 
-                                      checked={field.value} 
-                                      onCheckedChange={field.onChange}
-                                      disabled={isFirstOrderOnlyFullyDisabled}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    First Order Only
-                                  </FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <FormField
-                              control={form.control}
-                              name="newUserOnly"
-                              render={({ field }) => (
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                  <FormControl>
-                                    <Switch 
-                                      checked={field.value} 
-                                      onCheckedChange={field.onChange}
-                                      disabled={isNewUserOnlyFullyDisabled}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    New User Only
-                                  </FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="col-span-1">
+                        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          Applicable Products
+                        </label>
+                      </div>
+                      <div className="col-span-3">
+                        <FormSearchableSelect
+                          control={form.control}
+                          name="applicableProducts"
+                          label="Applicable Products"
+                          placeholder="Select products"
+                          fetchOptions={fetchProductsFiltered}
+                          itemType="product"
+                          disabled={shouldDisableApplicability}
+                        />
+                      </div>
+                    </div>
+                    {selectedProductDetails.some(product => product.product_structure === 'variant') && (
+                      <div className="grid grid-cols-4 gap-4">
+                        <div className="col-span-1">
+                          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Applicable Variants
+                          </label>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div className="min-w-[120px]">
-                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                              Specific Users
-                            </label>
-                          </div>
-                          <div className="flex-1">
-                            <FormSearchableSelect
-                              control={form.control}
-                              name="applicableUsers"
-                              placeholder="Select users"
-                              fetchOptions={async (search) => {
-                                const { fetchUsersDropdown } = await import("@/services/users/users");
-                                return fetchUsersDropdown(search);
-                              }}
-                              itemType="user"
-                              disabled={shouldDisableApplicability}
-                            />
-                          </div>
+                        <div className="col-span-3">
+                          <FormSearchableSelect
+                            control={form.control}
+                            name="applicableVariants"
+                            label="Applicable Variants"
+                            placeholder="Select variants"
+                            fetchOptions={fetchVariants}
+                            itemType="variant"
+                            disabled={shouldDisableApplicability}
+                          />
                         </div>
                       </div>
+                    )}
+                  </div>
+                </div>
 
-                      {/* Visibility Settings Section */}
-                      <div className="border rounded-lg p-4 space-y-4 mb-6">
-                        <h3 className="text-lg font-medium">Visibility Settings</h3>
-                        <div className="grid grid-cols-2 gap-6">
-                          <div className="flex items-center gap-2">
-                            <FormField
-                              control={form.control}
-                              name="visibilityOptions.showOnCheckout"
-                              render={({ field }) => (
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                  <FormControl>
-                                    <Switch 
-                                      checked={field.value} 
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Show on Checkout
-                                  </FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <FormField
-                              control={form.control}
-                              name="visibilityOptions.showOnHomepage"
-                              render={({ field }) => (
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                  <FormControl>
-                                    <Switch 
-                                      checked={field.value} 
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Show on Homepage
-                                  </FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <FormField
-                              control={form.control}
-                              name="visibilityOptions.showOnProductPage"
-                              render={({ field }) => (
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                  <FormControl>
-                                    <Switch 
-                                      checked={field.value} 
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Show on Product Page
-                                  </FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <FormField
-                              control={form.control}
-                              name="visibilityOptions.showInCart"
-                              render={({ field }) => (
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                  <FormControl>
-                                    <Switch 
-                                      checked={field.value} 
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Show in Cart
-                                  </FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                {/* Exclusions Section */}
+                <div className="border rounded-lg p-4 space-y-4 mb-6">
+                  <h3 className="text-lg font-medium">Exclusions</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="col-span-1">
+                        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          Excluded Categories
+                        </label>
+                      </div>
+                      <div className="col-span-3">
+                        <FormMultipleCategorySubcategoryInput
+                          control={form.control}
+                          name="excludedCategories"
+                          setValue={form.setValue}
+                          watch={form.watch}
+                          disabled={shouldDisableExclusions}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="col-span-1">
+                        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          Excluded Products
+                        </label>
+                      </div>
+                      <div className="col-span-3">
+                        <FormSearchableSelect
+                          control={form.control}
+                          name="excludedProducts"
+                          label="Excluded Products"
+                          placeholder="Select products to exclude"
+                          fetchOptions={fetchExcludedProductsFiltered}
+                          itemType="product"
+                          disabled={shouldDisableExclusions}
+                        />
+                      </div>
+                    </div>
+                    {excludedProductDetails.some(product => product.product_structure === 'variant') && (
+                      <div className="grid grid-cols-4 gap-4">
+                        <div className="col-span-1">
+                          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Excluded Variants
+                          </label>
+                        </div>
+                        <div className="col-span-3">
+                          <FormSearchableSelect
+                            control={form.control}
+                            name="excludedVariants"
+                            label="Excluded Variants"
+                            placeholder="Select variants to exclude"
+                            fetchOptions={fetchVariants}
+                            itemType="variant"
+                            disabled={shouldDisableExclusions}
+                          />
                         </div>
                       </div>
+                    )}
+                  </div>
+                </div>
 
-                      {/* Applicability Section */}
-                      <div className="border rounded-lg p-4 space-y-4 mb-6">
-                        <h3 className="text-lg font-medium">Applicability</h3>
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-4 gap-4">
-                            <div className="col-span-1">
-                              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                Applicable Categories
-                              </label>
-                            </div>
-                            <div className="col-span-3">
-                              <FormMultipleCategorySubcategoryInput
-                                control={form.control}
-                                name="applicableCategories"
-                                setValue={form.setValue}
-                                watch={form.watch}
-                                placeholder="Select categories"
-                                disabled={shouldDisableApplicability}
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-4 gap-4">
-                            <div className="col-span-1">
-                              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                Applicable Products
-                              </label>
-                            </div>
-                            <div className="col-span-3">
-                              <FormSearchableSelect
-                                control={form.control}
-                                name="applicableProducts"
-                                placeholder="Select products"
-                                fetchOptions={fetchProductsFiltered}
-                                itemType="product"
-                                disabled={shouldDisableApplicability}
-                              />
-                            </div>
-                          </div>
-                          {selectedProductDetails.some(product => product.product_structure === 'variant') && (
-                            <div className="grid grid-cols-4 gap-4">
-                              <div className="col-span-1">
-                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                  Applicable Variants
-                                </label>
-                              </div>
-                              <div className="col-span-3">
-                                <FormSearchableSelect
-                                  control={form.control}
-                                  name="applicableVariants"
-                                  placeholder="Select variants"
-                                  fetchOptions={fetchVariants}
-                                  itemType="variant"
-                                  disabled={shouldDisableApplicability}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+              </FormSheetBody>
 
-                      {/* Exclusions Section */}
-                      <div className="border rounded-lg p-4 space-y-4 mb-6">
-                        <h3 className="text-lg font-medium">Exclusions</h3>
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-4 gap-4">
-                            <div className="col-span-1">
-                              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                Excluded Categories
-                              </label>
-                            </div>
-                            <div className="col-span-3">
-                              <FormMultipleCategorySubcategoryInput
-                                control={form.control}
-                                name="excludedCategories"
-                                setValue={form.setValue}
-                                watch={form.watch}
-                                placeholder="Select categories to exclude"
-                                disabled={shouldDisableExclusions}
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-4 gap-4">
-                            <div className="col-span-1">
-                              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                Excluded Products
-                              </label>
-                            </div>
-                            <div className="col-span-3">
-                              <FormSearchableSelect
-                                control={form.control}
-                                name="excludedProducts"
-                                placeholder="Select products to exclude"
-                                fetchOptions={fetchExcludedProductsFiltered}
-                                itemType="product"
-                                disabled={shouldDisableExclusions}
-                              />
-                            </div>
-                          </div>
-                          {excludedProductDetails.some(product => product.product_structure === 'variant') && (
-                            <div className="grid grid-cols-4 gap-4">
-                              <div className="col-span-1">
-                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                  Excluded Variants
-                                </label>
-                              </div>
-                              <div className="col-span-3">
-                                <FormSearchableSelect
-                                  control={form.control}
-                                  name="excludedVariants"
-                                  placeholder="Select variants to exclude"
-                                  fetchOptions={fetchVariants}
-                                  itemType="variant"
-                                  disabled={shouldDisableExclusions}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                  </FormSheetBody>
-
-                  <FormSheetFooter>
-                    <FormSubmitButton isPending={isPending}>
-                      {submitButtonText}
-                    </FormSubmitButton>
-                  </FormSheetFooter>
-                </FormSheetContent>
-              </form>
-            </Form>
-          </SheetContent>
-        </Sheet>
-      );
+              <FormSheetFooter>
+                <FormSubmitButton isPending={isPending}>
+                  {submitButtonText}
+                </FormSubmitButton>
+              </FormSheetFooter>
+            </FormSheetContent>
+          </form>
+        </Form>
+      </SheetContent>
+    </Sheet>
+  );
 };

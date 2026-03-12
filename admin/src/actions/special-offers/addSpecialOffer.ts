@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { formatValidationErrors } from "@/helpers/formatValidationErrors";
 import { EnhancedServerActionResponse } from "@/types/server-action";
 import { ApiResponse } from "@/types/api";
 
@@ -64,7 +63,7 @@ export async function addSpecialOffer(
       };
     }
 
-    const data: ApiResponse<any> = await response.json();
+    const data: ApiResponse<Record<string, unknown>> = await response.json();
 
     // Revalidate the special offers page
     revalidatePath("/special-offers");

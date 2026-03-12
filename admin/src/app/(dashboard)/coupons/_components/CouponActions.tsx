@@ -16,25 +16,25 @@ import { exportCoupons } from "@/actions/coupons/exportCoupons";
 import { RowSelectionProps } from "@/types/data-table";
 import { editCoupons } from "@/actions/coupons/editCoupons";
 import { useAuthorization } from "@/hooks/use-authorization";
+import { Coupon } from "@/services/coupons/types";
 
 export default function CouponActions({
   rowSelection,
   setRowSelection,
   data,
-}: RowSelectionProps & { data?: any[] }) {
+}: RowSelectionProps & { data?: Coupon[] }) {
   const { hasPermission } = useAuthorization();
 
-  // Helper function to get actual coupon IDs from row selection
   const getSelectedCouponIds = () => {
     if (!data || !rowSelection) return [];
-    
+
     return Object.keys(rowSelection)
-      .filter(rowIndex => rowSelection[rowIndex]) // Only get selected rows
+      .filter(rowIndex => rowSelection[rowIndex])
       .map(rowIndex => {
         const coupon = data[parseInt(rowIndex)];
-        return coupon?._id; // Get the actual coupon ID
+        return coupon?._id;
       })
-      .filter(Boolean); // Remove any undefined/null values
+      .filter(Boolean);
   };
 
   return (
@@ -45,72 +45,72 @@ export default function CouponActions({
         {(hasPermission("coupons", "canEdit") ||
           hasPermission("coupons", "canDelete") ||
           hasPermission("coupons", "canCreate")) && (
-          <div className="flex flex-col sm:flex-row gap-4">
-            {hasPermission("coupons", "canEdit") && (
-              <CouponBulkActionSheet
-                action={(formData) =>
-                  editCoupons(getSelectedCouponIds(), formData)
-                }
-                onSuccess={() => setRowSelection({})}
-              >
-                <SheetTrigger asChild>
+            <div className="flex flex-col sm:flex-row gap-4">
+              {hasPermission("coupons", "canEdit") && (
+                <CouponBulkActionSheet
+                  action={(formData) =>
+                    editCoupons(getSelectedCouponIds(), formData)
+                  }
+                  onSuccess={() => setRowSelection({})}
+                >
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      type="button"
+                      disabled={!Boolean(Object.keys(rowSelection).length)}
+                      className="sm:flex-grow xl:flex-grow-0 transition-opacity duration-300"
+                    >
+                      <PenSquare className="mr-2 size-4" /> Bulk Action
+                    </Button>
+                  </SheetTrigger>
+                </CouponBulkActionSheet>
+              )}
+
+              {hasPermission("coupons", "canDelete") && (
+                <ActionAlertDialog
+                  title={`Delete ${getSelectedCouponIds().length} coupons?`}
+                  description="This action cannot be undone. This will permanently delete the coupons and their associated data from the database."
+                  actionButtonText="Delete Coupons"
+                  toastSuccessMessage="Coupons deleted successfully"
+                  queryKey="coupons"
+                  action={() => deleteCoupons(getSelectedCouponIds())}
+                  onSuccess={() => setRowSelection({})}
+                >
                   <Button
-                    variant="secondary"
+                    variant="destructive"
                     size="lg"
                     type="button"
                     disabled={!Boolean(Object.keys(rowSelection).length)}
                     className="sm:flex-grow xl:flex-grow-0 transition-opacity duration-300"
                   >
-                    <PenSquare className="mr-2 size-4" /> Bulk Action
+                    <Trash2 className="mr-2 size-4" />
+                    Delete
                   </Button>
-                </SheetTrigger>
-              </CouponBulkActionSheet>
-            )}
+                </ActionAlertDialog>
+              )}
 
-            {hasPermission("coupons", "canDelete") && (
-              <ActionAlertDialog
-                title={`Delete ${getSelectedCouponIds().length} coupons?`}
-                description="This action cannot be undone. This will permanently delete the coupons and their associated data from the database."
-                actionButtonText="Delete Coupons"
-                toastSuccessMessage="Coupons deleted successfully"
-                queryKey="coupons"
-                action={() => deleteCoupons(getSelectedCouponIds())}
-                onSuccess={() => setRowSelection({})}
-              >
-                <Button
-                  variant="destructive"
-                  size="lg"
-                  type="button"
-                  disabled={!Boolean(Object.keys(rowSelection).length)}
-                  className="sm:flex-grow xl:flex-grow-0 transition-opacity duration-300"
+              {hasPermission("coupons", "canCreate") && (
+                <CouponFormSheet
+                  title="Add Coupon"
+                  description="Add necessary coupon information here"
+                  submitButtonText="Add Coupon"
+                  actionVerb="added"
+                  action={addCoupon}
                 >
-                  <Trash2 className="mr-2 size-4" />
-                  Delete
-                </Button>
-              </ActionAlertDialog>
-            )}
-
-            {hasPermission("coupons", "canCreate") && (
-              <CouponFormSheet
-                title="Add Coupon"
-                description="Add necessary coupon information here"
-                submitButtonText="Add Coupon"
-                actionVerb="added"
-                action={addCoupon}
-              >
-                <SheetTrigger asChild>
-                  <Button
-                    variant="default"
-                    size="lg"
-                    className="sm:flex-grow xl:flex-grow-0"
-                  >
-                    <Plus className="mr-2 size-4" /> Add Coupon
-                  </Button>
-                </SheetTrigger>
-              </CouponFormSheet>
-            )}
-          </div>
-        )}
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="default"
+                      size="lg"
+                      className="sm:flex-grow xl:flex-grow-0"
+                    >
+                      <Plus className="mr-2 size-4" /> Add Coupon
+                    </Button>
+                  </SheetTrigger>
+                </CouponFormSheet>
+              )}
+            </div>
+          )}
       </form>
     </Card>
   );

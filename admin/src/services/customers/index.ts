@@ -1,6 +1,7 @@
 import axiosInstance from "@/helpers/axiosInstance";
 import {
   Customer,
+  Order,
   PaginatedResponse,
 } from "@/types/api";
 
@@ -46,22 +47,22 @@ export async function fetchCustomers({
   search,
 }: FetchCustomersParams): Promise<PaginatedResponse<Customer>> {
   const params = new URLSearchParams();
-  
+
   params.append('page', page.toString());
   params.append('limit', limit.toString());
-  
+
   if (search) params.append('search', search);
 
   const { data } = await axiosInstance.get(`/api/customers?${params.toString()}`);
-  
+
   // Ensure each customer has both _id and id fields for compatibility
   if (data.data) {
-    data.data = data.data.map((customer: any) => ({
+    data.data = data.data.map((customer: Customer) => ({
       ...customer,
       id: customer._id, // Ensure id field exists for table compatibility
     }));
   }
-  
+
   return data;
 }
 
@@ -72,16 +73,16 @@ export interface CustomerDetails extends Customer {
     last_order: string | null;
     order_statuses: Record<string, number>;
   };
-  orders: any[];
+  orders: Order[];
   wishlist: {
     total_items: number;
-    items: any[];
+    items: WishlistItem[];
   };
 }
 
 export async function fetchCustomerDetails(id: string): Promise<{ customer: CustomerDetails }> {
   const { data } = await axiosInstance.get(`/api/customers/${id}`);
-  
+
   if (!data.success) {
     throw new Error(data.error || 'Failed to fetch customer details');
   }
@@ -96,7 +97,7 @@ export async function fetchCustomerDetails(id: string): Promise<{ customer: Cust
 
 export async function fetchCustomerOrders({ id }: { id: string }) {
   const { data } = await axiosInstance.get(`/api/customers/${id}/orders`);
-  
+
   if (!data.success) {
     throw new Error(data.error || 'Failed to fetch customer orders');
   }
@@ -108,7 +109,7 @@ export async function fetchCustomerOrders({ id }: { id: string }) {
 
 export async function fetchCustomerWishlist(customerId: string): Promise<{ items: WishlistItem[], totalItems: number }> {
   const { data } = await axiosInstance.get(`/api/customers/${customerId}/wishlist`);
-  
+
   if (!data.success) {
     throw new Error(data.error || 'Failed to fetch wishlist');
   }
@@ -121,7 +122,7 @@ export async function fetchCustomerWishlist(customerId: string): Promise<{ items
 
 export async function fetchCustomerCart(customerId: string): Promise<CartData> {
   const { data } = await axiosInstance.get(`/api/customers/${customerId}/cart`);
-  
+
   if (!data.success) {
     throw new Error(data.error || 'Failed to fetch cart');
   }

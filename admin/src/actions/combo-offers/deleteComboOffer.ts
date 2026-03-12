@@ -10,8 +10,8 @@ export async function deleteComboOffer(
 ): Promise<EnhancedServerActionResponse> {
   try {
     // First fetch combo offer to check if it exists and get its order
-    const comboOfferResponse = await apiGet<ApiResponse<any>>(`/api/combo-offers/${comboOfferId}`);
-    
+    const comboOfferResponse = await apiGet<ApiResponse<{ order?: number }>>(`/api/combo-offers/${comboOfferId}`);
+
     if (!comboOfferResponse.success) {
       console.error("Failed to fetch combo offer for deletion:", comboOfferResponse.error);
       return {
@@ -26,8 +26,8 @@ export async function deleteComboOffer(
     const comboOffer = comboOfferResponse.data;
 
     // Delete the combo offer from the database
-    const deleteResponse = await apiDelete<ApiResponse<any>>(`/api/combo-offers/${comboOfferId}`);
-    
+    const deleteResponse = await apiDelete<ApiResponse<unknown>>(`/api/combo-offers/${comboOfferId}`);
+
     if (!deleteResponse.success) {
       console.error("Failed to delete combo offer:", deleteResponse.error);
       return {
@@ -40,18 +40,18 @@ export async function deleteComboOffer(
     }
 
     // Reorganize orders - update all offers with order > deleted offer order
-    if (comboOffer.order !== undefined) {
+    if (comboOffer && comboOffer.order !== undefined) {
       try {
         // Get all offers to update their orders
-        const allOffersResponse = await apiGet<ApiResponse<any[]>>('/api/combo-offers/admin');
-        
+        const allOffersResponse = await apiGet<ApiResponse<{ _id: string; order: number }[]>>('/api/combo-offers/admin');
+
         if (allOffersResponse.success && allOffersResponse.data) {
           const offersToUpdate = allOffersResponse.data
-            .filter((offer: any) => offer.order > comboOffer.order)
-            .sort((a: any, b: any) => a.order - b.order);
+            .filter((offer: { order: number }) => offer.order > (comboOffer?.order ?? 0))
+            .sort((a: { order: number }, b: { order: number }) => a.order - b.order);
 
           // Update each offer's order (decrement by 1)
-          for (const offer of offersToUpdate) {
+          for (const offer of offersToUpdate as { _id: string; order: number }[]) {
             await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/combo-offers/${offer._id}`, {
               method: "PUT",
               headers: {
@@ -62,7 +62,7 @@ export async function deleteComboOffer(
               }),
             });
           }
-          
+
           console.log(`Reorganized orders for ${offersToUpdate.length} combo offers after deletion`);
         }
       } catch (reorderError) {

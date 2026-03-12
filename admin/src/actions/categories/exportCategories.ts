@@ -1,6 +1,6 @@
 export async function exportCategories() {
   try {
-    const res = await fetch("http://localhost:5000/api/categories/export/all", {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories/export/all`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",

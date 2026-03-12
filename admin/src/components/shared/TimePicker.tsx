@@ -25,13 +25,13 @@ export function TimePicker({
   // Convert 24-hour time string to 12-hour format for display
   const convertTo12Hour = (time24: string) => {
     if (!time24) return { hours: "12", minutes: "00", isAm: true };
-    
+
     const [hours, minutes] = time24.split(":");
     const hour24 = parseInt(hours);
-    
+
     let hour12 = hour24;
     let am = true;
-    
+
     if (hour24 === 0) {
       hour12 = 12;
       am = true;
@@ -45,7 +45,7 @@ export function TimePicker({
       hour12 = hour24 - 12;
       am = false;
     }
-    
+
     return {
       hours: hour12.toString().padStart(2, "0"),
       minutes: minutes || "00",
@@ -56,34 +56,32 @@ export function TimePicker({
   // Convert 12-hour format to 24-hour time string
   const convertTo24Hour = (hours12: string, minutes: string, am: boolean) => {
     let hour24 = parseInt(hours12);
-    
+
     if (!am && hour24 < 12) {
       hour24 += 12;
     } else if (am && hour24 === 12) {
       hour24 = 0;
     }
-    
+
     return `${hour24.toString().padStart(2, "0")}:${minutes || "00"}`;
   };
 
   // Get current 12-hour display values
   const displayTime = time ? convertTo12Hour(time) : { hours: "12", minutes: "00", isAm: true };
 
-  // Generate hour and minute options
-  const hours = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, "0"));
-  const minutes = Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, "0"));
+
 
   // Handle hour increment/decrement
   const handleHourChange = (direction: 'up' | 'down') => {
     const currentHour = parseInt(displayTime.hours);
     let newHour;
-    
+
     if (direction === 'up') {
       newHour = currentHour === 12 ? 1 : currentHour + 1;
     } else {
       newHour = currentHour === 1 ? 12 : currentHour - 1;
     }
-    
+
     const time24 = convertTo24Hour(newHour.toString().padStart(2, "0"), displayTime.minutes, displayTime.isAm);
     setTime(time24);
   };
@@ -92,13 +90,13 @@ export function TimePicker({
   const handleMinuteChange = (direction: 'up' | 'down') => {
     const currentMinute = parseInt(displayTime.minutes);
     let newMinute;
-    
+
     if (direction === 'up') {
       newMinute = currentMinute === 55 ? 0 : currentMinute + 5;
     } else {
       newMinute = currentMinute === 0 ? 55 : currentMinute - 5;
     }
-    
+
     const time24 = convertTo24Hour(displayTime.hours, newMinute.toString().padStart(2, "0"), displayTime.isAm);
     setTime(time24);
   };
@@ -130,7 +128,7 @@ export function TimePicker({
         <PopoverContent className="w-80 p-4" align="start">
           <div className="space-y-4">
             <div className="text-center font-medium">Select Time</div>
-            
+
             {/* Time Picker Interface */}
             <div className="flex items-center justify-center gap-4">
               {/* Hours */}
@@ -155,9 +153,9 @@ export function TimePicker({
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </div>
-              
+
               <div className="text-2xl font-bold">:</div>
-              
+
               {/* Minutes */}
               <div className="flex flex-col items-center">
                 <Button
@@ -180,7 +178,7 @@ export function TimePicker({
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </div>
-              
+
               {/* AM/PM */}
               <div className="flex flex-col items-center gap-1">
                 <Button

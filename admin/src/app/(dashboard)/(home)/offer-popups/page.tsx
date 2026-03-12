@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FaPlus, FaTrash, FaEdit, FaSave, FaTimes, FaImage, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,7 +25,7 @@ interface OfferPopup {
 
 export default function OfferPopupsPage() {
     const [popups, setPopups] = useState<OfferPopup[]>([]);
-    const [offers, setOffers] = useState<any[]>([]);
+    const [offers, setOffers] = useState<{ _id: string, title?: string, slug?: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [currentPopup, setCurrentPopup] = useState<OfferPopup | null>(null);
@@ -47,15 +47,10 @@ export default function OfferPopupsPage() {
         endDate: ''
     });
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const baseUrl = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
 
-    useEffect(() => {
-        fetchPopups();
-        fetchOffers();
-    }, []);
-
-    const fetchPopups = async () => {
+    const fetchPopups = useCallback(async () => {
         try {
             const res = await fetch(`${baseUrl}/offer-popups/admin`);
             const data = await res.json();
@@ -67,9 +62,9 @@ export default function OfferPopupsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [baseUrl]);
 
-    const fetchOffers = async () => {
+    const fetchOffers = useCallback(async () => {
         try {
             const res = await fetch(`${baseUrl}/offers`);
             const data = await res.json();
@@ -79,10 +74,16 @@ export default function OfferPopupsPage() {
         } catch (error) {
             console.error('Error fetching offers:', error);
         }
-    };
+    }, [baseUrl]);
 
-    const handleInputChange = (e) => {
-        const { name, value, type, checked } = e.target;
+    useEffect(() => {
+        fetchPopups();
+        fetchOffers();
+    }, [fetchPopups, fetchOffers]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target as HTMLInputElement;
+        const checked = (e.target as HTMLInputElement).checked;
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value
@@ -108,13 +109,13 @@ export default function OfferPopupsPage() {
         }
     }, [linkedOffer, offers]);
 
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
         if (file) {
             setImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
-                setImagePreview(reader.result);
+                setImagePreview(reader.result as string);
             };
             reader.readAsDataURL(file);
         }
@@ -138,7 +139,7 @@ export default function OfferPopupsPage() {
         setCurrentPopup(null);
     };
 
-    const handleEdit = (popup) => {
+    const handleEdit = (popup: OfferPopup) => {
         setCurrentPopup(popup);
         setLinkedOffer(popup.linked_offer || null);
         setFormData({
@@ -155,7 +156,7 @@ export default function OfferPopupsPage() {
         setIsEditing(true);
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this offer popup?')) return;
 
         try {
@@ -179,7 +180,7 @@ export default function OfferPopupsPage() {
         }
     };
 
-    const handleToggle = async (id) => {
+    const handleToggle = async (id: string) => {
         try {
             const result = await toggleOfferPopup(id);
             if (result.success) {
@@ -200,7 +201,7 @@ export default function OfferPopupsPage() {
         }
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!imageFile && !currentPopup) {
@@ -216,8 +217,8 @@ export default function OfferPopupsPage() {
             formDataToSend.append('description', formData.description);
             formDataToSend.append('buttonText', formData.buttonText);
             formDataToSend.append('buttonLink', formData.buttonLink);
-            formDataToSend.append('isActive', formData.isActive);
-            formDataToSend.append('priority', formData.priority);
+            formDataToSend.append('isActive', String(formData.isActive));
+            formDataToSend.append('priority', String(formData.priority));
             if (formData.startDate) formDataToSend.append('startDate', formData.startDate);
             if (formData.endDate) formDataToSend.append('endDate', formData.endDate);
             if (linkedOffer) formDataToSend.append('linked_offer', linkedOffer);
@@ -326,22 +327,22 @@ export default function OfferPopupsPage() {
                                         />
                                     </div>
                                     <div>
-  <label className="block text-sm font-medium mb-1">
-    Link to Offer (Optional)
-  </label>
-  <select
-    value={linkedOffer || ''}
-    onChange={(e) => setLinkedOffer(e.target.value || null)}
-    className="w-full p-2 border-border rounded-lg"
-  >
-    <option value="">— No linked offer —</option>
-    {offers.map((offer) => (
-      <option key={offer._id} value={offer._id}>
-        {offer.title}
-      </option>
-    ))}
-  </select>
-</div>
+                                        <label className="block text-sm font-medium mb-1">
+                                            Link to Offer (Optional)
+                                        </label>
+                                        <select
+                                            value={linkedOffer || ''}
+                                            onChange={(e) => setLinkedOffer(e.target.value || null)}
+                                            className="w-full p-2 border-border rounded-lg"
+                                        >
+                                            <option value="">— No linked offer —</option>
+                                            {offers.map((offer) => (
+                                                <option key={offer._id} value={offer._id}>
+                                                    {offer.title}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
 
 
                                     <div>
@@ -350,7 +351,7 @@ export default function OfferPopupsPage() {
                                             name="description"
                                             value={formData.description}
                                             onChange={handleInputChange}
-                                            rows="3"
+                                            rows={3}
                                             className="w-full p-2 border-border bg-background rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                                             required
                                         />
@@ -466,59 +467,59 @@ export default function OfferPopupsPage() {
             )}
 
             {!isEditing && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {popups.map((popup) => (
-                    <Card key={popup._id} className="overflow-hidden group hover:shadow-md transition-shadow">
-                        <CardContent className="p-0">
-                            <div className="relative h-48">
-                                <Image
-                                    src={popup.image}
-                                    alt={popup.heading}
-                                    fill
-                                    className="object-cover"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-                                <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                        onClick={() => handleEdit(popup)}
-                                        className="p-2 bg-card/90 text-card-foreground rounded-full hover:bg-card hover:text-primary transition-colors"
-                                    >
-                                        <FaEdit size={14} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(popup._id)}
-                                        className="p-2 bg-card/90 text-card-foreground rounded-full hover:bg-card hover:text-destructive transition-colors"
-                                    >
-                                        <FaTrash size={14} />
-                                    </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {popups.map((popup) => (
+                        <Card key={popup._id} className="overflow-hidden group hover:shadow-md transition-shadow">
+                            <CardContent className="p-0">
+                                <div className="relative h-48">
+                                    <Image
+                                        src={popup.image}
+                                        alt={popup.heading}
+                                        fill
+                                        className="object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                                    <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => handleEdit(popup)}
+                                            className="p-2 bg-card/90 text-card-foreground rounded-full hover:bg-card hover:text-primary transition-colors"
+                                        >
+                                            <FaEdit size={14} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(popup._id)}
+                                            className="p-2 bg-card/90 text-card-foreground rounded-full hover:bg-card hover:text-destructive transition-colors"
+                                        >
+                                            <FaTrash size={14} />
+                                        </button>
+                                    </div>
+                                    <div className="absolute bottom-4 left-4 right-4 text-white">
+                                        <h3 className="font-bold text-lg mb-2 truncate">{popup.heading}</h3>
+                                        <p className="text-sm opacity-90 truncate">{popup.description}</p>
+                                    </div>
                                 </div>
-                                <div className="absolute bottom-4 left-4 right-4 text-white">
-                                    <h3 className="font-bold text-lg mb-2 truncate">{popup.heading}</h3>
-                                    <p className="text-sm opacity-90 truncate">{popup.description}</p>
+                                <div className="p-4 flex justify-between items-center text-sm text-muted-foreground">
+                                    <span className={`px-2 py-0.5 rounded-full text-xs ${popup.isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                                        {popup.isActive ? 'Active' : 'Inactive'}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <span>Priority: {popup.priority}</span>
+                                        <button
+                                            onClick={() => handleToggle(popup._id)}
+                                            className="text-xl"
+                                        >
+                                            {popup.isActive ? (
+                                                <FaToggleOn className="text-primary" />
+                                            ) : (
+                                                <FaToggleOff className="text-muted-foreground" />
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="p-4 flex justify-between items-center text-sm text-muted-foreground">
-                                <span className={`px-2 py-0.5 rounded-full text-xs ${popup.isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                                    {popup.isActive ? 'Active' : 'Inactive'}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                    <span>Priority: {popup.priority}</span>
-                                    <button
-                                        onClick={() => handleToggle(popup._id)}
-                                        className="text-xl"
-                                    >
-                                        {popup.isActive ? (
-                                            <FaToggleOn className="text-primary" />
-                                        ) : (
-                                            <FaToggleOff className="text-muted-foreground" />
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
             )}
 
             {popups.length === 0 && !isEditing && (

@@ -46,7 +46,7 @@ export function ImagePlaceholder({
   }
 
   return (
-    <div className={cn("relative size-8", containerClassName)}>
+    <div className={cn("relative", containerClassName)}>
       <Image
         {...imageProps}
         src={imageSrc}

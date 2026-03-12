@@ -17,7 +17,7 @@ import {
 } from "@/components/shared/form";
 
 import { profileFormSchema, ProfileFormData } from "./schema";
-import { fetchStaffDetails, updateStaff } from "@/services/staff";
+import { fetchStaffDetails } from "@/services/staff";
 import { Staff } from "@/services/staff/types";
 import { useUser } from "@/contexts/UserContext";
 import { uploadFile } from "@/lib/firebase/storage";
@@ -88,9 +88,9 @@ export default function EditProfileForm() {
     startTransition(async () => {
       try {
         console.log("Updating profile with data:", data);
-        
+
         let imageUrl = profile.image_url;
-        
+
         // Handle image upload if a new image is provided
         if (data.image instanceof File && data.image.size > 0) {
           try {
@@ -116,7 +116,7 @@ export default function EditProfileForm() {
         console.log("Sending update request with data:", updateData);
 
         // Make API call to update the profile
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/staff`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/staff`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -138,15 +138,15 @@ export default function EditProfileForm() {
         }
 
         toast.success("Profile updated successfully!");
-        
+
         // Invalidate queries to refresh data
         queryClient.invalidateQueries({ queryKey: ["staff"] });
         queryClient.invalidateQueries({ queryKey: ["user-profile"] });
-        
+
         // Refresh user data
         await refetchUser();
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Profile update error:", error);
         toast.error("Something went wrong. Please try again later.");
       }

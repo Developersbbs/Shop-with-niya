@@ -16,8 +16,8 @@ export async function editProduct(
   let categories = [];
   try {
     categories = categoriesJson ? JSON.parse(categoriesJson as string) : [];
-  } catch (e) {
-    console.error("Failed to parse categories:", e);
+  } catch {
+    console.error("Failed to parse categories");
   }
 
   // Read new file uploads
@@ -40,29 +40,29 @@ export async function editProduct(
       if (Array.isArray(parsed)) {
         existingImageUrls.push(...parsed);
       }
-    } catch (e) {}
+    } catch { }
   }
 
   const tagsJson = formData.get("tags");
   let tags = [];
   try {
     tags = tagsJson ? JSON.parse(tagsJson as string) : [];
-  } catch (e) {
-    console.error("Failed to parse tags:", e);
+  } catch {
+    console.error("Failed to parse tags");
   }
 
   const seoKeywordsJson = formData.get("seoKeywords");
   let seoKeywords = [];
   try {
     seoKeywords = seoKeywordsJson ? JSON.parse(seoKeywordsJson as string) : [];
-  } catch (e) {}
+  } catch { }
 
   const variantsJson = formData.get("product_variants");
   let variants = null;
   try {
     variants = variantsJson ? JSON.parse(variantsJson as string) : null;
-  } catch (e) {
-    console.error("Failed to parse variants:", e);
+  } catch {
+    console.error("Failed to parse variants");
   }
 
   // Extract NEW variant image files from FormData
@@ -181,7 +181,7 @@ export async function editProduct(
     // Merge variant images: existing URLs + new Firebase URLs
     if (variants && variants.combinations && variants.combinations.length > 0) {
       variants.combinations = variants.combinations.map(
-        (combination: any, index: number) => {
+        (combination: { images?: string[] } & Record<string, unknown>, index: number) => {
           const idx = index.toString();
           const newUrls = variantImageUrls[idx] || [];
           const preservedUrls = existingVariantImages[idx] || [];
@@ -192,9 +192,9 @@ export async function editProduct(
     }
 
     if (variants && variants.combinations) {
-      variants.combinations.forEach((combination: any, index: number) => {
+      variants.combinations.forEach((combination: { images?: string[] }, index: number) => {
         const images: string[] = (combination.images || []).filter(
-          (img: any) => typeof img === "string"
+          (img: unknown) => typeof img === "string"
         );
         images.forEach((url, urlIdx) => {
           backendFormData.append(
@@ -333,8 +333,8 @@ export async function editProduct(
 
     revalidatePath("/products");
     return { success: true, product: result.data };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Unexpected error in editProduct:", error);
-    return { dbError: error.message || "An unexpected error occurred." };
+    return { dbError: (error as Error).message || "An unexpected error occurred." };
   }
 }

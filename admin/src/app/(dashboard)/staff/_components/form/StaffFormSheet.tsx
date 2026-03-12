@@ -23,7 +23,6 @@ import {
 import {
   FormTextInput,
   FormImageInput,
-  FormReadonly,
 } from "@/components/shared/form";
 import FormSelect from "@/components/shared/form/FormSelect";
 import { useQuery } from "@tanstack/react-query";
@@ -58,7 +57,6 @@ export default function StaffFormSheet({
   actionVerb,
   initialData,
   previewImage,
-  staffEmail,
   children,
   action,
 }: StaffFormProps) {
@@ -68,11 +66,11 @@ export default function StaffFormSheet({
   const imageDropzoneRef = useRef<HTMLDivElement>(null);
   const { user } = useUser();
 
-  const { data: rolesData, error: rolesError, isLoading: rolesLoading } = useQuery({
+  const { data: rolesData } = useQuery({
     queryKey: ["staffRoles"],
     queryFn: async () => {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
         const url = baseUrl.endsWith('/api') ? `${baseUrl}/staffRoles/dropdown` : `${baseUrl}/api/staffRoles/dropdown`;
 
         console.log("Fetching roles from:", url);
@@ -91,10 +89,10 @@ export default function StaffFormSheet({
     }
   });
 
-  const roleOptions = rolesData?.data?.map((role: any) => ({
-    value: role._id,
-    label: role.display_name
-  })) || [];
+  const roleOptions = (rolesData?.data || []).map((role: Record<string, unknown>) => ({
+    value: String(role._id),
+    label: String(role.display_name)
+  }));
 
   console.log("Parsed role options:", roleOptions);
 
@@ -108,18 +106,15 @@ export default function StaffFormSheet({
     ...initialData,
   };
 
-  if (defaultValues.role_id && typeof defaultValues.role_id === 'object') {
-    // @ts-ignore
-    defaultValues.role_id = defaultValues.role_id._id || defaultValues.role_id.id;
-  }
-
   const form = useForm<StaffFormData>({
     resolver: zodResolver(staffFormSchema),
     defaultValues: defaultValues,
   });
 
   useEffect(() => {
-    form.reset(initialData);
+    if (initialData) {
+      form.reset(initialData);
+    }
   }, [form, initialData]);
 
   const onSubmit = (data: StaffFormData) => {

@@ -23,7 +23,8 @@ const FormDatetimeInput = forwardRef(function FormDatetimeInputRender<
   TFormData extends FieldValues
 >(
   { control, name, label, container }: FormDatetimeInputProps<TFormData>,
-  ref: Ref<HTMLButtonElement>
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _ref: Ref<HTMLButtonElement>
 ) {
   return (
     <FormField

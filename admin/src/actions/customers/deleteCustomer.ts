@@ -19,10 +19,11 @@ export async function deleteCustomer(
     revalidatePath("/customers");
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Customer delete error:", error);
+    const errorMessage = (error as { response?: { data?: { error?: string } } }).response?.data?.error;
     return {
-      dbError: error.response?.data?.error || "Something went wrong. Could not delete the customer."
+      dbError: errorMessage || "Something went wrong. Could not delete the customer."
     };
   }
 }

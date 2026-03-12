@@ -1,5 +1,5 @@
 // Base API Response
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
@@ -74,16 +74,33 @@ export interface CategoryDropdown {
 
 // Product Types
 export interface ProductCategoryInfo {
-    category: {
-      _id: string;
-      name: string;
-      slug: string;
-    };
-    subcategories: {
-      _id: string;
-      name: string;
-    }[];
-  }
+  category: {
+    _id: string;
+    name: string;
+    slug: string;
+  };
+  subcategories: {
+    _id: string;
+    name: string;
+  }[];
+}
+
+export interface ProductVariant {
+  _id: string;
+  id: string;
+  name?: string;
+  slug: string;
+  sku: string;
+  stock?: number;
+  minStock?: number;
+  cost_price?: number;
+  selling_price?: number;
+  images?: string[];
+  published?: boolean;
+  status?: string;
+  tax_percentage?: number;
+  attributes?: Record<string, string | number | boolean>;
+}
 
 export interface Product {
   _id: string;
@@ -99,6 +116,7 @@ export interface Product {
   slug: string;
   cost_price: number;
   selling_price: number;
+  tax_percentage?: number;
   baseStock?: number | null; // Base stock level - can be null if not set
   minStock?: number; // Minimum stock threshold
   published: boolean; // Manual publish status by admin
@@ -120,8 +138,8 @@ export interface Product {
     ogDescription?: string;
     ogImage?: string;
   };
-  variants?: any[];
-  product_variants?: any[];
+  variants?: ProductVariant[];
+  product_variants?: ProductVariant[];
   // Digital product fields
   file_path?: string;
   file_size?: number;
@@ -178,10 +196,17 @@ export interface Order {
   customer?: Customer;
   customers?: {
     name: string;
+    email?: string;
     address: string;
     phone: string;
   };
+  coupons?: Coupon;
   order_items?: OrderItem[];
+}
+
+export interface OrderDetails extends Order {
+  order_items: OrderItem[];
+  customer: Customer;
 }
 
 export interface OrderItem {

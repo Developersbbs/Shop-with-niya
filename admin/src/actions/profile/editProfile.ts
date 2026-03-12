@@ -27,7 +27,7 @@ export async function editProfile(
 
   try {
     // Prepare the update data
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       name: profileData.name,
       phone: profileData.phone,
     };
@@ -43,10 +43,10 @@ export async function editProfile(
     revalidatePath("/edit-profile");
     return { success: true };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Profile update error:", error);
     return {
-      dbError: error.message || "Something went wrong. Please try again later."
+      dbError: (error as Error).message || "Something went wrong. Please try again later."
     };
   }
 }

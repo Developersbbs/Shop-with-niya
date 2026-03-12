@@ -9,16 +9,6 @@ const ACCEPTED_IMAGE_TYPES = [
   "image/webp",
 ];
 
-const fileSchema = z
-  .instanceof(File, { message: "Invalid file type" })
-  .refine(
-    (file) => file.size <= MAX_FILE_SIZE,
-    `File size must be less than ${MAX_FILE_SIZE_MB}MB`
-  )
-  .refine(
-    (file) => ACCEPTED_IMAGE_TYPES.includes(file.type),
-    "Only .jpg, .jpeg, .png and .webp formats are supported"
-  );
 
 const categorySubcategorySelectionSchema = z.object({
   categoryId: z.string(),
@@ -60,12 +50,12 @@ export const couponFormSchema = z
       .max(50, "Campaign code must be 50 characters or less"),
     description: z.string().max(500).optional().or(z.literal("")),
     image: z.union([
-  z.instanceof(File, { message: "Invalid file type" })
-    .refine((file) => file.size <= MAX_FILE_SIZE, `File size must be less than ${MAX_FILE_SIZE_MB}MB`)
-    .refine((file) => ACCEPTED_IMAGE_TYPES.includes(file.type), "Only .jpg, .jpeg, .png and .webp formats are supported"),
-  z.string().url().optional(),
-  z.null().optional()
-]).optional(),
+      z.instanceof(File, { message: "Invalid file type" })
+        .refine((file) => file.size <= MAX_FILE_SIZE, `File size must be less than ${MAX_FILE_SIZE_MB}MB`)
+        .refine((file) => ACCEPTED_IMAGE_TYPES.includes(file.type), "Only .jpg, .jpeg, .png and .webp formats are supported"),
+      z.string().url().optional(),
+      z.null().optional()
+    ]).optional(),
     discountType: z.enum([
       "percentage",
       "fixed",
@@ -147,7 +137,7 @@ export const couponFormSchema = z
       cashbackAmount: data.cashbackAmount,
       bogoConfig: data.bogoConfig
     });
-    
+
     if (data.discountType === "percentage") {
       if (!data.discountValue || data.discountValue <= 0) {
         console.log("Percentage discount validation failed:", data.discountValue);
@@ -199,8 +189,8 @@ export const couponFormSchema = z
   });
 
 export const couponBulkFormSchema = z.object({
-    published: z.coerce.boolean(),
-    isActive: z.coerce.boolean().optional(),
+  published: z.coerce.boolean(),
+  isActive: z.coerce.boolean().optional(),
 });
 
 export type CouponFormData = z.infer<typeof couponFormSchema>;

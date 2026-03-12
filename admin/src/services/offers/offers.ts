@@ -23,10 +23,10 @@ export interface Offer {
   applicable_users: string[];
   excluded_users: string[];
   user_segments: string[];
-  bogo_config?: any;
-  flash_config?: any;
-  category_config?: any;
-  storewide_config?: any;
+  bogo_config?: Record<string, unknown>;
+  flash_config?: Record<string, unknown>;
+  category_config?: Record<string, unknown>;
+  storewide_config?: Record<string, unknown>;
   analytics: {
     views: number;
     cart_attempts: number;
@@ -94,10 +94,10 @@ export interface CreateOfferParams {
   excluded_products?: string[];
   excluded_brands?: string[];
   exclude_out_of_stock?: boolean;
-  bogo_config?: any;
-  flash_config?: any;
-  category_config?: any;
-  storewide_config?: any;
+  bogo_config?: Record<string, unknown>;
+  flash_config?: Record<string, unknown>;
+  category_config?: Record<string, unknown>;
+  storewide_config?: Record<string, unknown>;
   tags?: string[];
   notes?: string;
 }
@@ -129,7 +129,7 @@ export const fetchOffers = async (params: FetchOffersParams = {}): Promise<Offer
   } = params;
 
   const queryParams = new URLSearchParams();
-  
+
   if (page) queryParams.append("page", page.toString());
   if (limit) queryParams.append("limit", limit.toString());
   if (search) queryParams.append("search", search);
@@ -165,9 +165,9 @@ export const deleteOffer = async (id: string): Promise<{ success: boolean; messa
   return response.data;
 };
 
-export const bulkUpdateOffers = async (params: BulkUpdateParams): Promise<{ 
-  success: boolean; 
-  message: string; 
+export const bulkUpdateOffers = async (params: BulkUpdateParams): Promise<{
+  success: boolean;
+  message: string;
   modifiedCount?: number;
   deletedCount?: number;
 }> => {
@@ -175,9 +175,9 @@ export const bulkUpdateOffers = async (params: BulkUpdateParams): Promise<{
   return response.data;
 };
 
-export const toggleOfferStatus = async (id: string): Promise<{ 
-  success: boolean; 
-  data: Offer; 
+export const toggleOfferStatus = async (id: string): Promise<{
+  success: boolean;
+  data: Offer;
   message: string;
 }> => {
   const response = await axiosInstance.post(`/api/offers/${id}/toggle-status`);
@@ -195,9 +195,9 @@ export const getOfferBySlug = async (slug: string): Promise<{ success: boolean; 
 };
 
 export const getOfferAnalytics = async (
-  id: string, 
+  id: string,
   params?: { startDate?: string; endDate?: string; granularity?: "daily" | "hourly" }
-): Promise<{ success: boolean; data: any }> => {
+): Promise<{ success: boolean; data: Record<string, unknown> }> => {
   const queryParams = new URLSearchParams();
   if (params?.startDate) queryParams.append("startDate", params.startDate);
   if (params?.endDate) queryParams.append("endDate", params.endDate);
@@ -217,7 +217,7 @@ export const exportOffersCSV = async (params: FetchOffersParams = {}): Promise<B
   } = params;
 
   const queryParams = new URLSearchParams();
-  
+
   if (search) queryParams.append("search", search);
   if (offerType) queryParams.append("offerType", offerType);
   if (status) queryParams.append("status", status);

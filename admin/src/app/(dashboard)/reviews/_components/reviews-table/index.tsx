@@ -4,15 +4,15 @@ import { useSearchParams } from "next/navigation";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 
 import ReviewsTable from "./Table";
-import { getColumns, skeletonColumns } from "./columns";
+import { useReviewsColumns, skeletonColumns } from "./columns";
 import TableSkeleton from "@/components/shared/table/TableSkeleton";
 import TableError from "@/components/shared/table/TableError";
 
 import { fetchRatings } from "@/services/ratings";
 
 interface AllReviewsProps {
-    rowSelection: any;
-    setRowSelection: (selection: any) => void;
+    rowSelection: Record<string, boolean>;
+    setRowSelection: (selection: Record<string, boolean>) => void;
 }
 
 export default function AllReviews({
@@ -37,7 +37,7 @@ export default function AllReviews({
         placeholderData: keepPreviousData,
     });
 
-    const columns = getColumns();
+    const columns = useReviewsColumns();
 
     if (isLoading)
         return <TableSkeleton perPage={limit} columns={skeletonColumns} />;

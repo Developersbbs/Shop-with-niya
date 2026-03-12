@@ -15,19 +15,31 @@ export async function exportOrders() {
 
     return {
       data: data.data.map(
-        (order: any): OrdersExport => ({
+        (order: {
+          invoice_no: string;
+          customer_name: string;
+          customer_email: string;
+          customer_phone: string;
+          total_amount: number | string;
+          coupons: unknown;
+          shipping_cost: number | string;
+          payment_method: string;
+          order_date: string;
+          status: string;
+          shipping_address: string;
+        }): OrdersExport => ({
           id: order.invoice_no,
           invoice_no: order.invoice_no,
           customer_name: order.customer_name,
-          customer_email: order.customer_email,
-          customer_phone: order.customer_phone,
-          total_amount: order.total_amount,
-          discount: getDiscount({
-            coupon: order.coupons,
-            totalAmount: order.total_amount,
-            shippingCost: order.shipping_cost,
-          }),
-          shipping_cost: order.shipping_cost,
+          customer_email: order.customer_email || "",
+          customer_phone: order.customer_phone || "",
+          total_amount: Number(order.total_amount) || 0,
+          discount: parseFloat(getDiscount({
+            coupon: order.coupons as { discount_type: string, discount_value: number } | null,
+            totalAmount: Number(order.total_amount),
+            shippingCost: Number(order.shipping_cost),
+          }).toString()) || 0,
+          shipping_cost: Number(order.shipping_cost) || 0,
           payment_method: order.payment_method,
           order_date: order.order_date,
           status: order.status,
@@ -35,17 +47,18 @@ export async function exportOrders() {
         })
       ),
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { response?: { status?: number, statusText?: string, data?: { error?: string } }, message?: string, config?: { url?: string, headers?: unknown } };
     console.error("Orders export error FULL:", {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      message: error.message,
-      url: error.config?.url,
-      headers: error.config?.headers,
+      status: err.response?.status,
+      statusText: err.response?.statusText,
+      data: err.response?.data,
+      message: err.message,
+      url: err.config?.url,
+      headers: err.config?.headers,
     });
     return {
-      error: error.response?.data?.error || "Failed to fetch data for orders."
+      error: err.response?.data?.error || "Failed to fetch data for orders."
     };
   }
 }

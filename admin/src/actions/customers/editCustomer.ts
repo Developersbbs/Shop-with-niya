@@ -43,10 +43,11 @@ export async function editCustomer(
     revalidatePath(`/customer-orders/${data.data.id}`);
 
     return { success: true, customer: data.data };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Customer update error:", error);
+    const err = error as { response?: { data?: { error?: string } } };
     return {
-      dbError: error.response?.data?.error || "Something went wrong. Please try again later."
+      dbError: err.response?.data?.error || "Something went wrong. Please try again later."
     };
   }
 }

@@ -5,6 +5,7 @@ import { categoryFormSchema } from "@/app/(dashboard)/categories/_components/for
 import { formatValidationErrors } from "@/helpers/formatValidationErrors";
 import { CategoryServerActionResponse } from "@/types/server-action";
 import { apiPut } from "@/lib/api-server";
+import { Category } from "@/types/api";
 import { storage } from "@/firebase/config";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -14,7 +15,7 @@ export async function editCategory(
 ): Promise<CategoryServerActionResponse> {
 
   // Parse subcategories from FormData
-  const subcategoriesData: any[] = [];
+  const subcategoriesData: Record<string, unknown>[] = [];
 
   // Try JSON first
   const subcategoriesJson = formData.get('subcategories');
@@ -22,7 +23,7 @@ export async function editCategory(
     try {
       const parsed = JSON.parse(subcategoriesJson);
       if (Array.isArray(parsed)) {
-        parsed.forEach((subcat: any) => {
+        parsed.forEach((subcat: Record<string, unknown>) => {
           if (subcat && subcat.name) {
             subcategoriesData.push({
               name: String(subcat.name),
@@ -78,7 +79,7 @@ export async function editCategory(
   }
 
   try {
-    const requestBody: any = {
+    const requestBody: Record<string, unknown> = {
       name: parsedData.data.name,
       description: parsedData.data.description || "",
       slug: parsedData.data.slug,
@@ -120,7 +121,7 @@ export async function editCategory(
 
     console.log('Sending update request with data:', requestBody);
 
-    const response = await apiPut<{ success: boolean; data: any }>(
+    const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
       `/api/categories/${categoryId}`,
       requestBody
     );
@@ -130,17 +131,18 @@ export async function editCategory(
     }
 
     revalidatePath("/categories");
-    return { success: true, category: response.data };
+    return { success: true, category: response.data as unknown as Category };
 
-  } catch (error: any) {
-    console.error("Category update failed:", error);
-    if (error.message?.includes("duplicate") || error.message?.includes("already exists")) {
-      if (error.message.toLowerCase().includes("slug")) {
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error("Category update failed:", err);
+    if (err.message?.includes("duplicate") || err.message?.includes("already exists")) {
+      if (err.message.toLowerCase().includes("slug")) {
         return { validationErrors: { slug: "This category slug is already in use. Please choose a different one." } };
-      } else if (error.message.toLowerCase().includes("name")) {
+      } else if (err.message.toLowerCase().includes("name")) {
         return { validationErrors: { name: "A category with this name already exists. Please enter a unique name." } };
       }
     }
-    return { dbError: error.message || "Something went wrong." };
+    return { dbError: err.message || "Something went wrong." };
   }
 }

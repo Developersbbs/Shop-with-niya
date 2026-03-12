@@ -1,12 +1,11 @@
 import { Metadata } from "next";
-import { redirect } from "next/navigation";
 import dynamic from "next/dynamic";
 
 import PageTitle from "@/components/shared/PageTitle";
 
 // Dynamically import the form to avoid SSR issues
 const EditProfileForm = dynamic(() => import("./_components/EditProfileForm"), {
-  ssr: false,
+  ssr: true,
   loading: () => (
     <div className="flex items-center justify-center p-8">
       <div className="text-center">

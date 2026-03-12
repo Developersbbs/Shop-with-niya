@@ -41,8 +41,9 @@ export async function signIn({ email, password }: LoginRequest): Promise<LoginRe
     }
 
     return data.data!;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.error || error.message || "Login failed");
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { error?: string } }; message?: string };
+    throw new Error(err.response?.data?.error || err.message || "Login failed");
   }
 }
 
@@ -66,8 +67,9 @@ export async function signUp({ name, email, password, role = "staff" }: SignUpRe
       document.cookie = `authToken=${data.data.token}; path=/; max-age=604800; SameSite=strict`; // 7 days
     }
     return data.data!;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.error || error.message || "Sign up failed");
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { error?: string } }; message?: string };
+    throw new Error(err.response?.data?.error || err.message || "Sign up failed");
   }
 }
 
@@ -116,9 +118,10 @@ export async function getCurrentUser(): Promise<User> {
     console.log("getCurrentUser: User _id:", data.data?._id);
 
     return data.data!;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("getCurrentUser: Error:", error);
-    throw new Error(error.response?.data?.error || error.message || "Failed to fetch user");
+    const err = error as { response?: { data?: { error?: string } }; message?: string };
+    throw new Error(err.response?.data?.error || err.message || "Failed to fetch user");
   }
 }
 
@@ -132,8 +135,9 @@ export async function updatePassword({ currentPassword, newPassword }: UpdatePas
     if (!data.success) {
       throw new Error(data.error || "Failed to update password");
     }
-  } catch (error: any) {
-    throw new Error(error.response?.data?.error || error.message || "Failed to update password");
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { error?: string } }; message?: string };
+    throw new Error(err.response?.data?.error || err.message || "Failed to update password");
   }
 }
 
@@ -146,8 +150,9 @@ export async function resetPassword({ email }: ResetPasswordRequest): Promise<vo
     if (!data.success) {
       throw new Error(data.error || "Failed to send reset email");
     }
-  } catch (error: any) {
-    throw new Error(error.response?.data?.error || error.message || "Failed to send reset email");
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { error?: string } }; message?: string };
+    throw new Error(err.response?.data?.error || err.message || "Failed to send reset email");
   }
 }
 

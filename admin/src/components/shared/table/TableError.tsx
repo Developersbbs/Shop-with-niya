@@ -1,10 +1,9 @@
 import { AlertCircle, RefreshCw, FileX } from "lucide-react";
-import { QueryObserverResult, RefetchOptions } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import Typography from "@/components/ui/typography";
 
-type TableErrorProps<TData> = {
+type TableErrorProps = {
   title?: string;
   description?: string;
   buttonText?: string;
@@ -13,16 +12,15 @@ type TableErrorProps<TData> = {
   refetch?: () => void;
 };
 
-export default function TableError<TData>({
+export default function TableError({
   title = "Something went wrong",
   description = "Something went wrong while trying to fetch data.",
   buttonText = "Retry",
   errorMessage,
   variant = "error",
   refetch,
-}: TableErrorProps<TData>) {
+}: TableErrorProps) {
   const isError = variant === "error";
-  const isEmpty = variant === "empty";
 
   return (
     <div className={`rounded-md overflow-hidden ${isError ? 'border-destructive border-2' : 'border-border'}`}>

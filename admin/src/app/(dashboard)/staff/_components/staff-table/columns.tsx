@@ -1,10 +1,8 @@
 import { PenSquare, Trash2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import Typography from "@/components/ui/typography";
 import { Skeleton } from "@/components/ui/skeleton";
 import noProfilePicture from "public/assets/no-profile-picture.jpg";
@@ -143,8 +141,10 @@ export const getColumns = ({
                 email: row.original.email,
                 phone: row.original.phone ?? "",
                 image: row.original.image_url ?? undefined,
-                // Pass the role object directly; the form handles extracting the ID
-                role_id: row.original.role_id as any,
+                // Pass the role ID string; the form handles the rest
+                role_id: typeof row.original.role_id === 'object' && row.original.role_id !== null
+                  ? (row.original.role_id as Record<string, unknown>)._id as string || (row.original.role_id as Record<string, unknown>).id as string || ""
+                  : row.original.role_id,
               }}
               action={(formData) => editStaff(row.original.id, formData)}
               previewImage={row.original.image_url ?? undefined}

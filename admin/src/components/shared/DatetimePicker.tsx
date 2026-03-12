@@ -22,6 +22,7 @@ type Props = {
 
 export const DatetimePicker = forwardRef(function DatetimePickerRender(
   { date, container, onValueChange }: Props,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ref
 ) {
   const [open, setOpen] = useState(false);

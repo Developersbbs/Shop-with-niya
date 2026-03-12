@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, Fragment, useEffect, useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useState, Fragment, useMemo, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 import AllCategories from "./categories-table";
@@ -12,9 +12,9 @@ import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Categories() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [rowSelection, setRowSelection] = useState({});
+  const prevPageRef = useRef<number>(1);
 
   // Parse URL parameters with better error handling
   const rawPage = searchParams.get("page");
@@ -27,7 +27,13 @@ export default function Categories() {
 
   // Reset row selection when page changes
   useEffect(() => {
-    setRowSelection({});
+    if (prevPageRef.current !== page) {
+      prevPageRef.current = page;
+      // Wrap in a microtask to avoid "setState during effect" warning/error
+      queueMicrotask(() => {
+        setRowSelection({});
+      });
+    }
   }, [page]);
 
   // Create stable query key
@@ -55,7 +61,7 @@ export default function Categories() {
   // Show search results info
   const searchResultsInfo = search && data?.meta ? (
     <div className="mb-4 text-sm text-muted-foreground">
-      Found {data.meta.total} result{data.meta.total !== 1 ? 's' : ''} for "{search}"
+      Found {data.meta.total} result{data.meta.total !== 1 ? 's' : ''} for &quot;{search}&quot;
     </div>
   ) : null;
 
@@ -79,7 +85,7 @@ export default function Categories() {
             Failed to load categories: {error instanceof Error ? error.message : "Unknown error"}
           </AlertDescription>
         </Alert>
-      ) : data && data.data.length === 0 ? (
+      ) : data && data.data && data.data.length === 0 ? (
         <Alert>
           <AlertDescription>
             {search
@@ -90,6 +96,7 @@ export default function Categories() {
         </Alert>
       ) : (
         <AllCategories
+          key={page} // Add key to force re-mount and reset internal state when page changes
           data={data?.data || []}
           meta={data?.meta}
           rowSelection={rowSelection}

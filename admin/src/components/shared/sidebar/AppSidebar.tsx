@@ -75,7 +75,7 @@ export default function AppSidebar() {
                       >
                         <div
                           className="flex items-center gap-2"
-                          onClick={(event) => {
+                          onClick={() => {
                             // Let the collapsible trigger handle the toggle, but if it's a clickable parent link (not typical), handle it here.
                             // Currently CollapsibleTrigger handles the click for toggling.
                           }}

@@ -57,9 +57,9 @@ export async function updateHeroSection(
   }
 
   // ── Mobile image ──
-  const imageMobileFile     = formData.get("imageMobile")         as File | null;
+  const imageMobileFile = formData.get("imageMobile") as File | null;
   const existingImageMobile = formData.get("existingImageMobile") as string;
-  const removeMobileImage   = formData.get("removeMobileImage")   === "true";
+  const removeMobileImage = formData.get("removeMobileImage") === "true";
 
   let imageMobileUrl: string | undefined = existingImageMobile || undefined;
 
@@ -81,21 +81,21 @@ export async function updateHeroSection(
 
   try {
     const requestBody = {
-      title:           title.trim(),
-      subtitle:        formData.get("subtitle")        || "",
-      description:     formData.get("description")     || "",
-      image:           imageUrl,
-      imageMobile:     imageMobileUrl,
-      primaryCTA:      JSON.parse((formData.get("primaryCTA") as string) || "{}"),
-      secondaryCTA:    formData.get("secondaryCTA") ? JSON.parse(formData.get("secondaryCTA") as string) : undefined,
-      gradient:        formData.get("gradient")        || "from-black/90 via-black/40 to-transparent",
-      isActive:        formData.get("isActive")        === "true",
-      order:           parseInt(formData.get("order") as string) || 0,
-      templateType:    formData.get("templateType")    || "center",
-      showOn:          formData.get("showOn")          || "all",
-      textColor:       formData.get("textColor")       || "#ffffff",
-      buttonStyle:     formData.get("buttonStyle")     || "filled",
-      buttonColor:     formData.get("buttonColor")     || "#ffffff",
+      title: title.trim(),
+      subtitle: formData.get("subtitle") || "",
+      description: formData.get("description") || "",
+      image: imageUrl,
+      imageMobile: imageMobileUrl,
+      primaryCTA: JSON.parse((formData.get("primaryCTA") as string) || "{}"),
+      secondaryCTA: formData.get("secondaryCTA") ? JSON.parse(formData.get("secondaryCTA") as string) : undefined,
+      gradient: formData.get("gradient") || "from-black/90 via-black/40 to-transparent",
+      isActive: formData.get("isActive") === "true",
+      order: parseInt(formData.get("order") as string) || 0,
+      templateType: formData.get("templateType") || "center",
+      showOn: formData.get("showOn") || "all",
+      textColor: formData.get("textColor") || "#ffffff",
+      buttonStyle: formData.get("buttonStyle") || "filled",
+      buttonColor: formData.get("buttonColor") || "#ffffff",
       buttonTextColor: formData.get("buttonTextColor") || "#0a0a0a",
     };
 
@@ -117,7 +117,7 @@ export async function updateHeroSection(
       };
     }
 
-    const data: ApiResponse<any> = await response.json();
+    const data: ApiResponse<Record<string, unknown>> = await response.json();
     revalidatePath("/hero-section");
 
     return {

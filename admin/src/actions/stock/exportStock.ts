@@ -12,10 +12,11 @@ export async function exportStock() {
     }
 
     return { data: data.data };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Stock export error:", error);
+    const err = error as { response?: { data?: { error?: string } } };
     return {
-      error: error.response?.data?.error || "Failed to fetch data for stock."
+      error: err.response?.data?.error || "Failed to fetch data for stock."
     };
   }
 }

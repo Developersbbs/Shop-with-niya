@@ -40,7 +40,7 @@ export interface Stock {
   quantity: number;
   minStock: number;
   notes: string;
-  
+
   created_at: string;
   updated_at: string;
 }
@@ -76,7 +76,7 @@ export async function fetchStock(filters: StockFilters = {}): Promise<StockRespo
   try {
     const url = `${process.env.NEXT_PUBLIC_API_URL}/api/stock?${params}`;
     console.log('Fetching stock from:', url);
-    
+
     const response = await fetch(url, {
       credentials: 'include',
     });
@@ -101,7 +101,7 @@ export async function fetchStock(filters: StockFilters = {}): Promise<StockRespo
       // Get unique product IDs, filtering out null productId
       const productIds = Array.from(new Set(
         result.data
-          .filter((stock: Stock): stock is Stock & { productId: NonNullable<Stock['productId']> } => 
+          .filter((stock: Stock): stock is Stock & { productId: NonNullable<Stock['productId']> } =>
             stock.productId !== null && stock.productId._id !== undefined
           )
           .map((stock: Stock) => stock.productId!._id) // Safe to use ! after filter
@@ -116,7 +116,7 @@ export async function fetchStock(filters: StockFilters = {}): Promise<StockRespo
 
         if (productsResponse.ok) {
           const productsData = await productsResponse.json();
-          const productsMap = new Map(productsData.data.map((product: any) => [product._id, product]));
+          const productsMap = new Map(productsData.data.map((product: Product) => [product._id, product]));
 
           // Merge image_url and variant details into stock data
           result.data = result.data.map((stock: Stock) => {
@@ -127,44 +127,44 @@ export async function fetchStock(filters: StockFilters = {}): Promise<StockRespo
 
             const product = productsMap.get(stock.productId._id);
 
-          // Preserve existing variant data if it exists, otherwise use from products API
-          const existingVariants = stock.productId.product_variants || [];
-          const productVariants = (product as Product)?.product_variants || [];
+            // Preserve existing variant data if it exists, otherwise use from products API
+            const existingVariants = stock.productId.product_variants || [];
+            const productVariants = (product as Product)?.product_variants || [];
 
-          // Merge variant data, preserving existing images
-          const mergedVariants = existingVariants.length > 0
-            ? existingVariants.map(existingVariant => {
+            // Merge variant data, preserving existing images
+            const mergedVariants = existingVariants.length > 0
+              ? existingVariants.map(existingVariant => {
                 const productVariant = productVariants.find(v => v._id === existingVariant._id);
                 return {
                   ...existingVariant,
                   // Keep existing images, but add from products API if missing
-                  image_url: existingVariant.image_url || (existingVariant as any).images || productVariant?.image_url || [],
+                  image_url: existingVariant.image_url || (existingVariant as { images?: string[] }).images || productVariant?.image_url || [],
                 };
               })
-            : productVariants.map(variant => ({
+              : productVariants.map(variant => ({
                 ...variant,
-                image_url: variant.image_url || (variant as any).images || [],
+                image_url: variant.image_url || (variant as { images?: string[] }).images || [],
               }));
 
-          return {
-            ...stock,
-            productId: {
-              ...stock.productId,
-              image_url: (product as Product)?.image_url || stock.productId.image_url || [],
-              product_variants: mergedVariants,
-            },
-          };
-        });
-      }
+            return {
+              ...stock,
+              productId: {
+                ...stock.productId,
+                image_url: (product as Product)?.image_url || stock.productId.image_url || [],
+                product_variants: mergedVariants,
+              },
+            };
+          });
+        }
       }
     }
 
     return result as StockResponse;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching stock:', error);
 
     // If it's a network error or parsing error, throw it
-    if (error.message?.includes('fetch') || error.message?.includes('Invalid response')) {
+    if (error instanceof Error && (error.message?.includes('fetch') || error.message?.includes('Invalid response'))) {
       throw error;
     }
 
@@ -196,7 +196,13 @@ export async function fetchStockById(id: string): Promise<Stock> {
 }
 
 // Create new stock entry
-export async function createStock(stockData: Omit<Stock, '_id' | 'created_at' | 'updated_at'>): Promise<Stock> {
+export async function createStock(stockData: {
+  productId: string;
+  variantId?: string;
+  quantity: number;
+  minStock: number;
+  notes?: string;
+}): Promise<Stock> {
   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/stock`, {
     method: 'POST',
     headers: {
@@ -246,11 +252,11 @@ export async function deleteStock(id: string): Promise<ServerActionResponse> {
       return { dbError: errorData.error || `Failed to delete stock: ${response.statusText}` };
     }
 
-    const result = await response.json();
+    await response.json();
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Unexpected error in deleteStock:", error);
-    return { dbError: error.message || "An unexpected error occurred." };
+    return { dbError: error instanceof Error ? error.message : "An unexpected error occurred." };
   }
 }
 
@@ -284,10 +290,10 @@ export async function exportStock() {
     }
 
     return { data: data.data };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Stock export error:", error);
     return {
-      error: error.response?.data?.error || "Failed to fetch data for stock."
+      error: (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to fetch data for stock."
     };
   }
 }

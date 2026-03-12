@@ -1,7 +1,6 @@
 import { MdOutlineDashboard, MdOutlineViewCarousel } from "react-icons/md";
 import { Users2 as LuUsers2 } from "lucide-react";
-import { TbPackages, TbTruckDelivery, TbBuildingStore } from "react-icons/tb";
-import { RiCoupon2Line } from "react-icons/ri";
+import { TbPackages, TbTruckDelivery } from "react-icons/tb";
 import { TbTag } from "react-icons/tb";
 import { TbBriefcase } from "react-icons/tb";
 import { MdOutlineShoppingCart, MdOutlineStar } from "react-icons/md";

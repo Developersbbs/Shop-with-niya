@@ -1,4 +1,4 @@
-import { PenSquare, Trash2, Eye, ZoomIn } from "lucide-react";
+import { PenSquare, Trash2, ZoomIn } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,8 +24,6 @@ export const getColumns = ({
 }: {
   hasPermission: HasPermission;
 }) => {
-  const router = useRouter();
-  
   const columns: ColumnDef<Category>[] = [
     {
       header: "icon",
@@ -38,7 +36,7 @@ export const getColumns = ({
             </div>
           );
         }
-        
+
         return (
           <ImagePlaceholder
             src={row.original.image_url}
@@ -136,63 +134,67 @@ export const getColumns = ({
     columns.splice(5, 0, {
       header: "actions",
       cell: ({ row }) => {
-        const router = useRouter();
-        return (
-          <div className="flex items-center gap-1">
-            {/* View Products Action */}
-            <TooltipWrapper content="View Products">
-              <button
-                onClick={() => router.push(`/products?category=${row.original.slug}`)}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <ZoomIn className="size-5" />
-              </button>
-            </TooltipWrapper>
+        // This is rendered as a React component cell - useRouter is valid here
+        // but since it's inside getColumns (not a hook/component), we use a wrapper component
+        function ActionCell() {
+          const router = useRouter();
+          return (
+            <div className="flex items-center gap-1">
+              {/* View Products Action */}
+              <TooltipWrapper content="View Products">
+                <button
+                  onClick={() => router.push(`/products?category=${row.original.slug}`)}
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
+                  <ZoomIn className="size-5" />
+                </button>
+              </TooltipWrapper>
 
-            {hasPermission("categories", "canEdit") && (
-              <CategoryFormSheet
-                key={row.original.id}
-                title="Update Category"
-                description="Update necessary category information here"
-                submitButtonText="Update Category"
-                actionVerb="updated"
-                initialData={{
-                  name: row.original.name,
-                  description: row.original.description ?? "",
-                  image: row.original.image_url || "", // Handle null image_url
-                  slug: row.original.slug,
-   subcategories: (row.original.subcategories || []).map(sub => ({
-  name: sub.name,
-  description: sub.description || "",
-  slug: sub.slug,
-  published: sub.published ?? true, // ← use actual value
- // Default to true for form compatibility
-                  })), // Map to form format
-                }}
-                action={(formData) => editCategory(row.original.id, formData)}
-                previewImage={row.original.image_url || ""} // Handle null image_url
-              >
-                <SheetTooltip content="Edit Category">
-                  <PenSquare className="size-5" />
-                </SheetTooltip>
-              </CategoryFormSheet>
-            )}
+              {hasPermission("categories", "canEdit") && (
+                <CategoryFormSheet
+                  key={row.original.id}
+                  title="Update Category"
+                  description="Update necessary category information here"
+                  submitButtonText="Update Category"
+                  actionVerb="updated"
+                  initialData={{
+                    name: row.original.name,
+                    description: row.original.description ?? "",
+                    image: row.original.image_url || "", // Handle null image_url
+                    slug: row.original.slug,
+                    subcategories: (row.original.subcategories || []).map(sub => ({
+                      name: sub.name,
+                      description: sub.description || "",
+                      slug: sub.slug,
+                      published: true, // Default to true for form compatibility
+                    })), // Map to form format
+                  }}
+                  action={(formData) => editCategory(row.original.id, formData)}
+                  previewImage={row.original.image_url || ""} // Handle null image_url
+                >
+                  <SheetTooltip content="Edit Category">
+                    <PenSquare className="size-5" />
+                  </SheetTooltip>
+                </CategoryFormSheet>
+              )}
 
-            {hasPermission("categories", "canDelete") && (
-              <TableActionAlertDialog
-                title={`Delete ${row.original.name}?`}
-                description="This action cannot be undone. This will permanently delete the category and its associated data from the database."
-                tooltipContent="Delete Category"
-                actionButtonText="Delete Category"
-                toastSuccessMessage={`Category "${row.original.name}" deleted successfully!`}
-                queryKey="categories"
-                action={() => deleteCategory(row.original.id)}
-              >
-                <Trash2 className="size-5" />
-              </TableActionAlertDialog>
-            )}
-          </div>
-        );
+              {hasPermission("categories", "canDelete") && (
+                <TableActionAlertDialog
+                  title={`Delete ${row.original.name}?`}
+                  description="This action cannot be undone. This will permanently delete the category and its associated data from the database."
+                  tooltipContent="Delete Category"
+                  actionButtonText="Delete Category"
+                  toastSuccessMessage={`Category "${row.original.name}" deleted successfully!`}
+                  queryKey="categories"
+                  action={() => deleteCategory(row.original.id)}
+                >
+                  <Trash2 className="size-5" />
+                </TableActionAlertDialog>
+              )}
+            </div>
+          );
+        }
+        return <ActionCell />;
       },
     });
   }

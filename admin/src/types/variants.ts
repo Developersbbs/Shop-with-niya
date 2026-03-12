@@ -20,11 +20,11 @@ export interface ProductVariantCombination {
   name: string; // Auto-generated from product name + variant attributes
   sku: string;
   slug: string; // Required for URL-friendly identification
-  
+
   // Use ONLY camelCase for frontend - backend will transform
   costPrice?: number;
   salesPrice?: number;
-  
+
   stock?: number;
   minStock?: number;
   images?: (string | File)[];
@@ -68,14 +68,14 @@ export const DEFAULT_VARIANT_ATTRIBUTES: Omit<ProductVariantAttribute, 'id'>[] =
 
 // Utility functions for variant management
 export class VariantManager {
-  static generateSKU(baseSKU: string, combination: ProductVariantValue[] | any): string {
+  static generateSKU(baseSKU: string, combination: ProductVariantCombination | ProductVariantValue[]): string {
     if (!combination) return baseSKU.toUpperCase();
 
     // Handle new structure (object with attributes)
-    if (combination.attributes) {
+    if (combination && !Array.isArray(combination) && 'attributes' in combination) {
       const attributeValues = Object.entries(combination.attributes)
-        .filter(([_, value]) => value)
-        .map(([key, value]) => String(value).substring(0, 3).toUpperCase())
+        .filter(([, value]) => value)
+        .map(([, value]) => String(value).substring(0, 3).toUpperCase())
         .join('-');
       return this.generateSKUFromValues(baseSKU, attributeValues);
     }
@@ -102,8 +102,8 @@ export class VariantManager {
     // Use the first combination to generate a representative SKU
     const firstCombo = variantData.combinations[0];
     const attributeValues = Object.entries(firstCombo.attributes || {})
-      .filter(([_, value]) => value)
-      .map(([key, value]) => String(value).substring(0, 3).toUpperCase())
+      .filter(([, value]) => value)
+      .map(([, value]) => String(value).substring(0, 3).toUpperCase())
       .join('-');
 
     return this.generateSKUFromValues(baseSKU, attributeValues);
@@ -133,10 +133,10 @@ export class VariantManager {
         name: '', // Will be generated when product name is available
         sku: '', // Will be generated when SKU is available
         slug: '', // Will be generated based on product name and attributes
-        costPrice: undefined as any, // No default value
-        salesPrice: undefined as any, // No default value
-        stock: undefined as any,
-        minStock: undefined as any,
+        costPrice: undefined, // No default value
+        salesPrice: undefined, // No default value
+        stock: undefined,
+        minStock: undefined,
         images: [],
         attributes: attributesObj,
         published: true,
@@ -162,8 +162,8 @@ export class VariantManager {
     // Add variant attributes to make it unique
     if (combination.attributes && Object.keys(combination.attributes).length > 0) {
       const attributeValues = Object.entries(combination.attributes)
-        .filter(([_, value]) => value && value.trim())
-        .map(([key, value]) => this.slugify(value))
+        .filter(([, value]) => value && value.trim())
+        .map(([, value]) => this.slugify(value))
         .join('-');
 
       if (attributeValues) {
@@ -186,8 +186,8 @@ export class VariantManager {
     // Add variant attributes to make it descriptive
     if (combination.attributes && Object.keys(combination.attributes).length > 0) {
       const attributeValues = Object.entries(combination.attributes)
-        .filter(([_, value]) => value && value.trim())
-        .map(([key, value]) => value.trim())
+        .filter(([, value]) => value && value.trim())
+        .map(([, value]) => value.trim())
         .join(' ');
 
       if (attributeValues) {

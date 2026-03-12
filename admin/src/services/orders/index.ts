@@ -26,10 +26,10 @@ export interface PaginatedResponse<T> {
 }
 
 // Type guard to validate array
-function isValidItemsArray(items: any): items is Order[] {
-  return Array.isArray(items) && items.every((item: any) => 
-    item && typeof item === 'object' && 
-    (item.id || item._id) // Basic validation that items look like orders
+function isValidItemsArray(items: unknown): items is Order[] {
+  return Array.isArray(items) && items.every((item: unknown) =>
+    item && typeof item === 'object' &&
+    ((item as Record<string, unknown>)['id'] || (item as Record<string, unknown>)['_id']) // Basic validation that items look like orders
   );
 }
 
@@ -42,7 +42,7 @@ export async function fetchOrders(params: FetchOrdersParams): Promise<PaginatedR
     });
 
     console.log('🚀 API Request:', `/api/orders?${query.toString()}`);
-    
+
     const response = await axiosInstance.get(`/api/orders?${query.toString()}`);
     const { data } = response;
 
@@ -64,7 +64,7 @@ export async function fetchOrders(params: FetchOrdersParams): Promise<PaginatedR
 
     // Extract and validate items
     let items: Order[] = [];
-    
+
     if (data.items === null || data.items === undefined) {
       console.warn('⚠️ API returned null/undefined items, using empty array');
       items = [];
@@ -78,9 +78,9 @@ export async function fetchOrders(params: FetchOrdersParams): Promise<PaginatedR
     } else if (!isValidItemsArray(data.items)) {
       console.error('❌ Items array contains invalid data:', data.items);
       // Filter out invalid items instead of throwing
-      items = data.items.filter((item: any) => 
-        item && typeof item === 'object' && (item.id || item._id)
-      );
+      items = (data.items as Record<string, unknown>[]).filter((itemDetail: Record<string, unknown>) =>
+        itemDetail && typeof itemDetail === 'object' && (itemDetail['id'] || itemDetail['_id'])
+      ) as unknown as Order[];
       console.log('🔧 Filtered to valid items:', items.length);
     } else {
       items = data.items;
@@ -96,7 +96,7 @@ export async function fetchOrders(params: FetchOrdersParams): Promise<PaginatedR
       next: null,
     };
 
-    const pagination = data.pagination && typeof data.pagination === 'object' 
+    const pagination = data.pagination && typeof data.pagination === 'object'
       ? { ...defaultPagination, ...data.pagination }
       : defaultPagination;
 
@@ -115,27 +115,14 @@ export async function fetchOrders(params: FetchOrdersParams): Promise<PaginatedR
 
     return result;
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('💥 fetchOrders error:', error);
-    
-    // Always return a valid structure even on error
-    const fallbackResult: PaginatedResponse<Order> = {
-      success: false,
-      items: [],
-      pagination: {
-        total: 0,
-        current: params.page || 1,
-        limit: params.limit || 10,
-        pages: 0,
-        prev: null,
-        next: null,
-      },
-    };
 
     // Log error details but don't break the app
-    if (error.response) {
-      console.error('🔴 API Error Response:', error.response.data);
-      console.error('🔴 API Error Status:', error.response.status);
+    if (error && typeof error === 'object' && 'response' in error) {
+      const resp = (error as { response: { data: unknown; status: number } }).response;
+      console.error('🔴 API Error Response:', resp.data);
+      console.error('🔴 API Error Status:', resp.status);
     }
 
     // Re-throw for React Query to handle
@@ -147,11 +134,11 @@ export async function fetchOrders(params: FetchOrdersParams): Promise<PaginatedR
 export async function fetchOrderDetails({ id }: { id: string }): Promise<{ order: OrderDetails }> {
   try {
     console.log('🚀 Fetching order details for:', id);
-    
+
     const { data } = await axiosInstance.get(`/api/orders/${id}`);
-    
+
     console.log('📦 Order details response:', data);
-    
+
     if (!data || !data.success) {
       throw new Error(data?.error || "Failed to fetch order details");
     }
@@ -162,7 +149,7 @@ export async function fetchOrderDetails({ id }: { id: string }): Promise<{ order
 
     return { order: data.data as OrderDetails };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('💥 fetchOrderDetails error:', error);
     throw error;
   }

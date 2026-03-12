@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { EnhancedServerActionResponse } from "@/types/server-action";
 import { ApiResponse } from "@/types/api";
 import { storage } from "@/firebase/config";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export async function updateOfferPopup(
   id: string,
@@ -21,7 +21,7 @@ export async function updateOfferPopup(
       const fileExtension = imageFile.name.split('.').pop();
       const fileName = `popup_${Date.now()}.${fileExtension}`;
       const storageRef = ref(storage, `offer-popups/${fileName}`);
-      
+
       // Upload the file
       const snapshot = await uploadBytes(storageRef, imageFile);
       // Get the download URL
@@ -41,7 +41,7 @@ export async function updateOfferPopup(
   // Validate required fields
   const heading = formData.get("heading") as string;
   const description = formData.get("description") as string;
-  
+
   if (!heading || heading.trim() === '') {
     return {
       success: false,
@@ -64,11 +64,11 @@ export async function updateOfferPopup(
 
   try {
     // Prepare the API request body
-    const requestBody: any = {
+    const requestBody: Record<string, string | number | boolean | null> = {
       heading: heading.trim(),
       description: description.trim(),
-      buttonText: formData.get("buttonText") || "Shop Now",
-      buttonLink: formData.get("buttonLink") || "/products",
+      buttonText: (formData.get("buttonText") as string) || "Shop Now",
+      buttonLink: (formData.get("buttonLink") as string) || "/products",
       isActive: formData.get("isActive") === "true",
       priority: parseInt(formData.get("priority") as string) || 0,
     };
@@ -112,7 +112,7 @@ export async function updateOfferPopup(
       };
     }
 
-    const data: ApiResponse<any> = await response.json();
+    const data: ApiResponse<Record<string, unknown>> = await response.json();
 
     // Revalidate the offer-popups page
     revalidatePath("/offer-popups");

@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { RowSelectionState } from "@tanstack/react-table";
 
 import CategoriesTable from "./Table";
 import { getColumns, skeletonColumns } from "./columns";
@@ -10,12 +11,14 @@ import TableError from "@/components/shared/table/TableError";
 
 import { fetchCategories } from "@/services/categories";
 import { useAuthorization } from "@/hooks/use-authorization";
+import { Category } from "@/services/categories/types";
+import { PaginationMeta } from "@/types/api";
 
 interface AllCategoriesProps {
-  rowSelection: any;
-  setRowSelection: (selection: any) => void;
-  data?: any[];
-  meta?: any;
+  rowSelection: RowSelectionState;
+  setRowSelection: (selection: RowSelectionState) => void;
+  data?: Category[];
+  meta?: PaginationMeta;
 }
 
 export default function AllCategories({
@@ -27,9 +30,28 @@ export default function AllCategories({
   const { hasPermission } = useAuthorization();
   const columns = getColumns({ hasPermission });
 
+  // Always call hooks at top level (Rules of Hooks)
+  const searchParams = useSearchParams();
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("limit") || "10");
+  const search = searchParams.get("search") || "";
+
+  const {
+    data: categories,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ["categories", page, limit, search],
+    queryFn: () =>
+      fetchCategories({ page, limit, search }),
+    placeholderData: keepPreviousData,
+    // Skip the query if data is provided via props
+    enabled: !propData,
+  });
+
   // If data is provided as props, use it directly without any queries
   if (propData && propMeta) {
-    // Use metadata from props for current page to avoid useSearchParams dependency issues
     const currentPageFromProps = propMeta?.page || 1;
 
     return (
@@ -49,24 +71,6 @@ export default function AllCategories({
       />
     );
   }
-
-  // Otherwise, fetch data using the query (fallback for when props aren't provided)
-  const searchParams = useSearchParams();
-  const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "10");
-  const search = searchParams.get("search") || "";
-
-  const {
-    data: categories,
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: ["categories", page, limit, search],
-    queryFn: () =>
-      fetchCategories({ page, limit, search }),
-    placeholderData: keepPreviousData,
-  });
 
   if (isLoading)
     return <TableSkeleton perPage={limit} columns={skeletonColumns} />;

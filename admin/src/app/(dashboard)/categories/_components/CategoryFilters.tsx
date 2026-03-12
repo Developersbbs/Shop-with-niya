@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
 export default function CategoryFilters() {
@@ -14,39 +13,36 @@ export default function CategoryFilters() {
 
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [debouncedSearch, setDebouncedSearch] = useState(search);
-  const [isSearching, setIsSearching] = useState(false);
+
+  // Derive isSearching from state comparison (avoids setState in useEffect)
+  const isSearching = search !== debouncedSearch;
 
   // Debounce search input - wait 500ms after user stops typing
   useEffect(() => {
-    if (search !== debouncedSearch) {
-      setIsSearching(true);
-    }
-    
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
-      setIsSearching(false);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [search, debouncedSearch]);
+  }, [search]);
 
   // Update URL when debounced search changes
   useEffect(() => {
     // Normalize values - treat null and empty string as the same
     const currentSearch = searchParams.get("search") || "";
-    
+
     if (debouncedSearch !== currentSearch) {
       const params = new URLSearchParams(searchParams.toString());
-      
+
       if (debouncedSearch) {
         params.set("search", debouncedSearch);
       } else {
         params.delete("search");
       }
-      
+
       // Reset to page 1 when search changes
       params.set("page", "1");
-      
+
       router.replace(`/categories?${params.toString()}`);
     }
   }, [debouncedSearch, router, searchParams]);
@@ -54,7 +50,7 @@ export default function CategoryFilters() {
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams(searchParams.toString());
-    
+
     if (search) {
       params.set("search", search);
     } else {
@@ -65,10 +61,6 @@ export default function CategoryFilters() {
     router.replace(`/categories?${params.toString()}`);
   };
 
-  const handleReset = () => {
-    setSearch("");
-    router.replace("/categories?page=1&limit=10");
-  };
 
   return (
     <Card className="mb-5">

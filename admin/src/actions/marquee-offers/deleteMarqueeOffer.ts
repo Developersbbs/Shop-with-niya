@@ -10,9 +10,9 @@ export async function deleteMarqueeOffer(
 ): Promise<EnhancedServerActionResponse> {
   try {
     // First fetch marquee offer to check if it exists and get its order
-    const marqueeOfferResponse = await apiGet<ApiResponse<any>>(`/api/marquee-offers/${marqueeOfferId}`);
-    
-    if (!marqueeOfferResponse.success) {
+    const marqueeOfferResponse = await apiGet<ApiResponse<{ order?: number }>>(`/api/marquee-offers/${marqueeOfferId}`);
+
+    if (!marqueeOfferResponse.success || !marqueeOfferResponse.data) {
       console.error("Failed to fetch marquee offer for deletion:", marqueeOfferResponse.error);
       return {
         success: false,
@@ -26,8 +26,8 @@ export async function deleteMarqueeOffer(
     const marqueeOffer = marqueeOfferResponse.data;
 
     // Delete the marquee offer from the database
-    const deleteResponse = await apiDelete<ApiResponse<any>>(`/api/marquee-offers/${marqueeOfferId}`);
-    
+    const deleteResponse = await apiDelete<ApiResponse<void>>(`/api/marquee-offers/${marqueeOfferId}`);
+
     if (!deleteResponse.success) {
       console.error("Failed to delete marquee offer:", deleteResponse.error);
       return {
@@ -43,12 +43,12 @@ export async function deleteMarqueeOffer(
     if (marqueeOffer.order !== undefined) {
       try {
         // Get all offers to update their orders
-        const allOffersResponse = await apiGet<ApiResponse<any[]>>('/api/marquee-offers/admin');
-        
+        const allOffersResponse = await apiGet<ApiResponse<{ _id: string, order: number }[]>>('/api/marquee-offers/admin');
+
         if (allOffersResponse.success && allOffersResponse.data) {
           const offersToUpdate = allOffersResponse.data
-            .filter((offer: any) => offer.order > marqueeOffer.order)
-            .sort((a: any, b: any) => a.order - b.order);
+            .filter((offer: { _id: string, order: number }) => offer.order > (marqueeOffer.order as number))
+            .sort((a: { _id: string, order: number }, b: { _id: string, order: number }) => a.order - b.order);
 
           // Update each offer's order (decrement by 1)
           for (const offer of offersToUpdate) {
@@ -62,7 +62,7 @@ export async function deleteMarqueeOffer(
               }),
             });
           }
-          
+
           console.log(`Reorganized orders for ${offersToUpdate.length} marquee offers after deletion`);
         }
       } catch (reorderError) {

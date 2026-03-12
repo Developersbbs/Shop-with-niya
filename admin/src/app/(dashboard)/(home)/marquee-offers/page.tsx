@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FaPlus, FaTrash, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,17 +34,11 @@ export default function MarqueeOffersPage() {
         isActive: true
     });
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
     const baseUrl = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
 
-    // Common emojis for quick selection
-    const commonEmojis = ['🚚', '🎁', '🔥', '✨', '↩️', '💰', '⚡', '🎉', '🏆', '💎', '🌟', '🎯'];
 
-    useEffect(() => {
-        fetchOffers();
-    }, []);
-
-    const fetchOffers = async () => {
+    const fetchOffers = useCallback(async () => {
         try {
             const res = await fetch(`${baseUrl}/marquee-offers/admin`);
             const data = await res.json();
@@ -56,9 +50,13 @@ export default function MarqueeOffersPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [baseUrl]);
 
-    const handleInputChange = (e) => {
+    useEffect(() => {
+        fetchOffers();
+    }, [fetchOffers]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
         setFormData(prev => ({
             ...prev,
@@ -77,7 +75,7 @@ export default function MarqueeOffersPage() {
         setCurrentOffer(null);
     };
 
-    const handleEdit = (offer) => {
+    const handleEdit = (offer: MarqueeOffer) => {
         setCurrentOffer(offer);
         setFormData({
             title: offer.title,
@@ -88,12 +86,12 @@ export default function MarqueeOffersPage() {
         setIsEditing(true);
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this marquee offer?')) return;
 
         try {
             const result = await deleteMarqueeOffer(id);
-            
+
             if (result.success) {
                 fetchOffers();
                 alert(result.message || 'Marquee offer deleted successfully!');
@@ -106,37 +104,8 @@ export default function MarqueeOffersPage() {
         }
     };
 
-    const reorderOffers = async () => {
-        try {
-            // Get all offers and sort by current order
-            const res = await fetch(`${baseUrl}/marquee-offers/admin`);
-            const data = await res.json();
-            
-            if (data.success) {
-                const sortedOffers = data.data.sort((a: MarqueeOffer, b: MarqueeOffer) => a.order - b.order);
-                
-                // Update each offer with new order (0, 1, 2, ...)
-                const updatePromises = sortedOffers.map((offer: MarqueeOffer, index: number) => {
-                    return fetch(`${baseUrl}/marquee-offers/${offer._id}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            ...offer,
-                            order: index
-                        })
-                    });
-                });
-                
-                await Promise.all(updatePromises);
-            }
-        } catch (error) {
-            console.error('Error reordering offers:', error);
-        }
-    };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         try {
@@ -163,7 +132,8 @@ export default function MarqueeOffersPage() {
             }
         } catch (error) {
             console.error('Error saving offer:', error);
-            alert(`Error saving offer: ${error.message}`);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            alert(`Error saving offer: ${errorMessage}`);
         }
     };
 
@@ -231,7 +201,7 @@ export default function MarqueeOffersPage() {
                                         value={formData.icon}
                                         onChange={handleInputChange}
                                         placeholder="Enter emoji"
-                                        maxLength="2"
+                                        maxLength={2}
                                     />
                                 </div>
 
@@ -240,7 +210,7 @@ export default function MarqueeOffersPage() {
                                         id="isActive"
                                         name="isActive"
                                         checked={formData.isActive}
-                                        onCheckedChange={(checked) => 
+                                        onCheckedChange={(checked) =>
                                             setFormData(prev => ({ ...prev, isActive: Boolean(checked) }))
                                         }
                                     />
@@ -301,8 +271,8 @@ export default function MarqueeOffersPage() {
                             <div className="flex justify-between items-center text-sm">
                                 <span className={cn(
                                     "px-2 py-1 rounded-full text-xs font-medium",
-                                    offer.isActive 
-                                        ? "bg-primary/10 text-primary" 
+                                    offer.isActive
+                                        ? "bg-primary/10 text-primary"
                                         : "bg-muted text-muted-foreground"
                                 )}>
                                     {offer.isActive ? 'Active' : 'Inactive'}

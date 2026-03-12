@@ -15,7 +15,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 
 interface User {
   _id: string;
@@ -100,7 +99,7 @@ export default function FormSearchableSelect<TFormData extends FieldValues>({
     queryFn: async () => {
       const selectedIds: string[] = fieldValue || [];
       if (selectedIds.length === 0) return [];
-      
+
       try {
         const allItems = await fetchOptions();
         return allItems.filter(item => selectedIds.includes(item._id));
@@ -132,7 +131,7 @@ export default function FormSearchableSelect<TFormData extends FieldValues>({
 
         const availableItems = items.filter((i) => !selectedIds.includes(i._id));
 
-        const removeItem = (e: any, id: string) => {
+        const removeItem = (e: React.MouseEvent, id: string) => {
           e.stopPropagation();
           field.onChange(selectedIds.filter((x) => x !== id));
         };
@@ -214,7 +213,7 @@ export default function FormSearchableSelect<TFormData extends FieldValues>({
                       </div>
                     ) : availableItems.length === 0 ? (
                       <div className="p-4 text-center text-muted-foreground text-sm">
-                        {searchTerm 
+                        {searchTerm
                           ? `No ${itemType}s found matching "${searchTerm}"`
                           : `No ${itemType}s available`}
                       </div>

@@ -12,9 +12,9 @@ export async function deleteHeroSection(
 ): Promise<EnhancedServerActionResponse> {
   try {
     // First fetch hero section to check if it exists and get image info
-    const heroSectionResponse = await apiGet<ApiResponse<any>>(`/api/hero-section/${heroSectionId}`);
-    
-    if (!heroSectionResponse.success) {
+    const heroSectionResponse = await apiGet<ApiResponse<{ image?: string, order?: number }>>(`/api/hero-section/${heroSectionId}`);
+
+    if (!heroSectionResponse.success || !heroSectionResponse.data) {
       console.error("Failed to fetch hero section for deletion:", heroSectionResponse.error);
       return {
         success: false,
@@ -40,8 +40,8 @@ export async function deleteHeroSection(
     }
 
     // Delete the hero section from the database
-    const deleteResponse = await apiDelete<ApiResponse<any>>(`/api/hero-section/${heroSectionId}`);
-    
+    const deleteResponse = await apiDelete<ApiResponse<void>>(`/api/hero-section/${heroSectionId}`);
+
     if (!deleteResponse.success) {
       console.error("Failed to delete hero section:", deleteResponse.error);
       return {
@@ -57,20 +57,20 @@ export async function deleteHeroSection(
     if (heroSection.order !== undefined) {
       try {
         // Get all slides to update their orders
-        const allSlidesResponse = await apiGet<ApiResponse<any[]>>('/api/hero-section/admin');
-        
+        const allSlidesResponse = await apiGet<ApiResponse<{ _id: string, order: number }[]>>('/api/hero-section/admin');
+
         if (allSlidesResponse.success && allSlidesResponse.data) {
           const slidesToUpdate = allSlidesResponse.data
-            .filter((slide: any) => slide.order > heroSection.order)
-            .sort((a: any, b: any) => a.order - b.order);
+            .filter((slide: { _id: string, order: number }) => slide.order > (heroSection.order as number))
+            .sort((a: { _id: string, order: number }, b: { _id: string, order: number }) => a.order - b.order);
 
           // Update each slide's order (decrement by 1)
           for (const slide of slidesToUpdate) {
-            await apiPut<ApiResponse<any>>(`/api/hero-section/${slide._id}`, {
+            await apiPut<ApiResponse<void>>(`/api/hero-section/${slide._id}`, {
               order: slide.order - 1
             });
           }
-          
+
           console.log(`Reorganized orders for ${slidesToUpdate.length} slides after deletion`);
         }
       } catch (reorderError) {

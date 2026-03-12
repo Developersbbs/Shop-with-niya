@@ -12,17 +12,17 @@ export async function addCategory(
   formData: FormData
 ): Promise<CategoryServerActionResponse> {
   // Parse subcategories from FormData
-  const subcategoriesData: any[] = [];
+  const subcategoriesData: Record<string, string>[] = [];
   let subcategoryIndex = 0;
 
   // First, try to get subcategories as a JSON string (for direct API calls)
   const subcategoriesJson = formData.get('subcategories');
-  
+
   if (subcategoriesJson && typeof subcategoriesJson === 'string') {
     try {
       const parsed = JSON.parse(subcategoriesJson);
       if (Array.isArray(parsed)) {
-        parsed.forEach((subcat: any) => {
+        parsed.forEach((subcat: Record<string, unknown>) => {
           if (subcat && subcat.name) {
             subcategoriesData.push({
               name: String(subcat.name),
@@ -65,7 +65,7 @@ export async function addCategory(
       message: "Image is required",
       errors: {
         image: ["Image is required"],
-      },
+      } as Record<string, string[]>,
     };
   }
 
@@ -76,7 +76,7 @@ export async function addCategory(
     const fileExtension = imageFile.name.split('.').pop();
     const fileName = `category_${Date.now()}.${fileExtension}`;
     const storageRef = ref(storage, `categories/${fileName}`);
-    
+
     // Upload the file
     const snapshot = await uploadBytes(storageRef, imageFile);
     // Get the download URL
@@ -88,7 +88,7 @@ export async function addCategory(
       message: "Failed to upload image",
       errors: {
         image: ["Failed to upload image. Please try again."],
-      },
+      } as Record<string, string[]>,
     };
   }
 
@@ -103,9 +103,9 @@ export async function addCategory(
 
   if (!parsedData.success) {
     return {
-      success: false,
-      message: "Validation failed",
-      errors: formatValidationErrors(parsedData.error.issues),
+      validationErrors: formatValidationErrors(
+        parsedData.error.flatten().fieldErrors
+      ),
     };
   }
 
@@ -131,7 +131,7 @@ export async function addCategory(
       return {
         success: false,
         message: errorData.message || "Failed to create category",
-        errors: errorData.errors || {},
+        errors: { general: [errorData.message || "Failed to create category"] },
       };
     }
 
@@ -143,7 +143,7 @@ export async function addCategory(
     return {
       success: true,
       message: "Category created successfully",
-      data: data.data,
+      category: data.data,
     };
   } catch (error) {
     console.error("Error in addCategory:", error);

@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { formatValidationErrors } from "@/helpers/formatValidationErrors";
 import { EnhancedServerActionResponse } from "@/types/server-action";
 import { ApiResponse } from "@/types/api";
 import { storage } from "@/firebase/config";
@@ -107,7 +106,7 @@ export async function addHeroSection(
       };
     }
 
-    const data: ApiResponse<any> = await response.json();
+    const data: ApiResponse<unknown> = await response.json();
     revalidatePath("/hero-section");
     return { success: true, message: "Hero section created successfully", data: data.data };
   } catch (error) {
@@ -143,9 +142,9 @@ export async function updateHeroSection(
     }
   }
 
-  const imageMobileFile     = formData.get("imageMobile")         as File | null;
+  const imageMobileFile = formData.get("imageMobile") as File | null;
   const existingImageMobile = formData.get("existingImageMobile") as string;
-  const removeMobileImage   = formData.get("removeMobileImage")   === "true";
+  const removeMobileImage = formData.get("removeMobileImage") === "true";
 
   let imageMobileUrl: string | undefined = existingImageMobile || undefined;
 
@@ -209,7 +208,7 @@ export async function updateHeroSection(
       };
     }
 
-    const data: ApiResponse<any> = await response.json();
+    const data: ApiResponse<unknown> = await response.json();
     revalidatePath("/hero-section");
     return { success: true, message: "Hero section updated successfully", data: data.data };
   } catch (error) {

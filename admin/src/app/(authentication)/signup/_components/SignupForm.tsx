@@ -45,9 +45,9 @@ export default function SignupForm() {
   const { mutate, isPending, isSuccess } = useMutation({
     mutationFn: async (formData: FormData) => {
       const { name, email, password } = formData;
-      return await signUp({ 
-        name, 
-        email, 
+      return await signUp({
+        name,
+        email,
         password,
         role: "admin" // or "staff" depending on your needs
       });
@@ -62,11 +62,11 @@ export default function SignupForm() {
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error("Signup error:", error);
-      
+
       const errorMessage = error.message || "Failed to create account";
-      
+
       // Handle specific validation errors
       if (errorMessage.toLowerCase().includes("email")) {
         form.setError("email", {

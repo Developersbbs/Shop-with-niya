@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { ProductServerActionResponse } from "@/types/server-action";
 
 // For server actions, we need to use revalidatePath for now
@@ -55,8 +54,8 @@ export async function toggleProductPublishedStatus(
       success: true,
       stockValidation: result._stockValidation
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Unexpected error in toggleProductPublishedStatus:", error);
-    return { dbError: error.message || "An unexpected error occurred.", success: false };
+    return { dbError: (error as Error).message || "An unexpected error occurred.", success: false };
   }
 }

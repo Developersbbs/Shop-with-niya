@@ -30,7 +30,7 @@ export async function addOfferPopup(
     const fileExtension = imageFile.name.split('.').pop();
     const fileName = `popup_${Date.now()}.${fileExtension}`;
     const storageRef = ref(storage, `offer-popups/${fileName}`);
-    
+
     // Upload the file
     const snapshot = await uploadBytes(storageRef, imageFile);
     // Get the download URL
@@ -49,7 +49,7 @@ export async function addOfferPopup(
   // Validate required fields
   const heading = formData.get("heading") as string;
   const description = formData.get("description") as string;
-  
+
   if (!heading || heading.trim() === '') {
     return {
       success: false,
@@ -103,7 +103,7 @@ export async function addOfferPopup(
       };
     }
 
-    const data: ApiResponse<any> = await response.json();
+    const data: ApiResponse<Record<string, unknown>> = await response.json();
 
     // Revalidate the offer-popups page
     revalidatePath("/offer-popups");

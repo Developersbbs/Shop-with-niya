@@ -19,16 +19,22 @@ import { importProducts } from "@/actions/products/importProducts";
 import { RowSelectionProps } from "@/types/data-table";
 import { useAuthorization } from "@/hooks/use-authorization";
 
+interface CompactProduct {
+  _id?: string;
+  id?: string;
+  product_variants?: { _id?: string }[];
+}
+
 export default function ProductActions({
   rowSelection,
   setRowSelection,
   products = [],
-}: RowSelectionProps & { products?: any[] }) {
+}: RowSelectionProps & { products?: CompactProduct[] }) {
   const { hasPermission } = useAuthorization();
 
-  const getSelectedProductIds = () => {
+  const getSelectedProductIds = (): string[] => {
     const selectedRowIds = Object.entries(rowSelection)
-      .filter(([_, isSelected]) => isSelected)
+      .filter(([, isSelected]) => isSelected)
       .map(([rowId]) => rowId);
 
     const ids = selectedRowIds.map((rowId) => {
@@ -39,7 +45,7 @@ export default function ProductActions({
 
       const parentProduct = products.find((p) =>
         p.product_variants?.some(
-          (v: any) => v._id?.toString() === rowId
+          (v) => v._id?.toString() === rowId
         )
       );
       if (parentProduct) return parentProduct._id || parentProduct.id;
@@ -47,7 +53,7 @@ export default function ProductActions({
       return rowId;
     });
 
-    return [...new Set(ids)].filter(Boolean);
+    return Array.from(new Set(ids)).filter((id): id is string => Boolean(id));
   };
 
   return (
@@ -78,77 +84,77 @@ export default function ProductActions({
         {(hasPermission("products", "canEdit") ||
           hasPermission("products", "canDelete") ||
           hasPermission("products", "canCreate")) && (
-          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
 
-            {/* Bulk Edit */}
-            {hasPermission("products", "canEdit") && (
-              <ProductBulkActionSheet
-                action={(formData) =>
-                  editProducts(getSelectedProductIds(), formData)
-                }
-                onSuccess={() => setRowSelection({})}
-              >
-                <SheetTrigger asChild>
+              {/* Bulk Edit */}
+              {hasPermission("products", "canEdit") && (
+                <ProductBulkActionSheet
+                  action={(formData) =>
+                    editProducts(getSelectedProductIds(), formData)
+                  }
+                  onSuccess={() => setRowSelection({})}
+                >
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      type="button"
+                      disabled={!Boolean(Object.keys(rowSelection).length)}
+                      className="sm:flex-grow xl:flex-grow-0 transition-opacity duration-300"
+                    >
+                      <PenSquare className="mr-2 size-4" /> Bulk Action
+                    </Button>
+                  </SheetTrigger>
+                </ProductBulkActionSheet>
+              )}
+
+              {/* Delete */}
+              {hasPermission("products", "canDelete") && (
+                <ActionAlertDialog
+                  title={`Delete ${Object.keys(rowSelection).length} products?`}
+                  description="This action cannot be undone. This will permanently delete the products and their associated data from the database."
+                  actionButtonText="Delete Products"
+                  toastSuccessMessage="Products deleted successfully"
+                  queryKey="products"
+                  action={() => deleteProducts(getSelectedProductIds())}
+                  onSuccess={() => setRowSelection({})}
+                >
                   <Button
-                    variant="secondary"
+                    variant="destructive"
                     size="lg"
                     type="button"
                     disabled={!Boolean(Object.keys(rowSelection).length)}
                     className="sm:flex-grow xl:flex-grow-0 transition-opacity duration-300"
                   >
-                    <PenSquare className="mr-2 size-4" /> Bulk Action
+                    <Trash2 className="mr-2 size-4" />
+                    Delete
                   </Button>
-                </SheetTrigger>
-              </ProductBulkActionSheet>
-            )}
+                </ActionAlertDialog>
+              )}
 
-            {/* Delete */}
-            {hasPermission("products", "canDelete") && (
-              <ActionAlertDialog
-                title={`Delete ${Object.keys(rowSelection).length} products?`}
-                description="This action cannot be undone. This will permanently delete the products and their associated data from the database."
-                actionButtonText="Delete Products"
-                toastSuccessMessage="Products deleted successfully"
-                queryKey="products"
-                action={() => deleteProducts(getSelectedProductIds())}
-                onSuccess={() => setRowSelection({})}
-              >
-                <Button
-                  variant="destructive"
-                  size="lg"
-                  type="button"
-                  disabled={!Boolean(Object.keys(rowSelection).length)}
-                  className="sm:flex-grow xl:flex-grow-0 transition-opacity duration-300"
+              {/* Add Product */}
+              {hasPermission("products", "canCreate") && (
+                <ProductFormSheet
+                  title="Add Product"
+                  description="Add necessary product information here"
+                  submitButtonText="Add Product"
+                  actionVerb="added"
+                  action={addProduct}
                 >
-                  <Trash2 className="mr-2 size-4" />
-                  Delete
-                </Button>
-              </ActionAlertDialog>
-            )}
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="default"
+                      size="lg"
+                      className="sm:flex-grow xl:flex-grow-0"
+                    >
+                      <Plus className="mr-2 size-4" /> Add Product
+                    </Button>
+                  </SheetTrigger>
+                </ProductFormSheet>
+              )}
 
-            {/* Add Product */}
-            {hasPermission("products", "canCreate") && (
-              <ProductFormSheet
-                title="Add Product"
-                description="Add necessary product information here"
-                submitButtonText="Add Product"
-                actionVerb="added"
-                action={addProduct}
-              >
-                <SheetTrigger asChild>
-                  <Button
-                    variant="default"
-                    size="lg"
-                    className="sm:flex-grow xl:flex-grow-0"
-                  >
-                    <Plus className="mr-2 size-4" /> Add Product
-                  </Button>
-                </SheetTrigger>
-              </ProductFormSheet>
-            )}
-
-          </div>
-        )}
+            </div>
+          )}
       </div>
     </Card>
   );

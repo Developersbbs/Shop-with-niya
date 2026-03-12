@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { formatValidationErrors } from "@/helpers/formatValidationErrors";
 import { EnhancedServerActionResponse } from "@/types/server-action";
 import { ApiResponse } from "@/types/api";
 
@@ -84,7 +83,7 @@ export async function updateComboOffer(
   if (productsStr) {
     try {
       products = JSON.parse(productsStr);
-    } catch (error) {
+    } catch {
       return {
         success: false,
         message: "Invalid products data",
@@ -142,7 +141,7 @@ export async function updateComboOffer(
       };
     }
 
-    const data: ApiResponse<any> = await response.json();
+    const data: ApiResponse<unknown> = await response.json();
 
     // Revalidate the combo offers page
     revalidatePath("/combo-offers");

@@ -1,35 +1,27 @@
 "use client";
-
-import { useTransition } from "react";
-import { FileJson, FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { exportAsCSV, exportAsJSON } from "@/helpers/exportData";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-
-type SuccessResponse = { data: any[] };
-type ErrorResponse = { error: string };
-type ActionResponse = SuccessResponse | ErrorResponse;
 
 type Props = {
   tableName: string; // The name of the table/resource (e.g., 'categories', 'products', 'customers')
-  action: () => Promise<ActionResponse>;
+  action?: (...args: unknown[]) => Promise<unknown>;
 };
 
-export function ExportDataButtons({ tableName, action }: Props) {
-  const [isPending, startTransition] = useTransition();
+export function ExportDataButtons({ tableName }: Props) {
   const searchParams = useSearchParams();
   const [isExporting, setIsExporting] = useState(false);
-  
+
   const handleExport = async (format: 'csv' | 'json') => {
     setIsExporting(true);
     const toastId = toast.loading(`Exporting ${tableName} as ${format.toUpperCase()}...`);
-    
+
     try {
       // Build query params from current search params
       const params = new URLSearchParams();
-      
+
       // Add all current search params to the export request
       searchParams.forEach((value, key) => {
         params.set(key, value);
@@ -40,10 +32,10 @@ export function ExportDataButtons({ tableName, action }: Props) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/${tableName}/export/${format}?${params.toString()}`
       );
 
-if (!response.ok) {
-  const errorData = await response.json().catch(() => ({}));
-  throw new Error(errorData.message || errorData.error || `Export failed with status ${response.status}`);
-}
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || errorData.error || `Export failed with status ${response.status}`);
+      }
 
       // Download the file
       const blob = await response.blob();

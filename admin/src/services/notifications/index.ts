@@ -6,7 +6,7 @@ export async function fetchNotifications(): Promise<Notification[]> {
     const { data } = await axiosInstance.get(`/api/notifications`);
     if (!data.success) return [];
     return data.data || [];
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching notifications:", error);
     return [];
   }
@@ -18,7 +18,7 @@ export async function markNotificationAsRead({ notificationId }: { notificationI
       is_read: true,
     });
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error marking notification as read:", error);
   }
 }
@@ -28,9 +28,10 @@ export async function deleteNotification({ notificationId }: { notificationId: s
     const { data } = await axiosInstance.delete(`/api/notifications/${notificationId}`);
     if (!data.success) throw new Error("Could not dismiss the notification.");
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting notification:", error);
-    throw new Error(error.response?.data?.error || "Could not dismiss the notification.");
+    const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Could not dismiss the notification.";
+    throw new Error(errorMessage);
   }
 }
 
@@ -39,7 +40,7 @@ export async function fetchNotificationsCount(): Promise<number> {
     const { data } = await axiosInstance.get(`/api/notifications/count`);
     if (!data.success) return 0;
     return data.data || 0;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching notification count:", error);
     return 0;
   }

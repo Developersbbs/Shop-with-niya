@@ -32,7 +32,7 @@ export const getColumns = ({
       cell: ({ row }) => (
         <div className="flex gap-2 items-center">
           <ImagePlaceholder
-            src={row.original?.image_url || null}
+            src={row.original?.image_url || ''}
             alt={row.original?.campaign_name || 'Coupon'}
             width={32}
             height={32}
@@ -122,7 +122,7 @@ export const getColumns = ({
         // Safe access to table methods with fallbacks
         let isAllSelected = false;
         let isSomeSelected = false;
-        
+
         try {
           isAllSelected = table?.getIsAllPageRowsSelected?.() || false;
           isSomeSelected = table?.getIsSomePageRowsSelected?.() || false;
@@ -147,7 +147,7 @@ export const getColumns = ({
       cell: ({ row }) => {
         // Safe access to row selection methods
         let isSelected = false;
-        
+
         try {
           isSelected = row?.getIsSelected?.() || false;
         } catch (error) {
@@ -200,54 +200,51 @@ export const getColumns = ({
                       endDate: row.original?.end_date ? new Date(row.original.end_date) : new Date(),
                       isActive: row.original?.is_active ?? true,
                       published: row.original?.published ?? false,
-                      autoApply: (row.original as any)?.auto_apply ?? false,
-                      firstOrderOnly: (row.original as any)?.first_order_only ?? false,
-                      newUserOnly: (row.original as any)?.new_user_only ?? false,
+                      autoApply: (row.original as unknown as Record<string, unknown>)?.auto_apply as boolean ?? false,
+                      firstOrderOnly: (row.original as unknown as Record<string, unknown>)?.first_order_only as boolean ?? false,
+                      newUserOnly: (row.original as unknown as Record<string, unknown>)?.new_user_only as boolean ?? false,
                       priority: row.original?.priority || 0,
-                      applicableCategories: ((row.original?.applicable_categories || []) as any[]).map((cat: any) => {
-                        console.log('Table - Mapping applicable category:', cat);
+                      applicableCategories: ((row.original?.applicable_categories || []) as unknown as Record<string, unknown>[]).map((cat: Record<string, unknown> | string) => {
                         if (typeof cat === 'string') {
                           return { categoryId: cat, subcategoryIds: [], subcategoryNames: [], categoryName: undefined };
                         }
                         if (cat && typeof cat === 'object' && 'category' in cat) {
-                          const mapped = { 
-                            categoryId: cat.category, 
-                            subcategoryIds: cat.subcategories || [], 
-                            subcategoryNames: [], 
-                            categoryName: undefined 
+                          return {
+                            categoryId: (cat as { category: string; subcategories?: string[] }).category,
+                            subcategoryIds: (cat as { category: string; subcategories?: string[] }).subcategories || [],
+                            subcategoryNames: [],
+                            categoryName: undefined
                           };
-                          console.log('Table - Mapped category object:', mapped);
-                          return mapped;
                         }
-                        return { categoryId: cat._id || cat.categoryId || cat, subcategoryIds: [], subcategoryNames: [], categoryName: undefined };
+                        return { categoryId: String((cat as Record<string, unknown>)._id || (cat as Record<string, unknown>).categoryId || cat), subcategoryIds: [], subcategoryNames: [], categoryName: undefined };
                       }),
-                      applicableProducts: (((row.original as any)?.applied_products || []).map((item: any) => 
-                        typeof item === 'string' ? item : item.$oid || item.toString()
-                      )),
-                      applicableVariants: (((row.original as any)?.applied_variants || []).map((item: any) => 
-                        typeof item === 'string' ? item : item.$oid || item.toString()
-                      )),
+                      applicableProducts: (((row.original as unknown as Record<string, unknown>)?.applied_products || []) as unknown[]).map((item: unknown) =>
+                        typeof item === 'string' ? item : (item as { $oid: string })?.$oid || String(item)
+                      ),
+                      applicableVariants: (((row.original as unknown as Record<string, unknown>)?.applied_variants || []) as unknown[]).map((item: unknown) =>
+                        typeof item === 'string' ? item : (item as { $oid: string })?.$oid || String(item)
+                      ),
                       applicableUsers: row.original?.applicable_users || [],
-                      excludedCategories: ((row.original?.excluded_categories || []) as any[]).map((cat: any) => {
+                      excludedCategories: ((row.original?.excluded_categories || []) as unknown as Record<string, unknown>[]).map((cat: Record<string, unknown> | string) => {
                         if (typeof cat === 'string') {
                           return { categoryId: cat, subcategoryIds: [], subcategoryNames: [], categoryName: undefined };
                         }
                         if (cat && typeof cat === 'object' && 'category' in cat) {
-                          return { 
-                            categoryId: cat.category, 
-                            subcategoryIds: cat.subcategories || [], 
-                            subcategoryNames: [], 
-                            categoryName: undefined 
+                          return {
+                            categoryId: (cat as { category: string; subcategories?: string[] }).category,
+                            subcategoryIds: (cat as { category: string; subcategories?: string[] }).subcategories || [],
+                            subcategoryNames: [],
+                            categoryName: undefined
                           };
                         }
-                        return { categoryId: cat._id || cat.categoryId || cat, subcategoryIds: [], subcategoryNames: [], categoryName: undefined };
+                        return { categoryId: String((cat as Record<string, unknown>)._id || (cat as Record<string, unknown>).categoryId || cat), subcategoryIds: [], subcategoryNames: [], categoryName: undefined };
                       }),
-                      excludedProducts: (((row.original as any)?.excluded_products || []).map((item: any) => 
-                        typeof item === 'string' ? item : item.$oid || item.toString()
-                      )),
-                      excludedVariants: (((row.original as any)?.excluded_variants || []).map((item: any) => 
-                        typeof item === 'string' ? item : item.$oid || item.toString()
-                      )),
+                      excludedProducts: (((row.original as unknown as Record<string, unknown>)?.excluded_products || []) as unknown[]).map((item: unknown) =>
+                        typeof item === 'string' ? item : (item as { $oid: string })?.$oid || String(item)
+                      ),
+                      excludedVariants: (((row.original as unknown as Record<string, unknown>)?.excluded_variants || []) as unknown[]).map((item: unknown) =>
+                        typeof item === 'string' ? item : (item as { $oid: string })?.$oid || String(item)
+                      ),
                       visibilityOptions: {
                         showOnCheckout: row.original?.visibility_options?.show_on_checkout ?? true,
                         showOnHomepage: row.original?.visibility_options?.show_on_homepage ?? false,
@@ -319,7 +316,7 @@ export const skeletonColumns: SkeletonColumn[] = [
     header: "code",
     cell: <Skeleton className="w-20 h-8" />,
   },
-  
+
   {
     header: "published",
     cell: <Skeleton className="w-16 h-10" />,

@@ -22,7 +22,6 @@ export default function WeeklySales() {
   const { theme } = useTheme();
   const mounted = useGetMountStatus();
   const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchWeeklyData = async () => {
@@ -32,7 +31,7 @@ export default function WeeklySales() {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const result = await response.json();
-        
+
         if (result.success) {
           setWeeklyData(result.data);
         } else {
@@ -40,8 +39,6 @@ export default function WeeklySales() {
         }
       } catch (error) {
         console.error('Error fetching weekly data:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -49,10 +46,6 @@ export default function WeeklySales() {
   }, []);
 
   const gridColor = `rgba(161, 161, 170, ${theme === "light" ? "0.5" : "0.3"})`;
-
-  // Extract sales and orders data from weeklyData
-  const salesData = weeklyData.map(item => item.sales);
-  const ordersData = weeklyData.map(item => item.orders);
 
   return (
     <Card>
@@ -85,7 +78,7 @@ export default function WeeklySales() {
                   datasets: [
                     {
                       label: "Sales",
-                      data: [400, 300, 100, 250, 200, 300, 1000],
+                      data: weeklyData.length > 0 ? weeklyData.map(d => d.sales) : [400, 300, 100, 250, 200, 300, 1000],
                       borderColor: "rgb(34, 197, 94)",
                       backgroundColor: "rgb(34, 197, 94)",
                     },
@@ -122,7 +115,7 @@ export default function WeeklySales() {
                     tooltip: {
                       callbacks: {
                         label: (context) =>
-                          `${context.dataset.label}: $${context.parsed.y}`,
+                          `${context.dataset.label}: ₹${context.parsed.y}`,
                       },
                     },
                   },
@@ -141,7 +134,7 @@ export default function WeeklySales() {
                   datasets: [
                     {
                       label: "Orders",
-                      data: [3, 3, 1, 4, 1, 1, 2],
+                      data: weeklyData.length > 0 ? weeklyData.map(d => d.orders) : [3, 3, 1, 4, 1, 1, 2],
                       borderColor: "rgb(249, 115, 22)",
                       backgroundColor: "rgb(249, 115, 22)",
                     },

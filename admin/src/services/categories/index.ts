@@ -1,6 +1,7 @@
 import axiosInstance from "@/helpers/axiosInstance";
 import {
   Category,
+  Subcategory,
   CategoryDropdown,
   PaginatedResponse,
 } from "@/types/api";
@@ -17,24 +18,24 @@ export async function fetchCategories({
   search,
 }: FetchCategoriesParams): Promise<PaginatedResponse<Category>> {
   const params = new URLSearchParams();
-  
+
   params.append('page', page.toString());
   params.append('limit', limit.toString());
-  
+
   if (search) params.append('search', search);
 
   const { data } = await axiosInstance.get(`/api/categories?${params.toString()}`);
-  
+
   // Ensure each category has both _id and id fields for compatibility
   if (data.data) {
-    data.data = data.data.map((category: any) => ({
+    data.data = data.data.map((category: Category) => ({
       ...category,
       id: category._id, // Ensure id field exists for table compatibility
       // Ensure subcategories are properly formatted
       subcategories: category.subcategories || [],
     }));
   }
-  
+
   return data;
 }
 
@@ -49,7 +50,7 @@ export async function fetchCategoriesDropdown(): Promise<CategoryDropdown[]> {
   return data.data ?? [];
 }
 
-export async function fetchSubcategoriesByCategorySlug(categorySlug: string): Promise<any[]> {
+export async function fetchSubcategoriesByCategorySlug(categorySlug: string): Promise<Subcategory[]> {
   if (!categorySlug || categorySlug === "all") {
     return [];
   }
@@ -61,7 +62,7 @@ export async function fetchSubcategoriesByCategorySlug(categorySlug: string): Pr
       throw new Error('Failed to fetch categories');
     }
 
-    const category = categoryResponse.data.data.find((cat: any) => cat.slug === categorySlug);
+    const category = categoryResponse.data.data.find((cat: CategoryDropdown) => cat.slug === categorySlug);
     if (!category) {
       console.warn(`Category with slug "${categorySlug}" not found`);
       return [];

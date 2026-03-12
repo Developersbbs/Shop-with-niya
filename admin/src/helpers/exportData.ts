@@ -15,7 +15,7 @@ function triggerDownload(blob: Blob, fileName: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function exportAsJSON(data: any[], fileNamePrefix: string) {
+export function exportAsJSON(data: Record<string, unknown>[], fileNamePrefix: string) {
   if (!data?.length) {
     alert("No data available to export.");
     return;
@@ -28,7 +28,7 @@ export function exportAsJSON(data: any[], fileNamePrefix: string) {
   triggerDownload(blob, `${fileNamePrefix}_${timestamp}.json`);
 }
 
-export function exportAsCSV(data: any[], fileNamePrefix: string) {
+export function exportAsCSV(data: Record<string, unknown>[], fileNamePrefix: string) {
   if (!data?.length) {
     alert("No data available to export.");
     return;

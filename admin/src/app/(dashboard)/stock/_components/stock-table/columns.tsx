@@ -1,14 +1,11 @@
-import Link from "next/link";
-import { ZoomIn, PenSquare, Trash2 } from "lucide-react";
+import { PenSquare, Trash2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import Typography from "@/components/ui/typography";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatAmount } from "@/helpers/formatAmount";
 
 import { SheetTooltip } from "@/components/shared/table/TableActionTooltip";
 import { EditStockSheet } from "../EditStockSheet";
@@ -28,18 +25,18 @@ export const getColumns = ({
     {
       header: "product",
       cell: ({ row }) => {
-        const isVariantStock = row.original.variantId && row.original.productId && 
-          (row.original.productId.product_variants || (row.original.productId as any).product_variants);
+        const isVariantStock = Boolean(row.original.variantId && row.original.productId &&
+          (row.original.productId.product_variants || (row.original.productId as Record<string, unknown>).product_variants));
         const currentVariant = isVariantStock
-          ? (row.original.productId.product_variants || (row.original.productId as any).product_variants)?.find((v: any) => v._id === row.original.variantId)
+          ? ((row.original.productId.product_variants || (row.original.productId as Record<string, unknown>).product_variants) as unknown[]).find((v: unknown) => (v as Record<string, unknown>)._id === row.original.variantId)
           : null;
 
         // Determine which image to use
         const imageUrl = (() => {
           if (isVariantStock && currentVariant && row.original.productId) {
             // For variants, check both 'images' and 'image_url' fields
-            const variantImages = (currentVariant as any).images || currentVariant.image_url;
-            if (variantImages && variantImages.length > 0) {
+            const variantImages = (currentVariant as Record<string, unknown>).images || (currentVariant as Record<string, unknown>).image_url;
+            if (Array.isArray(variantImages) && variantImages.length > 0) {
               return variantImages[0];
             }
           }
@@ -51,20 +48,21 @@ export const getColumns = ({
         })();
 
         // Determine which name to display
-        const displayName = isVariantStock && currentVariant?.name
-          ? currentVariant.name
+        const displayName = isVariantStock && (currentVariant as Record<string, unknown>).name
+          ? (currentVariant as Record<string, unknown>).name as string
           : row.original.productId?.name || 'Unknown Product';
 
         // Determine which SKU to display
-        const displaySku = isVariantStock && currentVariant?.sku
-          ? currentVariant.sku
+        const displaySku = isVariantStock && (currentVariant as Record<string, unknown>).sku
+          ? (currentVariant as Record<string, unknown>).sku as string
           : row.original.productId?.sku || 'Unknown SKU';
 
         return (
           <div className="flex gap-2 items-center">
             {imageUrl && (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img
-                src={imageUrl}
+                src={imageUrl as string}
                 alt={displayName}
                 className="w-10 h-10 object-cover rounded-md"
               />
@@ -76,9 +74,9 @@ export const getColumns = ({
               <Typography className="text-sm text-muted-foreground">
                 SKU: {displaySku}
               </Typography>
-              {isVariantStock && currentVariant?.attributes && Object.keys(currentVariant.attributes).length > 0 && (
+              {isVariantStock && (currentVariant as { attributes?: Record<string, unknown> })?.attributes && Object.keys((currentVariant as { attributes?: Record<string, unknown> }).attributes || {}).length > 0 && (
                 <Typography className="text-xs text-muted-foreground">
-                  ({Object.entries(currentVariant.attributes).map(([key, value]) => `${key}: ${value}`).join(', ')})
+                  {`(${Object.entries((currentVariant as { attributes?: Record<string, unknown> }).attributes || {}).map(([key, value]) => `${key}: ${value as string}`).join(', ')})`}
                 </Typography>
               )}
             </div>
@@ -91,9 +89,8 @@ export const getColumns = ({
       cell: ({ row }) => {
         const quantity = row.original.quantity;
         const isLowStock = quantity !== null && quantity !== undefined && quantity <= row.original.minStock;
-        const minStock = row.original.minStock;
         const notes = row.original.notes;
-        
+
         // Parse notes to extract original quantity if available
         let originalQuantity = null;
         if (notes && notes.includes('Updated via order dispatch:')) {
@@ -102,7 +99,7 @@ export const getColumns = ({
             originalQuantity = parseInt(match[1]);
           }
         }
-        
+
         return (
           <div className="flex flex-col items-start">
             <Typography className={cn(
@@ -111,14 +108,14 @@ export const getColumns = ({
             )}>
               {quantity !== null && quantity !== undefined ? quantity : 'NA'}
             </Typography>
-            
+
             {/* Show original quantity if available */}
             {originalQuantity !== null && originalQuantity !== quantity && (
               <Typography className="text-xs text-muted-foreground">
                 Original: {originalQuantity}
               </Typography>
             )}
-            
+
             {/* Show change indicator */}
             {originalQuantity !== null && originalQuantity !== quantity && (
               <Typography className={cn(
@@ -128,7 +125,7 @@ export const getColumns = ({
                 {quantity < originalQuantity ? `↓ -${originalQuantity - quantity}` : `↑ +${quantity - originalQuantity}`}
               </Typography>
             )}
-            
+
             {isLowStock && (
               <Badge variant="destructive" className="text-xs mt-1">
                 Low Stock

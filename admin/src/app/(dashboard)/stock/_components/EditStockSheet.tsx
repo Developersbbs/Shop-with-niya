@@ -21,7 +21,6 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetTitle,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -62,12 +61,6 @@ const editStockFormSchema = z.object({
 
 type EditStockFormData = z.infer<typeof editStockFormSchema>;
 
-interface EditStockServerActionResponse {
-  success?: boolean;
-  stock?: any;
-  validationErrors?: Record<string, string>;
-  error?: string;
-}
 
 interface EditStockSheetProps {
   stock: Stock;
@@ -82,7 +75,6 @@ export function EditStockSheet({
   stock,
   children,
   title = "Edit Stock Entry",
-  description,
   submitButtonText = "Update Stock",
   actionVerb = "updated",
 }: EditStockSheetProps) {

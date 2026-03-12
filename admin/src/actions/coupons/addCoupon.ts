@@ -215,7 +215,6 @@ export async function addCoupon(
       return {
         success: false,
         dbError: errorData.error || "Failed to create coupon",
-        errors: errorData.errors || {},
       };
     }
 

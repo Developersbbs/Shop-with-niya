@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 
 import { passwordResetFormSchema } from "@/app/(authentication)/forgot-password/_components/schema";
 import validateFormData from "@/helpers/validateFormData";
-import { siteUrl } from "@/constants/siteUrl";
 
 export async function POST(request: Request) {
   // Get form fields

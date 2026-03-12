@@ -24,10 +24,11 @@ export async function toggleStaffPublishedStatus(
     revalidatePath("/staff");
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Staff status update error:", error);
+    const err = error as { response?: { data?: { error?: string } } };
     return {
-      dbError: error.response?.data?.error || "Failed to update staff status."
+      dbError: err.response?.data?.error || "Failed to update staff status."
     };
   }
 }

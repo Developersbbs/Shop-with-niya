@@ -26,7 +26,7 @@ type EnhancedErrorResponse = {
   errors: Record<string, string[]>;
 };
 
-type EnhancedSuccessResponse<T = any> = {
+type EnhancedSuccessResponse<T = unknown> = {
   success: true;
   message: string;
   data?: T;
@@ -40,7 +40,7 @@ export type VServerActionResponse =
   | ErrorResponse;
 
 // Generic enhanced server action response
-export type EnhancedServerActionResponse<T = any> = 
+export type EnhancedServerActionResponse<T = unknown> =
   | EnhancedErrorResponse
   | EnhancedSuccessResponse<T>;
 
@@ -48,20 +48,21 @@ export type ProductServerActionResponse =
   | ValidationErrorsResponse
   | DbErrorResponse
   | (SuccessResponse & {
-      product?: Product;
-      stockValidation?: {
-        message: string;
-        stockInfo: string;
-        requiredAction: string;
-      };
-    });
+    product?: Product;
+    stockValidation?: {
+      message: string;
+      stockInfo: string;
+      requiredAction: string;
+    };
+  });
 
 export type CategoryServerActionResponse =
   | ValidationErrorsResponse
   | DbErrorResponse
+  | ErrorResponse
   | (SuccessResponse & {
-      category: Category;
-    });
+    category?: Category;
+  });
 
 export type CouponServerActionResponse =
   | ValidationErrorsResponse
@@ -69,22 +70,22 @@ export type CouponServerActionResponse =
   | SuccessResponse
   | ErrorResponse
   | (SuccessResponse & {
-      coupon: Coupon;
-    });
+    coupon: Coupon;
+  });
 
 export type CustomerServerActionResponse =
   | ValidationErrorsResponse
   | DbErrorResponse
   | (SuccessResponse & {
-      customer: Customer;
-    });
+    customer: Customer;
+  });
 
 export type StaffServerActionResponse =
   | ValidationErrorsResponse
   | DbErrorResponse
   | (SuccessResponse & {
-      staff: Staff;
-    });
+    staff: Staff;
+  });
 
 export type ProfileServerActionResponse =
   | ValidationErrorsResponse

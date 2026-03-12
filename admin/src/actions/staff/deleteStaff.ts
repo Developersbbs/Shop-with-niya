@@ -21,15 +21,16 @@ export async function deleteStaff(
     revalidatePath("/staff");
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Staff delete error:", error);
     // Log the full axio error response if available
-    if (error.response) {
-      console.error("Axios error data:", error.response.data);
-      console.error("Axios error status:", error.response.status);
+    const err = error as { response?: { data?: { error?: string }, status?: number } };
+    if (err.response) {
+      console.error("Axios error data:", err.response.data);
+      console.error("Axios error status:", err.response.status);
     }
     return {
-      dbError: error.response?.data?.error || "Something went wrong. Could not delete the staff."
+      dbError: err.response?.data?.error || "Something went wrong. Could not delete the staff."
     };
   }
 }

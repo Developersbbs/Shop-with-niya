@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FaPlus, FaTrash, FaEdit, FaSave, FaTimes, FaGift, FaTruck, FaShieldAlt, FaCreditCard, FaStar, FaHeadset } from 'react-icons/fa';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Typography from '@/components/ui/typography';
@@ -42,14 +42,10 @@ export default function SpecialOffersPage() {
         isActive: true
     });
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
     const baseUrl = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
 
-    useEffect(() => {
-        fetchOffers();
-    }, []);
-
-    const fetchOffers = async () => {
+    const fetchOffers = useCallback(async () => {
         try {
             const res = await fetch(`${baseUrl}/special-offers/admin`);
             const data = await res.json();
@@ -61,10 +57,15 @@ export default function SpecialOffersPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [baseUrl]);
 
-    const handleInputChange = (e) => {
-        const { name, value, type, checked } = e.target;
+    useEffect(() => {
+        fetchOffers();
+    }, [fetchOffers]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target as HTMLInputElement;
+        const checked = (e.target as HTMLInputElement).checked;
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value
@@ -83,7 +84,7 @@ export default function SpecialOffersPage() {
         setCurrentOffer(null);
     };
 
-    const handleEdit = (offer) => {
+    const handleEdit = (offer: SpecialOffer) => {
         setCurrentOffer(offer);
         setFormData({
             title: offer.title,
@@ -95,7 +96,7 @@ export default function SpecialOffersPage() {
         setIsEditing(true);
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this offer?')) return;
 
         try {
@@ -119,7 +120,7 @@ export default function SpecialOffersPage() {
         }
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         setIsSaving(true); // Start saving state
@@ -164,7 +165,7 @@ export default function SpecialOffersPage() {
         }
     };
 
-    const getIconComponent = (iconName) => {
+    const getIconComponent = (iconName: string) => {
         const icon = ICON_OPTIONS.find(opt => opt.component.name === iconName);
         return icon ? icon.component : FaGift;
     };
@@ -218,7 +219,7 @@ export default function SpecialOffersPage() {
                                         name="description"
                                         value={formData.description}
                                         onChange={handleInputChange}
-                                        rows="3"
+                                        rows={3}
                                         className="w-full p-2 border-border bg-background rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                                         required
                                     />
@@ -304,46 +305,46 @@ export default function SpecialOffersPage() {
             )}
 
             {!isEditing && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {offers.map((offer) => {
-                    const IconComponent = getIconComponent(offer.icon);
-                    return (
-                        <Card key={offer._id} className="overflow-hidden group hover:shadow-md transition-shadow">
-                            <CardContent className="p-6">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className={`p-3 bg-gradient-to-r ${offer.bgColor} rounded-lg`}>
-                                        <IconComponent className="w-8 h-8 text-rose-600" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {offers.map((offer) => {
+                        const IconComponent = getIconComponent(offer.icon);
+                        return (
+                            <Card key={offer._id} className="overflow-hidden group hover:shadow-md transition-shadow">
+                                <CardContent className="p-6">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className={`p-3 bg-gradient-to-r ${offer.bgColor} rounded-lg`}>
+                                            <IconComponent className="w-8 h-8 text-rose-600" />
+                                        </div>
+                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => handleEdit(offer)}
+                                                className="p-2 bg-card/90 text-card-foreground rounded-full hover:bg-card hover:text-primary transition-colors"
+                                            >
+                                                <FaEdit size={14} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(offer._id)}
+                                                className="p-2 bg-card/90 text-card-foreground rounded-full hover:bg-card hover:text-destructive transition-colors"
+                                            >
+                                                <FaTrash size={14} />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={() => handleEdit(offer)}
-                                            className="p-2 bg-card/90 text-card-foreground rounded-full hover:bg-card hover:text-primary transition-colors"
-                                        >
-                                            <FaEdit size={14} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(offer._id)}
-                                            className="p-2 bg-card/90 text-card-foreground rounded-full hover:bg-card hover:text-destructive transition-colors"
-                                        >
-                                            <FaTrash size={14} />
-                                        </button>
+                                    <h3 className="font-bold text-lg mb-2">{offer.title}</h3>
+                                    <p className="text-sm text-muted-foreground mb-4">{offer.description}</p>
+                                    <div className="flex justify-between items-center text-sm text-muted-foreground">
+                                        <span className={`px-2 py-0.5 rounded-full text-xs ${offer.isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                                            {offer.isActive ? 'Active' : 'Inactive'}
+                                        </span>
+                                        <span>Order: {offer.order}</span>
                                     </div>
-                                </div>
-                                <h3 className="font-bold text-lg mb-2">{offer.title}</h3>
-                                <p className="text-sm text-muted-foreground mb-4">{offer.description}</p>
-                                <div className="flex justify-between items-center text-sm text-muted-foreground">
-                                    <span className={`px-2 py-0.5 rounded-full text-xs ${offer.isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                                        {offer.isActive ? 'Active' : 'Inactive'}
-                                    </span>
-                                    <span>Order: {offer.order}</span>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    );
-                })}
-            </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </div>
             )}
-            
+
             {offers.length === 0 && !isEditing && (
                 <div className="text-center py-12">
                     <FaGift className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />

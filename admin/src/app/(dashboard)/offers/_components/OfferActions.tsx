@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Power, PowerOff, Trash2, Edit, Copy, Eye, MoreHorizontal } from "lucide-react";
+import { Plus, Power, PowerOff, Trash2, MoreHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { ExportDataButtons } from "@/components/shared/ExportDataButtons";
 
 import { Offer } from "@/services/offers/offers";
-import { bulkUpdateOffers, deleteOffer, toggleOfferStatus, exportOffersCSV } from "@/services/offers/offers";
+import { bulkUpdateOffers, deleteOffer } from "@/services/offers/offers";
 import OfferFormSheet from "./form/OfferFormSheet";
 // import { useAuthorization } from "@/hooks/use-authorization"; // Uncomment if you have authorization
 
@@ -33,10 +33,10 @@ interface OfferActionsProps {
   offers: Offer[];
 }
 
-export default function OfferActions({ 
-  rowSelection, 
-  setRowSelection, 
-  offers 
+export default function OfferActions({
+  rowSelection,
+  setRowSelection,
+  offers
 }: OfferActionsProps) {
   const router = useRouter();
   // const { hasPermission } = useAuthorization(); // Uncomment if you have authorization
@@ -160,13 +160,10 @@ export default function OfferActions({
     }
   };
 
-  const handleCreateOffer = () => {
-    router.push("/offers/create");
-  };
 
   const getSelectedOffersStatus = () => {
     if (selectedCount === 0) return null;
-    
+
     const selectedOffersData = offers.filter(offer => selectedOffers.includes(offer._id));
     const activeCount = selectedOffersData.filter(offer => offer.status === "active").length;
     const draftCount = selectedOffersData.filter(offer => offer.status === "draft").length;
@@ -187,8 +184,8 @@ export default function OfferActions({
       <form className="flex flex-col xl:flex-row xl:justify-between gap-4">
         {/* Left side - Export buttons */}
         <div className="flex items-center gap-4">
-          <ExportDataButtons action={exportOffersCSV} tableName="offers" />
-          
+          <ExportDataButtons tableName="offers" />
+
           {selectedCount > 0 && (
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="gap-1">
@@ -214,9 +211,9 @@ export default function OfferActions({
           {selectedCount > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="secondary" 
-                  size="lg" 
+                <Button
+                  variant="secondary"
+                  size="lg"
                   type="button"
                   disabled={isBulkActionLoading}
                   className="sm:flex-grow xl:flex-grow-0 transition-opacity duration-300"
@@ -254,8 +251,8 @@ export default function OfferActions({
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => setDeleteDialogOpen(true)} 
+                <DropdownMenuItem
+                  onClick={() => setDeleteDialogOpen(true)}
                   className="text-red-600"
                   disabled={isBulkActionLoading}
                 >
@@ -330,8 +327,8 @@ export default function OfferActions({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isBulkActionLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleBulkDelete} 
+            <AlertDialogAction
+              onClick={handleBulkDelete}
               disabled={isBulkActionLoading}
               className="bg-red-600 hover:bg-red-700"
             >
@@ -350,38 +347,16 @@ interface SingleOfferActionsProps {
   onView?: () => void;
   onEdit?: () => void;
   onDuplicate?: () => void;
-  onDelete?: () => void;
-  onToggleStatus?: () => void;
 }
 
-export function SingleOfferActions({ 
-  offer, 
-  onEdit, 
-  onView, 
-  onDuplicate, 
-  onDelete, 
-  onToggleStatus 
+export function SingleOfferActions({
+  offer,
+  onView,
+  onEdit,
+  onDuplicate
 }: SingleOfferActionsProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-
-  const handleToggleStatus = async () => {
-    setIsLoading(true);
-    try {
-      const result = await toggleOfferStatus(offer._id);
-      if (result.success) {
-        toast.success(result.message);
-        window.location.reload();
-      } else {
-        toast.error("Failed to toggle offer status");
-      }
-    } catch (error) {
-      console.error("Toggle status error:", error);
-      toast.error("Failed to toggle offer status");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleDelete = async () => {
     setIsLoading(true);
@@ -402,32 +377,49 @@ export function SingleOfferActions({
     }
   };
 
-  const isActive = offer.status === "active";
 
   return (
     <div className="flex items-center gap-2">
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        onClick={() => setDeleteDialogOpen(true)}
-        className="text-red-600"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {onView && (
+            <DropdownMenuItem onClick={onView}>View Details</DropdownMenuItem>
+          )}
+          {onEdit && (
+            <DropdownMenuItem onClick={onEdit}>Edit Offer</DropdownMenuItem>
+          )}
+          {onDuplicate && (
+            <DropdownMenuItem onClick={onDuplicate}>Duplicate Offer</DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => setDeleteDialogOpen(true)}
+            className="text-red-600"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Offer
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete offer "{offer.title}"?</AlertDialogTitle>
+            <AlertDialogTitle>Delete offer &quot;{offer.title}&quot;?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the offer and all associated data from the database.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete} 
+            <AlertDialogAction
+              onClick={handleDelete}
               disabled={isLoading}
               className="bg-red-600 hover:bg-red-700"
             >

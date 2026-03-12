@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+
 
 export default function CouponFilters() {
   const router = useRouter();
@@ -26,23 +26,20 @@ export default function CouponFilters() {
   // Update URL when debounced search changes
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
-    
+
     if (debouncedSearch) {
       params.set("search", debouncedSearch);
     } else {
       params.delete("search");
     }
-    
+
     params.set("page", "1");
     params.set("limit", searchParams.get("limit") || "10");
-    
+
     router.push(`/coupons?${params.toString()}`);
   }, [debouncedSearch, router, searchParams]);
 
-  const handleReset = () => {
-    setSearch("");
-    router.push("/coupons");
-  };
+
 
   return (
     <Card className="mb-5">

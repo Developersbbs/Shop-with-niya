@@ -43,7 +43,7 @@ export default function CustomerProfileCard({ customer }: CustomerProfileCardPro
     if (!dateString) return 'N/A';
     try {
       return format(new Date(dateString), 'MMM d, yyyy, h:mm a');
-    } catch (e) {
+    } catch {
       return 'Invalid date';
     }
   };

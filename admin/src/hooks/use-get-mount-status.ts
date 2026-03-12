@@ -9,7 +9,10 @@ export default function useGetMountStatus(): boolean {
 
   useEffect(() => {
     // Update the 'mounted' state to true when the component mounts
-    setMounted(true);
+    const timeout = setTimeout(() => {
+      setMounted(true);
+    }, 0);
+    return () => clearTimeout(timeout);
   }, []);
 
   return mounted;

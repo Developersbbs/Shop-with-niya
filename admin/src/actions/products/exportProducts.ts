@@ -10,10 +10,11 @@ export async function exportProducts() {
 
     return { data };          // data is now the raw CSV string
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Products export error:", error);
+    const err = error as { response?: { data?: { error?: string } } };
     return {
-      error: error.response?.data?.error || "Failed to fetch data for products."
+      error: err.response?.data?.error || "Failed to fetch data for products."
     };
   }
 }

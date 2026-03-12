@@ -1,4 +1,4 @@
-export function objectToFormData(obj: Record<string, any>, namespace = ''): FormData {
+export function objectToFormData(obj: Record<string, unknown>, namespace = ''): FormData {
   const formData = new FormData();
 
   console.log('Converting to FormData:', obj);
@@ -22,7 +22,7 @@ export function objectToFormData(obj: Record<string, any>, namespace = ''): Form
 
     const formKey = namespace ? `${namespace}.${key}` : key;
     console.log('Processing key:', key, 'value:', value, 'formKey:', formKey);
-    
+
 
     // Special handling for productStructure - convert to snake_case for backend
     if (key === 'productStructure') {
@@ -82,8 +82,9 @@ export function objectToFormData(obj: Record<string, any>, namespace = ''): Form
       }));
 
       // Handle variant images separately - convert File objects to form fields
-      if (value.combinations && Array.isArray(value.combinations)) {
-        value.combinations.forEach((combo: any, comboIndex: number) => {
+      const valWithCombos = value as { combinations?: Record<string, unknown>[] };
+      if (valWithCombos.combinations && Array.isArray(valWithCombos.combinations)) {
+        valWithCombos.combinations.forEach((combo, comboIndex) => {
           if (combo.images && Array.isArray(combo.images)) {
             console.log(`Processing variant images for combination ${comboIndex}:`, combo.images.length);
 
@@ -174,7 +175,7 @@ export function objectToFormData(obj: Record<string, any>, namespace = ''): Form
     // Handle nested objects recursively (but skip if it's variants - already handled above)
     if (typeof value === 'object' && value !== null && !(value instanceof File) && key !== 'variants') {
       console.log('Processing nested object:', formKey);
-      const nestedFormData = objectToFormData(value, formKey);
+      const nestedFormData = objectToFormData(value as Record<string, unknown>, formKey);
       for (const [nestedKey, nestedValue] of Array.from(nestedFormData.entries())) {
         console.log('Adding nested field:', nestedKey, nestedValue);
         formData.append(nestedKey, nestedValue);

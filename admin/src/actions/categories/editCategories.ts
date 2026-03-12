@@ -23,7 +23,7 @@ export async function editCategories(
   const published = formData.get("published") === "true";
 
   try {
-    const result = await apiPut("/api/categories/bulk", {
+    await apiPut("/api/categories/bulk", {
       ids: validIds,
       published,
     });
@@ -32,8 +32,9 @@ export async function editCategories(
     revalidatePath("/categories");
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Unexpected error in editCategories:", error);
-    return { dbError: error.message || "An unexpected error occurred." };
+    const message = error instanceof Error ? error.message : "An unexpected error occurred.";
+    return { dbError: message };
   }
 }

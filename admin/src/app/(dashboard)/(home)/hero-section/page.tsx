@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FaPlus, FaTrash, FaEdit, FaImage, FaSave, FaTimes, FaMobileAlt, FaDesktop } from 'react-icons/fa';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -89,12 +89,10 @@ export default function HeroSectionPage() {
         buttonTextColor: '#0a0a0a',
     });
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
     const API_URL = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
 
-    useEffect(() => { fetchSlides(); }, []);
-
-    const fetchSlides = async () => {
+    const fetchSlides = useCallback(async () => {
         try {
             const res = await fetch(`${API_URL}/hero-section/admin`);
             const data = await res.json();
@@ -104,26 +102,29 @@ export default function HeroSectionPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [API_URL]);
 
-    const handleInputChange = (e) => {
-        const { name, value, type, checked } = e.target;
+    useEffect(() => { fetchSlides(); }, [fetchSlides]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target as HTMLInputElement;
+        const checked = (e.target as HTMLInputElement).checked;
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : type === 'number' ? parseInt(value) || 0 : value
         }));
     };
 
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
         if (file) {
             setImageFile(file);
             setPreviewUrl(URL.createObjectURL(file));
         }
     };
 
-    const handleMobileImageChange = (e) => {
-        const file = e.target.files[0];
+    const handleMobileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
         if (file) {
             setImageMobileFile(file);
             setPreviewMobileUrl(URL.createObjectURL(file));
@@ -164,7 +165,7 @@ export default function HeroSectionPage() {
         setCurrentSlide(null);
     };
 
-    const handleEdit = (slide) => {
+    const handleEdit = (slide: HeroSlide) => {
         setCurrentSlide(slide);
         setFormData({
             title: slide.title,
@@ -206,7 +207,7 @@ export default function HeroSectionPage() {
         setIsEditing(true);
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this slide?')) return;
         try {
             const result = await deleteHeroSection(id);
@@ -222,7 +223,7 @@ export default function HeroSectionPage() {
         }
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
 
@@ -447,11 +448,10 @@ export default function HeroSectionPage() {
                                                         key={style}
                                                         type="button"
                                                         onClick={() => setFormData(prev => ({ ...prev, buttonStyle: style }))}
-                                                        className={`p-2 rounded-lg border-2 text-xs font-medium capitalize transition-all ${
-                                                            formData.buttonStyle === style
-                                                                ? 'border-primary bg-primary/10 text-primary'
-                                                                : 'border-border text-muted-foreground hover:border-primary/50'
-                                                        }`}
+                                                        className={`p-2 rounded-lg border-2 text-xs font-medium capitalize transition-all ${formData.buttonStyle === style
+                                                            ? 'border-primary bg-primary/10 text-primary'
+                                                            : 'border-border text-muted-foreground hover:border-primary/50'
+                                                            }`}
                                                     >
                                                         {style}
                                                     </button>
@@ -551,9 +551,8 @@ export default function HeroSectionPage() {
                                         <p className="text-xs text-muted-foreground mb-2">
                                             If not set, the desktop image will be used on mobile.
                                         </p>
-                                        <div className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
-                                            previewMobileUrl ? 'border-primary/60' : 'border-border hover:border-primary'
-                                        }`}>
+                                        <div className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${previewMobileUrl ? 'border-primary/60' : 'border-border hover:border-primary'
+                                            }`}>
                                             <input type="file" accept="image/*" onChange={handleMobileImageChange} className="hidden" id="image-mobile-upload" />
                                             <label htmlFor="image-mobile-upload" className="cursor-pointer flex flex-col items-center">
                                                 {previewMobileUrl ? (

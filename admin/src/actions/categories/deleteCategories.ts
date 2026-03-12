@@ -5,6 +5,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { apiDelete, apiGet } from "@/lib/api-server";
 import { ServerActionResponse } from "@/types/server-action";
+import { ApiResponse } from "@/types/api";
 
 export async function deleteCategories(categoryIds: string[]): Promise<ServerActionResponse> {
   try {
@@ -13,7 +14,7 @@ export async function deleteCategories(categoryIds: string[]): Promise<ServerAct
     if (validIds.length === 0) return { dbError: "No valid category IDs provided." };
 
     // 2️⃣ Fetch category details (to get image URLs) - using GET with query params
-    const response = await apiGet<{ _id: string; image_url?: string }[]>(
+    const response = await apiGet<ApiResponse<{ _id: string; image_url?: string }[]>>(
       `/api/categories/bulk?ids=${validIds.join(",")}`
     );
 
@@ -49,7 +50,8 @@ export async function deleteCategories(categoryIds: string[]): Promise<ServerAct
             await fs.unlink(filePath);
             console.log(`Deleted category image file: ${relativePath}`);
           } catch (accessError) {
-            if ((accessError as any).code === 'ENOENT') {
+            const err = accessError as NodeJS.ErrnoException;
+            if (err.code === 'ENOENT') {
               console.log(`Category image file not found, skipping: ${relativePath}`);
             } else {
               throw accessError;

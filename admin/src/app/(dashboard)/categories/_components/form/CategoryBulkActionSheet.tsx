@@ -74,7 +74,7 @@ export default function CategoryBulkActionSheet({
         });
         queryClient.invalidateQueries({ queryKey: ["categories"] });
         setIsSheetOpen(false);
-        onSuccess && onSuccess();
+        if (onSuccess) onSuccess();
       }
     });
   };

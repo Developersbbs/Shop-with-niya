@@ -1,6 +1,5 @@
 import { FaBagShopping } from "react-icons/fa6";
 import { format } from "date-fns";
-import Typography from "@/components/ui/typography";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -151,7 +150,7 @@ export default function InvoicePdfTemplate({ order }: { order: OrderDetails }) {
               >
                 <TableCell className="py-3 font-normal text-black">{item.products.name}</TableCell>
                 <TableCell className="py-3 font-normal" style={{ color: "#777" }}>
-                  {(item.products as any).sku || "—"}
+                  {(item.products as unknown as Record<string, unknown>).sku as string || "—"}
                 </TableCell>
                 <TableCell className="py-3 text-center font-normal text-black">{item.quantity}</TableCell>
                 <TableCell className="py-3 text-center font-normal text-black">

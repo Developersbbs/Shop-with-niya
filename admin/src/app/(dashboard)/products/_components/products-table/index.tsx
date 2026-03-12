@@ -1,20 +1,15 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
-
 import ProductsTable from "./Table";
 import { getColumns, skeletonColumns, transformProductsForTable } from "./columns";
 import TableSkeleton from "@/components/shared/table/TableSkeleton";
-import TableError from "@/components/shared/table/TableError";
-
-import { getSearchParams } from "@/helpers/getSearchParams";
-import { fetchProducts } from "@/services/products";
 import { RowSelectionProps } from "@/types/data-table";
 import { useAuthorization } from "@/hooks/use-authorization";
 
+import { Product } from "@/services/products/types";
+
 interface AllProductsProps extends RowSelectionProps {
-  products?: any[];
+  products?: Product[];
   pagination?: {
     pages: number;
     current: number;

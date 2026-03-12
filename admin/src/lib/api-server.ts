@@ -4,12 +4,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 interface ApiRequestOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
-  body?: any;
+  body?: unknown;
   headers?: Record<string, string>;
   isFormData?: boolean; // 👈 added flag
 }
 
-export async function apiRequest<T = any>(
+export async function apiRequest<T = unknown>(
   endpoint: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
@@ -36,7 +36,7 @@ export async function apiRequest<T = any>(
   // If body is FormData → don't set Content-Type (browser sets it automatically)
   if (body && method !== "GET") {
     if (isFormData) {
-      config.body = body;
+      config.body = body as BodyInit;
     } else {
       config.headers = {
         "Content-Type": "application/json",
@@ -66,29 +66,29 @@ export async function apiRequest<T = any>(
 }
 
 // Convenience wrappers
-export const apiGet = <T = any>(endpoint: string, headers?: Record<string, string>) =>
+export const apiGet = <T = unknown>(endpoint: string, headers?: Record<string, string>) =>
   apiRequest<T>(endpoint, { method: "GET", headers });
 
-export const apiPost = <T = any>(
+export const apiPost = <T = unknown>(
   endpoint: string,
-  body?: any,
+  body?: unknown,
   headers?: Record<string, string>,
   isFormData = false
 ) => apiRequest<T>(endpoint, { method: "POST", body, headers, isFormData });
 
-export const apiPut = <T = any>(
+export const apiPut = <T = unknown>(
   endpoint: string,
-  body?: any,
+  body?: unknown,
   headers?: Record<string, string>,
   isFormData = false
 ) => apiRequest<T>(endpoint, { method: "PUT", body, headers, isFormData });
 
-export const apiDelete = <T = any>(endpoint: string, headers?: Record<string, string>, body?: any) =>
+export const apiDelete = <T = unknown>(endpoint: string, headers?: Record<string, string>, body?: unknown) =>
   apiRequest<T>(endpoint, { method: "DELETE", headers, body });
 
-export const apiPatch = <T = any>(
+export const apiPatch = <T = unknown>(
   endpoint: string,
-  body?: any,
+  body?: unknown,
   headers?: Record<string, string>,
   isFormData = false
 ) => apiRequest<T>(endpoint, { method: "PATCH", body, headers, isFormData });

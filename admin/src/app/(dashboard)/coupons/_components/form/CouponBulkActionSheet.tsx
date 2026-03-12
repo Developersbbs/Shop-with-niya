@@ -74,7 +74,7 @@ export default function CouponBulkActionSheet({
         });
         queryClient.invalidateQueries({ queryKey: ["coupons"] });
         setIsSheetOpen(false);
-        onSuccess && onSuccess();
+        if (onSuccess) onSuccess();
       }
     });
   };

@@ -10,9 +10,9 @@ export async function deleteSpecialOffer(
 ): Promise<EnhancedServerActionResponse> {
   try {
     // First fetch special offer to check if it exists and get its order
-    const specialOfferResponse = await apiGet<ApiResponse<any>>(`/api/special-offers/${specialOfferId}`);
-    
-    if (!specialOfferResponse.success) {
+    const specialOfferResponse = await apiGet<ApiResponse<{ order: number }>>(`/api/special-offers/${specialOfferId}`);
+
+    if (!specialOfferResponse.success || !specialOfferResponse.data) {
       console.error("Failed to fetch special offer for deletion:", specialOfferResponse.error);
       return {
         success: false,
@@ -26,8 +26,8 @@ export async function deleteSpecialOffer(
     const specialOffer = specialOfferResponse.data;
 
     // Delete the special offer from the database
-    const deleteResponse = await apiDelete<ApiResponse<any>>(`/api/special-offers/${specialOfferId}`);
-    
+    const deleteResponse = await apiDelete<ApiResponse<void>>(`/api/special-offers/${specialOfferId}`);
+
     if (!deleteResponse.success) {
       console.error("Failed to delete special offer:", deleteResponse.error);
       return {
@@ -43,12 +43,12 @@ export async function deleteSpecialOffer(
     if (specialOffer.order !== undefined) {
       try {
         // Get all offers to update their orders
-        const allOffersResponse = await apiGet<ApiResponse<any[]>>('/api/special-offers/admin');
-        
+        const allOffersResponse = await apiGet<ApiResponse<{ _id: string, order: number }[]>>('/api/special-offers/admin');
+
         if (allOffersResponse.success && allOffersResponse.data) {
           const offersToUpdate = allOffersResponse.data
-            .filter((offer: any) => offer.order > specialOffer.order)
-            .sort((a: any, b: any) => a.order - b.order);
+            .filter((offer: { _id: string, order: number }) => offer.order > (specialOffer.order as number))
+            .sort((a: { _id: string, order: number }, b: { _id: string, order: number }) => a.order - b.order);
 
           // Update each offer's order (decrement by 1)
           for (const offer of offersToUpdate) {
@@ -62,7 +62,7 @@ export async function deleteSpecialOffer(
               }),
             });
           }
-          
+
           console.log(`Reorganized orders for ${offersToUpdate.length} offers after deletion`);
         }
       } catch (reorderError) {

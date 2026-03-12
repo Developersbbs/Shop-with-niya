@@ -25,7 +25,7 @@ export async function toggleOfferPopup(
       };
     }
 
-    const data: ApiResponse<any> = await response.json();
+    const data: ApiResponse<Record<string, unknown>> = await response.json();
 
     // Revalidate the offer-popups page
     revalidatePath("/offer-popups");

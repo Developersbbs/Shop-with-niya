@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2, GripHorizontal, Check, X } from "lucide-react";
+import { Trash2, Check, X } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -15,7 +15,6 @@ import { TableActionAlertDialog } from "@/components/shared/table/TableActionAle
 import { Rating } from "@/services/ratings/types";
 import { deleteRating } from "@/actions/ratings/deleteRating";
 import { updateRatingStatus } from "@/actions/ratings/updateRatingStatus";
-import { useRouter } from "next/navigation";
 import { ImagePlaceholder } from "@/components/shared/ImagePlaceholder";
 
 // Helper to render stars
@@ -35,7 +34,8 @@ const renderStars = (rating: number) => {
     );
 };
 
-export const getColumns = () => {
+export const useReviewsColumns = () => {
+    const queryClient = useQueryClient();
 
     const columns: ColumnDef<Rating>[] = [
         {
@@ -130,7 +130,6 @@ export const getColumns = () => {
         {
             header: "Actions",
             cell: ({ row }) => {
-                const queryClient = useQueryClient();
 
                 const handleStatusUpdate = async (newStatus: 'approved' | 'rejected') => {
                     const result = await updateRatingStatus(row.original._id, newStatus);

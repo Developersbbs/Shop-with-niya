@@ -2,6 +2,8 @@
 
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 
+import { DataTableProps } from "@/types/data-table";
+import { Customer } from "@/types/api";
 import DataTable from "@/components/shared/table/DataTable";
 
 export default function CustomersTable({

@@ -56,11 +56,11 @@ export default function LoginForm() {
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error("Login error:", error);
-      
+
       const errorMessage = error.message || "Failed to login";
-      
+
       // Handle specific validation errors
       if (errorMessage.toLowerCase().includes("email") || errorMessage.toLowerCase().includes("invalid")) {
         form.setError("email", {

@@ -17,7 +17,7 @@ export default function CouponTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getRowId: (row) => row.id,
+    getRowId: (row) => row._id,
     state: {
       rowSelection,
     },

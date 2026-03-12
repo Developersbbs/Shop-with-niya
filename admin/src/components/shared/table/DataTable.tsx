@@ -35,7 +35,7 @@ export default function DataTable<TData>({
   pagination,
 }: DataTableProps<TData>) {
   const updateQueryString = useUpdateQueryString({ scroll: false });
-  
+
   // Guard against invalid pagination data
   const safePagination = {
     pages: pagination?.pages || 0,
@@ -108,9 +108,9 @@ export default function DataTable<TData>({
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                   </TableHead>
                 );
               })}
@@ -151,15 +151,9 @@ export default function DataTable<TData>({
               );
             }
 
-            return rows.map((row) => {
+            return (rows || []).map((row) => {
               // Safe check for row selection
-              let isSelected = false;
-              try {
-                isSelected = row.getIsSelected ? row.getIsSelected() : false;
-              } catch (error) {
-                console.warn("Error checking row selection:", error);
-                isSelected = false;
-              }
+              const isSelected = row?.getIsSelected?.() || false;
 
               return (
                 <TableRow

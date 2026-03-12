@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { formatValidationErrors } from "@/helpers/formatValidationErrors";
 import { EnhancedServerActionResponse } from "@/types/server-action";
 import { ApiResponse } from "@/types/api";
 
@@ -39,7 +38,7 @@ export async function updateMarqueeOffer(
   try {
     // First get the current offer to preserve its order
     const currentOfferResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/marquee-offers/${marqueeOfferId}`);
-    
+
     if (!currentOfferResponse.ok) {
       return {
         success: false,
@@ -50,9 +49,9 @@ export async function updateMarqueeOffer(
       };
     }
 
-    const currentOfferData: ApiResponse<any> = await currentOfferResponse.json();
-    
-    if (!currentOfferData.success) {
+    const currentOfferData: ApiResponse<{ order: number }> = await currentOfferResponse.json();
+
+    if (!currentOfferData.success || !currentOfferData.data) {
       return {
         success: false,
         message: "Marquee offer not found",
@@ -89,7 +88,7 @@ export async function updateMarqueeOffer(
       };
     }
 
-    const data: ApiResponse<any> = await response.json();
+    const data: ApiResponse<Record<string, unknown>> = await response.json();
 
     // Revalidate the marquee offers page
     revalidatePath("/marquee-offers");

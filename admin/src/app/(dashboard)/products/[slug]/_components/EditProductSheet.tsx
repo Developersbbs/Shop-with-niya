@@ -3,6 +3,7 @@
 import { SheetTrigger } from "@/components/ui/sheet";
 import { editProduct } from "@/actions/products/editProduct";
 import { ProductDetails } from "@/services/products/types";
+import { ProductVariant } from "@/types/api";
 import ProductFormSheet from "../../_components/form/ProductFormSheet";
 
 import { useAuthorization } from "@/hooks/use-authorization";
@@ -18,7 +19,7 @@ export function EditProductSheet({ product, children }: Props) {
   if (!hasPermission("products", "canEdit")) return null;
 
   // Transform variant data to match form schema
-  const transformVariantsForForm = (variants: any[]) => {
+  const transformVariantsForForm = (variants: ProductVariant[]) => {
     if (!variants || variants.length === 0) return null;
 
     // Define default attributes that should always be present

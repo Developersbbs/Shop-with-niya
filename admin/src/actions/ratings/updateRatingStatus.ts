@@ -13,12 +13,12 @@ export async function updateRatingStatus(
         const response = await apiPatch<RatingsResponse>(`/api/ratings/${ratingId}/status`, { status });
 
         if (!response.success) {
-            return { dbError: response.error || "Failed to update rating status" };
+            return { dbError: "Failed to update rating status" };
         }
 
         revalidatePath("/reviews");
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Update rating status failed:", error);
         return { dbError: "Failed to connect to server" };
     }
