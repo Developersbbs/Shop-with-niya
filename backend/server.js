@@ -142,12 +142,11 @@ app.use("/api/ratings", require("./routes/ratings"));
 connectDB();
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT;
 
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌐 API URL: http://localhost:${PORT}`);
 });
 
 server.setTimeout(300000); 
