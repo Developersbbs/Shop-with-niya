@@ -21,8 +21,10 @@ const allowedOrigins = [
   'http://localhost:5173', // Vite default port
   'http://localhost:5174', // Vite alternate port
   'http://127.0.0.1:5175',
-    // Vite default port
-];
+  'https://admin-shop-with-niya.netlify.app',
+  'https://shop-with-niya.netlify.app',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
 
 // Simple CORS middleware
 app.use((req, res, next) => {
