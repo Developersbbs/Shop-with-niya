@@ -120,36 +120,17 @@ const ProductCard = memo(({ product, viewMode = 'grid' }) => {
   // ── LIST VIEW ────────────────────────────────────────────
   if (viewMode === 'list') {
     return (
-      <div
-        className="group w-full bg-white border border-[#e8e2da] hover:border-[#1a3c2e]/30 overflow-hidden transition-all duration-300 hover:shadow-md flex"
-        style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-      >
+      <div className="group w-full bg-white border border-[#e8e2da] hover:border-[#1a3c2e]/30 overflow-hidden transition-all duration-300 hover:shadow-md flex"
+        style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
         <Link to={productLink} className="relative flex-shrink-0 bg-[#f7f4f0] overflow-hidden" style={{ width: 140, height: 140 }}>
           <img src={primaryImage} alt={name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-          {isOutOfStock && (
-            <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
-              <span className="text-[10px] tracking-widest uppercase text-[#1a3c2e]/60 bg-white px-3 py-1 border border-[#1a3c2e]/20">Sold Out</span>
-            </div>
-          )}
-          {discountPct && (
-            <span className="absolute top-2 left-2 bg-[#c9a96e] text-white text-[9px] tracking-widest uppercase px-2 py-0.5">-{discountPct}%</span>
-          )}
+          {isOutOfStock && <div className="absolute inset-0 bg-white/50 flex items-center justify-center"><span className="text-[10px] tracking-widest uppercase text-[#1a3c2e]/60 bg-white px-3 py-1 border border-[#1a3c2e]/20">Sold Out</span></div>}
+          {discountPct && <span className="absolute top-2 left-2 bg-[#c9a96e] text-white text-[9px] tracking-widest uppercase px-2 py-0.5">-{discountPct}%</span>}
         </Link>
-
         <div className="flex flex-col flex-1 p-4 justify-between min-w-0">
           <div>
             <Link to={productLink}>
-              {/* ✅ Playfair Display for product name */}
-              <h3
-                className="text-[#1a3c2e] leading-snug hover:text-[#c9a96e] transition-colors line-clamp-2"
-                style={{
-                  fontFamily: "'Playfair Display', Georgia, serif",
-                  fontSize: 15,
-                  fontWeight: 600,
-                }}
-              >
-                {name}
-              </h3>
+              <h3 className="text-[#1a3c2e] font-semibold leading-snug hover:text-[#c9a96e] transition-colors line-clamp-2" style={{ fontSize: 15 }}>{name}</h3>
             </Link>
             <div className="flex gap-0.5 mt-1.5">
               {[...Array(5)].map((_, i) => (
@@ -160,43 +141,17 @@ const ProductCard = memo(({ product, viewMode = 'grid' }) => {
               <span className="text-[#1a3c2e]/40 text-[10px] ml-1">({numReviews || 0})</span>
             </div>
           </div>
-
           <div className="flex items-center justify-between mt-3">
             <div>
-              {/* ✅ Playfair Display for cost price (strikethrough) */}
-              {originalPrice && (
-                <p
-                  className="text-[#1a3c2e]/30 line-through"
-                  style={{
-                    fontFamily: "'Playfair Display', Georgia, serif",
-                    fontSize: 12,
-                  }}
-                >
-                  ₹{Number(originalPrice).toFixed(0)}
-                </p>
-              )}
-              {/* ✅ Playfair Display for selling price */}
-              <p
-                className="text-[#1a3c2e] font-bold text-lg"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-              >
-                ₹{displayPrice ? Number(displayPrice).toFixed(0) : '—'}
-              </p>
+              {originalPrice && <p className="text-[#1a3c2e]/30 line-through text-xs">₹{Number(originalPrice).toFixed(0)}</p>}
+              <p className="text-[#1a3c2e] font-bold text-lg">₹{displayPrice ? Number(displayPrice).toFixed(0) : '—'}</p>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={toggleWishlist}
-                className={`w-9 h-9 flex items-center justify-center border transition-all ${productInWishlist ? 'border-rose-300 text-rose-500 bg-rose-50' : 'border-[#1a3c2e]/20 text-[#1a3c2e]/40 hover:text-rose-500'}`}
-              >
-                <svg viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="w-4 h-4" fill={productInWishlist ? 'currentColor' : 'none'}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
+              <button onClick={toggleWishlist} className={`w-9 h-9 flex items-center justify-center border transition-all ${productInWishlist ? 'border-rose-300 text-rose-500 bg-rose-50' : 'border-[#1a3c2e]/20 text-[#1a3c2e]/40 hover:text-rose-500'}`}>
+                <svg viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="w-4 h-4" fill={productInWishlist ? 'currentColor' : 'none'}><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
               </button>
-              <button
-                onClick={handleAddToCart}
-                disabled={isAddingToCart || isOutOfStock}
-                className={`px-5 h-9 text-xs tracking-widest uppercase font-medium transition-all ${productInCart ? 'bg-[#1a3c2e]/10 text-[#1a3c2e]' : isOutOfStock ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-[#1a3c2e] text-white hover:bg-[#2d5a42]'}`}
-              >
+              <button onClick={handleAddToCart} disabled={isAddingToCart || isOutOfStock}
+                className={`px-5 h-9 text-xs tracking-widest uppercase font-medium transition-all ${productInCart ? 'bg-[#1a3c2e]/10 text-[#1a3c2e]' : isOutOfStock ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-[#1a3c2e] text-white hover:bg-[#2d5a42]'}`}>
                 {isAddingToCart ? '…' : productInCart ? '✓ Added' : isOutOfStock ? 'Sold Out' : product_structure === 'variant' ? 'Options' : 'Add to Cart'}
               </button>
             </div>
@@ -210,7 +165,7 @@ const ProductCard = memo(({ product, viewMode = 'grid' }) => {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap');
         .niya-card { transition: box-shadow 0.4s ease, transform 0.4s ease; }
         .niya-card:hover { box-shadow: 0 20px 60px rgba(26,60,46,0.12); transform: translateY(-4px); }
         .niya-img-primary { transition: opacity 0.5s ease, transform 0.7s ease; }
@@ -218,6 +173,7 @@ const ProductCard = memo(({ product, viewMode = 'grid' }) => {
         .niya-card:hover .niya-img-primary { opacity: 0; transform: scale(1.06); }
         .niya-card:hover .niya-img-hover { opacity: 1; transform: scale(1.04); }
         .niya-card .niya-img-hover { opacity: 0; }
+
         .niya-wish { transition: opacity 0.25s ease; opacity: 0; }
         .niya-card:hover .niya-wish { opacity: 1; }
         .niya-wish-active { opacity: 1 !important; }
@@ -240,7 +196,7 @@ const ProductCard = memo(({ product, viewMode = 'grid' }) => {
             onError={e => { e.target.src = getPlaceholderImage(); }}
           />
 
-          {/* Hover image */}
+          {/* Hover image — only if second image exists */}
           {hoverImage && (
             <img
               src={hoverImage}
@@ -285,22 +241,18 @@ const ProductCard = memo(({ product, viewMode = 'grid' }) => {
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
           </button>
+
+
         </Link>
 
         {/* ── Product Info ── */}
         <div className="flex flex-col p-3 sm:p-4">
 
-          {/* ✅ Name — Playfair Display */}
+          {/* Name */}
           <Link to={productLink}>
             <h3
               className="text-[#1a3c2e] leading-snug line-clamp-2 hover:text-[#c9a96e] transition-colors"
-              style={{
-                fontFamily: "'Playfair Display', Georgia, serif",
-                fontSize: 'clamp(13px, 1.4vw, 15px)',
-                fontWeight: 600,
-                minHeight: '2.4em',
-                letterSpacing: '0.01em',
-              }}
+              style={{ fontFamily: "'Inter','DM Sans',sans-serif", fontSize: 'clamp(13px, 1.5vw, 15px)', fontWeight: 500, minHeight: '2.4em', letterSpacing: '0.01em' }}
             >
               {name}
             </h3>
@@ -321,28 +273,19 @@ const ProductCard = memo(({ product, viewMode = 'grid' }) => {
           {/* Price + stock */}
           <div className="flex items-center justify-between mt-2 mb-3">
             <div>
-              {/* ✅ Cost price — Playfair Display strikethrough */}
               {originalPrice && (
-                <p
-                  className="text-[#1a3c2e]/30 line-through leading-none mb-0.5"
-                  style={{
-                    fontFamily: "'Playfair Display', Georgia, serif",
-                    fontSize: 11,
-                  }}
-                >
+                <p className="text-[#1a3c2e]/30 line-through leading-none mb-0.5"
+                  style={{ fontSize: 10 }}>
                   ₹{Number(originalPrice).toFixed(0)}
                 </p>
               )}
-              {/* ✅ Selling price — Playfair Display */}
-              <p
-                className="text-[#1a3c2e] leading-none"
+              <p className="text-[#1a3c2e] leading-none"
                 style={{
-                  fontFamily: "'Playfair Display', Georgia, serif",
-                  fontSize: 'clamp(16px, 2.2vw, 20px)',
+                  fontFamily: "'Inter', 'DM Sans', sans-serif",
+                  fontSize: 'clamp(15px, 2vw, 18px)',
                   fontWeight: 700,
-                  letterSpacing: '-0.01em',
-                }}
-              >
+                  letterSpacing: '-0.02em',
+                }}>
                 ₹{displayPrice ? Number(displayPrice).toFixed(0) : '—'}
               </p>
             </div>
@@ -352,7 +295,7 @@ const ProductCard = memo(({ product, viewMode = 'grid' }) => {
             </div>
           </div>
 
-          {/* Add to Cart button */}
+          {/* ✅ Always-visible Add to Cart button */}
           <button
             onClick={handleAddToCart}
             disabled={isAddingToCart || isOutOfStock}
