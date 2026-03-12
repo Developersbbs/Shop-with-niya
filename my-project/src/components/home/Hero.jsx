@@ -2,407 +2,250 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useGetHeroSlidesQuery } from '../../redux/services/heroSection';
 
-/* ── Inject keyframes once ── */
-const STYLE_ID = 'hero-luxury-styles';
+/* ── Inject global styles once ── */
+const STYLE_ID = 'niya-v2-styles';
 if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
   const s = document.createElement('style');
   s.id = STYLE_ID;
   s.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Cormorant+Garamond:wght@300;400;600&display=swap');
-
-    @keyframes kenBurns {
-      0%   { transform: scale(1) translateX(0px); }
-      100% { transform: scale(1.12) translateX(-20px); }
+    @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;0,6..96,900;1,6..96,400;1,6..96,700&family=Jost:wght@200;300;400;500;600&family=DM+Mono:wght@300;400&display=swap');
+    :root {
+      --g: #082B27;
+      --gold: #C9A84C;
+      --cream: #F5EFE0;
+      --ivory: #FAF7F2;
     }
-    @keyframes fadeRight {
-      from { opacity: 0; transform: translateX(40px); }
-      to   { opacity: 1; transform: translateX(0); }
+    @keyframes nkb { 0%{transform:scale(1) translate(0,0)} 100%{transform:scale(1.1) translate(-1.5%,-1%)} }
+    @keyframes nfu { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes nfr { from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes nlg { from{width:0;opacity:0} to{width:64px;opacity:1} }
+    @keyframes nprog { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+    @keyframes ngrain {
+      0%,100%{transform:translate(0,0)} 10%{transform:translate(-2%,-3%)} 20%{transform:translate(3%,1%)}
+      30%{transform:translate(-1%,4%)} 40%{transform:translate(4%,-2%)} 50%{transform:translate(-3%,2%)}
+      60%{transform:translate(2%,-4%)} 70%{transform:translate(-4%,3%)} 80%{transform:translate(1%,-2%)}
     }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(24px); }
-      to   { opacity: 1; transform: translateY(0); }
+    .niya-grain {
+      position:absolute;inset:-50%;width:200%;height:200%;
+      opacity:.04;pointer-events:none;z-index:5;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      animation:ngrain 8s steps(10) infinite;
     }
-    @keyframes progressBar {
-      from { width: 0%; }
-      to   { width: 100%; }
+    .nsa .ni { animation:nkb 9s ease-out forwards; }
+    .nsa .nt { animation:nfr .55s cubic-bezier(.22,1,.36,1) .1s both; }
+    .nsa .nh { animation:nfu .7s cubic-bezier(.22,1,.36,1) .25s both; }
+    .nsa .nl { animation:nlg .45s ease .5s both; }
+    .nsa .nd { animation:nfu .65s ease .58s both; }
+    .nsa .nc { animation:nfu .65s ease .72s both; }
+    .nbp {
+      position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:10px;
+      padding:14px 32px;font-family:'Jost',sans-serif;font-size:11px;font-weight:600;
+      letter-spacing:.2em;text-transform:uppercase;text-decoration:none;
+      border-radius:2px;transition:all .35s ease;cursor:pointer;border:none;
     }
-    @keyframes shimmerLine {
-      0%   { width: 0; opacity: 0; }
-      100% { width: 48px; opacity: 1; }
+    .nbp::before {
+      content:'';position:absolute;inset:0;background:rgba(255,255,255,.12);
+      transform:translateX(-100%);transition:transform .35s ease;
     }
-    .hero-slide-active .hero-image {
-      animation: kenBurns 8s ease-out forwards;
+    .nbp:hover::before{transform:translateX(0);}
+    .nbp:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,.35);}
+    .nbg {
+      display:inline-flex;align-items:center;gap:8px;padding:14px 28px;
+      font-family:'Jost',sans-serif;font-size:11px;font-weight:500;
+      letter-spacing:.2em;text-transform:uppercase;text-decoration:none;
+      background:transparent;border:1px solid rgba(255,255,255,.3);
+      border-radius:2px;transition:all .35s ease;cursor:pointer;
     }
-    .hero-slide-active .hero-badge {
-      animation: fadeRight 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both;
+    .nbg:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.7);transform:translateY(-2px);}
+    .narr {
+      width:50px;height:50px;border-radius:50%;
+      border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.2);
+      backdrop-filter:blur(10px);color:#fff;
+      display:flex;align-items:center;justify-content:center;
+      cursor:pointer;transition:all .3s ease;
     }
-    .hero-slide-active .hero-title {
-      animation: fadeRight 0.7s cubic-bezier(0.22,1,0.36,1) 0.3s both;
-    }
-    .hero-slide-active .hero-line {
-      animation: shimmerLine 0.5s cubic-bezier(0.22,1,0.36,1) 0.5s both;
-    }
-    .hero-slide-active .hero-desc {
-      animation: fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.55s both;
-    }
-    .hero-slide-active .hero-cta {
-      animation: fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.72s both;
-    }
-    .hero-progress {
-      animation: progressBar linear forwards;
-    }
-    .hero-btn-primary:hover {
-      filter: brightness(1.1);
-      transform: translateY(-1px);
-    }
-    .hero-btn-secondary:hover {
-      background: rgba(255,255,255,0.12) !important;
-      transform: translateY(-1px);
-    }
+    .narr:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.55);transform:scale(1.08);}
   `;
   document.head.appendChild(s);
 }
 
-/* ── Button style helpers ── */
-const getPrimaryBtnStyle = (slide) => {
-  const style = slide.buttonStyle || 'filled';
-  const color = slide.buttonColor || '#ffffff';
-  const textColor = slide.buttonTextColor || '#0a0a0a';
-  const base = {
-    display: 'inline-flex', alignItems: 'center', gap: '8px',
-    padding: '13px 28px',
-    fontFamily: '"Cormorant Garamond", serif',
-    fontSize: '13px', fontWeight: 700,
-    letterSpacing: '0.15em', textTransform: 'uppercase',
-    textDecoration: 'none', cursor: 'pointer', border: 'none',
-    borderRadius: '100px',
-    transition: 'all 0.3s ease',
-  };
-  if (style === 'filled')  return { ...base, background: color, color: textColor, border: `2px solid ${color}` };
-  if (style === 'outline') return { ...base, background: 'transparent', color: color, border: `2px solid ${color}` };
-  return { ...base, background: 'rgba(255,255,255,0.12)', color: color, border: '2px solid transparent', backdropFilter: 'blur(8px)' };
-};
-
-const getSecondaryBtnStyle = (slide) => {
-  const color = slide.buttonColor || '#ffffff';
-  return {
-    display: 'inline-flex', alignItems: 'center', gap: '8px',
-    padding: '13px 28px',
-    fontFamily: '"Cormorant Garamond", serif',
-    fontSize: '13px', fontWeight: 700,
-    letterSpacing: '0.15em', textTransform: 'uppercase',
-    textDecoration: 'none', cursor: 'pointer',
-    borderRadius: '100px',
-    background: 'transparent',
-    color: color,
-    border: `2px solid ${color}`,
-    transition: 'all 0.3s ease',
-  };
-};
-
-/* ── Skeleton ── */
 const HeroSkeleton = () => (
-  <div className="w-full h-screen bg-gray-100 flex items-center justify-center">
-    <div className="flex flex-col items-center gap-4">
-      <div className="w-14 h-14 border-2 border-gray-300 border-t-gray-700 rounded-full animate-spin" />
-      <p style={{ fontFamily: '"Cormorant Garamond", serif', color: '#999', letterSpacing: '0.25em', fontSize: '11px' }}>
-        LOADING
-      </p>
-    </div>
+  <div style={{width:'100%',height:'100vh',background:'#082B27',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:'16px'}}>
+    <div style={{width:'1px',height:'60px',background:'linear-gradient(to bottom,transparent,rgba(201,168,76,.6),transparent)'}} />
+    <p style={{fontFamily:'"DM Mono",monospace',color:'rgba(201,168,76,.4)',fontSize:'9px',letterSpacing:'.35em'}}>LOADING</p>
   </div>
 );
 
-/* ── Title: max 2 lines ── */
-const SlideTitle = ({ title, textColor }) => {
-  return (
-    <h1
-      className="hero-title"
-      style={{
-        fontFamily: '"Playfair Display", Georgia, serif',
-        fontSize: 'clamp(2rem, 3.5vw, 4rem)',
-        fontWeight: 900,
-        lineHeight: 1.15,
-        letterSpacing: '-0.01em',
-        margin: 0,
-        color: textColor || '#ffffff',
-        display: '-webkit-box',
-        WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical',
-        overflow: 'hidden',
-        maxWidth: '100%',
-      }}
-    >
-      {title}
-    </h1>
-  );
-};
-
-/* ── Single Slide ── */
 const HeroSlide = ({ slide, isActive }) => {
-  const textColor   = slide.textColor || '#ffffff';
-  const accentColor = slide.buttonColor || '#f5c518';
-  const descColor   = `${textColor}bb`;
+  const tc = slide.textColor || '#ffffff';
+  const ac = slide.buttonColor || '#C9A84C';
+  const btc = slide.buttonTextColor || '#082B27';
+  const bs = slide.buttonStyle || 'filled';
 
   return (
-    <div
-      className={`absolute inset-0 ${isActive ? 'hero-slide-active' : ''}`}
-      style={{
-        opacity: isActive ? 1 : 0,
-        transition: 'opacity 1.1s cubic-bezier(0.4,0,0.2,1)',
-        pointerEvents: isActive ? 'auto' : 'none',
-      }}
-    >
-      {/* Background image — Ken Burns */}
+    <div className={`absolute inset-0 ${isActive ? 'nsa' : ''}`}
+      style={{opacity:isActive?1:0,transition:'opacity 1.2s cubic-bezier(.4,0,.2,1)',pointerEvents:isActive?'auto':'none'}}>
+
+      {/* Image */}
       <div className="absolute inset-0 overflow-hidden">
-        <img
-          src={slide.image}
-          alt={slide.title}
-          className="hero-image w-full h-full object-cover object-center"
-          style={{ transformOrigin: 'center center' }}
-        />
+        <img src={slide.image} alt={slide.title} className="ni w-full h-full object-cover" style={{transformOrigin:'60% 50%'}} />
       </div>
 
-      {/* Right-side gradient so text stays readable */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: 'linear-gradient(to left, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.08) 75%, transparent 100%)',
-        }}
-      />
-      {/* Bottom vignette */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: 'linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 40%)',
-        }}
-      />
+      {/* Overlays */}
+      <div className="absolute inset-0" style={{background:'linear-gradient(105deg, rgba(8,43,39,.92) 0%, rgba(8,43,39,.62) 40%, rgba(0,0,0,.08) 70%, transparent 100%)'}} />
+      <div className="absolute inset-0" style={{background:'linear-gradient(to top, rgba(0,0,0,.5) 0%, transparent 50%)'}} />
+      <div className="niya-grain" />
 
-      {/* Content — right-aligned */}
-      <div className="absolute inset-0 flex items-center justify-end px-8 md:px-16 lg:px-24">
-        <div style={{ maxWidth: '480px', width: '100%', textAlign: 'left' }}>
+      {/* Content */}
+      <div className="absolute inset-0 flex items-center" style={{paddingLeft:'clamp(32px,8vw,120px)',paddingRight:'32px'}}>
+        <div style={{maxWidth:'560px'}}>
 
-          {/* Pill badge */}
           {slide.subtitle && (
-            <div
-              className="hero-badge"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                padding: '7px 16px',
-                borderRadius: '100px',
-                background: accentColor,
-                color: slide.buttonTextColor || '#0a0a0a',
-                fontSize: '10px', fontWeight: 700,
-                letterSpacing: '0.2em', textTransform: 'uppercase',
-                marginBottom: '20px',
-                fontFamily: '"Cormorant Garamond", serif',
-              }}
-            >
-              <span style={{
-                width: '6px', height: '6px', borderRadius: '50%',
-                background: slide.buttonTextColor || '#0a0a0a',
-                display: 'inline-block', flexShrink: 0,
-              }} />
-              {slide.subtitle}
+            <div className="nt" style={{display:'inline-flex',alignItems:'center',gap:'10px',marginBottom:'24px'}}>
+              <span style={{width:'28px',height:'1px',background:ac,display:'inline-block'}} />
+              <span style={{fontFamily:'"DM Mono",monospace',fontSize:'10px',letterSpacing:'.3em',textTransform:'uppercase',color:ac}}>
+                {slide.subtitle}
+              </span>
             </div>
           )}
 
-          {/* ✅ FIXED: Single line title — no word splitting */}
-          <SlideTitle title={slide.title} textColor={textColor} />
+          <h1 className="nh" style={{
+            fontFamily:'"Bodoni Moda",Georgia,serif',
+            fontSize:'clamp(2.2rem,4.2vw,4.6rem)',fontWeight:700,lineHeight:1.08,
+            letterSpacing:'-.02em',color:tc,margin:'0 0 20px',
+            display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'
+          }}>
+            {slide.title}
+          </h1>
 
-          {/* Decorative line */}
-          <div
-            className="hero-line"
-            style={{ height: '2px', background: accentColor, margin: '18px 0', borderRadius: '2px' }}
-          />
+          <div className="nl" style={{height:'1px',background:`linear-gradient(to right,${ac},transparent)`,marginBottom:'22px'}} />
 
-          {/* Description */}
           {slide.description && (
-            <p
-              className="hero-desc"
-              style={{
-                fontFamily: '"Cormorant Garamond", serif',
-                fontSize: 'clamp(0.95rem, 1.6vw, 1.15rem)',
-                fontWeight: 300,
-                letterSpacing: '0.02em',
-                color: descColor,
-                lineHeight: 1.6,
-                marginBottom: '32px',
-              }}
-            >
+            <p className="nd" style={{
+              fontFamily:'"Jost",sans-serif',fontSize:'clamp(.88rem,1.3vw,1rem)',
+              fontWeight:300,letterSpacing:'.02em',lineHeight:1.8,
+              color:`${tc}90`,marginBottom:'36px',maxWidth:'440px'
+            }}>
               {slide.description}
             </p>
           )}
 
-          {/* CTA Buttons */}
-          <div className="hero-cta" style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+          <div className="nc" style={{display:'flex',gap:'14px',flexWrap:'wrap'}}>
             {slide.primaryCTA?.text && (
-              <Link
-                to={slide.primaryCTA.link || '/products'}
-                className="hero-btn-primary"
-                style={getPrimaryBtnStyle(slide)}
-              >
+              <Link to={slide.primaryCTA.link||'/products'} className="nbp"
+                style={{background:bs==='filled'?ac:'transparent',color:bs==='filled'?btc:tc,border:`1px solid ${bs==='filled'?ac:'rgba(255,255,255,.35)'}`}}>
                 {slide.primaryCTA.text}
-                <span style={{
-                  width: '22px', height: '22px', borderRadius: '50%',
-                  background: 'rgba(0,0,0,0.15)',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '12px',
-                }}>
-                  →
-                </span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </Link>
             )}
             {slide.secondaryCTA?.text && (
-              <Link
-                to={slide.secondaryCTA.link || '/'}
-                className="hero-btn-secondary"
-                style={getSecondaryBtnStyle(slide)}
-              >
+              <Link to={slide.secondaryCTA.link||'/'} className="nbg" style={{color:tc}}>
                 {slide.secondaryCTA.text}
-                <span style={{ fontSize: '14px' }}>→</span>
               </Link>
             )}
           </div>
-
         </div>
       </div>
     </div>
   );
 };
 
-/* ── Main Hero ── */
 const Hero = () => {
   const { data, isLoading, isError } = useGetHeroSlidesQuery();
   const slides = data?.data || [];
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [progressKey, setProgressKey] = useState(0);
-  const DURATION = 6000;
+  const [pKey, setPKey] = useState(0);
+  const DURATION = 6500;
 
-  const next = useCallback(() => {
-    setCurrent((p) => (p + 1) % slides.length);
-    setProgressKey((k) => k + 1);
-  }, [slides.length]);
-
-  const prev = useCallback(() => {
-    setCurrent((p) => (p - 1 + slides.length) % slides.length);
-    setProgressKey((k) => k + 1);
-  }, [slides.length]);
-
-  const goTo = (i) => { setCurrent(i); setProgressKey((k) => k + 1); };
+  const next = useCallback(() => { setCurrent(p=>(p+1)%slides.length); setPKey(k=>k+1); }, [slides.length]);
+  const prev = useCallback(() => { setCurrent(p=>(p-1+slides.length)%slides.length); setPKey(k=>k+1); }, [slides.length]);
+  const goTo = (i) => { setCurrent(i); setPKey(k=>k+1); };
 
   useEffect(() => {
-    if (slides.length <= 1 || paused) return;
-    const timer = setInterval(next, DURATION);
-    return () => clearInterval(timer);
-  }, [slides.length, paused, next]);
+    if (slides.length<=1||paused) return;
+    const t = setInterval(next, DURATION);
+    return () => clearInterval(t);
+  }, [slides.length,paused,next]);
 
-  useEffect(() => { setCurrent(0); setProgressKey(0); }, [slides.length]);
+  useEffect(() => { setCurrent(0); setPKey(0); }, [slides.length]);
 
   if (isLoading) return <HeroSkeleton />;
 
-  if (isError || slides.length === 0) {
-    return (
-      <div className="relative w-full h-screen flex items-center justify-end overflow-hidden px-16"
-        style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' }}>
-        <div style={{ maxWidth: '460px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '7px 16px', borderRadius: '100px', background: '#f5c518', color: '#0a0a0a', fontSize: '10px', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '20px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0a0a0a', display: 'inline-block' }} />
-            New Collection
-          </div>
-          <h1 style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(2rem, 4vw, 3.5rem)', fontWeight: 900, lineHeight: 1.1, margin: '0 0 16px', color: '#fff', whiteSpace: 'nowrap' }}>
-            Welcome to Niya
-          </h1>
-          <div style={{ width: '48px', height: '2px', background: '#f5c518', marginBottom: '20px', borderRadius: '2px' }} />
-          <p style={{ fontFamily: '"Cormorant Garamond", serif', color: 'rgba(255,255,255,0.7)', fontSize: '1.1rem', fontWeight: 300, marginBottom: '32px' }}>
-            Discover our curated collections
-          </p>
-          <Link to="/products" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '13px 28px', borderRadius: '100px', background: '#f5c518', color: '#0a0a0a', fontFamily: '"Cormorant Garamond", serif', fontSize: '13px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', textDecoration: 'none' }}>
-            Shop Now <span>→</span>
-          </Link>
+  if (isError||slides.length===0) return (
+    <div style={{position:'relative',width:'100%',height:'100vh',background:'linear-gradient(135deg,#082B27 0%,#0d3b35 60%,#051f1c 100%)',display:'flex',alignItems:'center',overflow:'hidden'}}>
+      <div className="niya-grain" />
+      <div style={{paddingLeft:'clamp(32px,8vw,120px)',maxWidth:'560px',position:'relative',zIndex:10}}>
+        <div style={{display:'inline-flex',alignItems:'center',gap:'10px',marginBottom:'24px'}}>
+          <span style={{width:'28px',height:'1px',background:'#C9A84C'}} />
+          <span style={{fontFamily:'"DM Mono",monospace',fontSize:'10px',letterSpacing:'.3em',color:'#C9A84C'}}>NEW COLLECTION</span>
         </div>
+        <h1 style={{fontFamily:'"Bodoni Moda",serif',fontSize:'clamp(2.2rem,4.2vw,4.6rem)',fontWeight:700,lineHeight:1.08,color:'#fff',margin:'0 0 20px'}}>
+          Elegance<br/>Redefined
+        </h1>
+        <div style={{width:'64px',height:'1px',background:'linear-gradient(to right,#C9A84C,transparent)',marginBottom:'22px'}} />
+        <p style={{fontFamily:'"Jost",sans-serif',fontSize:'1rem',fontWeight:300,color:'rgba(255,255,255,.6)',marginBottom:'36px',lineHeight:1.8}}>
+          Discover Niya — curated ethnic wear for every moment.
+        </p>
+        <Link to="/products" className="nbp" style={{background:'#C9A84C',color:'#082B27',border:'1px solid #C9A84C'}}>
+          Explore Collection
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </Link>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <div
-      id="hero"
-      className="relative w-full overflow-hidden bg-gray-900"
-      style={{ height: '100vh' }}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      {slides.map((slide, index) => (
-        <HeroSlide key={slide._id} slide={slide} isActive={index === current} />
-      ))}
+    <section id="hero"
+      style={{position:'relative',width:'100%',height:'100vh',overflow:'hidden',background:'#082B27'}}
+      onMouseEnter={()=>setPaused(true)} onMouseLeave={()=>setPaused(false)}>
 
-      {/* Progress bar */}
-      {slides.length > 1 && !paused && (
-        <div className="absolute top-0 left-0 right-0 z-20 h-[2px] bg-white/10">
-          <div
-            key={progressKey}
-            className="hero-progress h-full"
-            style={{ animationDuration: `${DURATION}ms`, background: 'rgba(255,255,255,0.7)' }}
-          />
+      {slides.map((s,i) => <HeroSlide key={s._id} slide={s} isActive={i===current} />)}
+
+      {/* Progress */}
+      {slides.length>1 && (
+        <div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:30,height:'2px',background:'rgba(255,255,255,.08)'}}>
+          <div key={pKey} style={{height:'100%',background:'#C9A84C',transformOrigin:'left',animation:`nprog ${DURATION}ms linear forwards`}} />
         </div>
       )}
 
-      {/* Right arrow */}
-      {slides.length > 1 && (
-        <button
-          onClick={next}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center transition-all duration-300 hover:scale-110"
-          style={{
-            width: '44px', height: '44px',
-            borderRadius: '50%',
-            border: '1px solid rgba(255,255,255,0.4)',
-            background: 'rgba(0,0,0,0.25)',
-            backdropFilter: 'blur(8px)',
-            color: '#fff', fontSize: '18px',
-          }}
-        >
-          ›
-        </button>
+      {/* Arrows */}
+      {slides.length>1 && (
+        <>
+          <button onClick={prev} className="narr" style={{position:'absolute',left:'24px',top:'50%',transform:'translateY(-50%)',zIndex:20}} aria-label="Prev">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <button onClick={next} className="narr" style={{position:'absolute',right:'24px',top:'50%',transform:'translateY(-50%)',zIndex:20}} aria-label="Next">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </>
       )}
 
-      {/* Dot indicators */}
-      {slides.length > 1 && (
-        <div
-          className="absolute z-20 flex items-center gap-2"
-          style={{ bottom: '32px', left: '50%', transform: 'translateX(-50%)' }}
-        >
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => goTo(i)}
-              style={{
-                height: '3px',
-                width: i === current ? '28px' : '8px',
-                background: i === current ? '#fff' : 'rgba(255,255,255,0.35)',
-                border: 'none', padding: 0, cursor: 'pointer',
-                borderRadius: '2px',
-                transition: 'all 0.35s cubic-bezier(0.22,1,0.36,1)',
-              }}
-            />
+      {/* Dots */}
+      {slides.length>1 && (
+        <div style={{position:'absolute',bottom:'32px',left:'50%',transform:'translateX(-50%)',zIndex:20,display:'flex',gap:'10px',alignItems:'center'}}>
+          {slides.map((_,i) => (
+            <button key={i} onClick={()=>goTo(i)} aria-label={`Slide ${i+1}`}
+              style={{padding:0,border:'none',background:'none',cursor:'pointer',display:'flex',alignItems:'center'}}>
+              <span style={{display:'block',height:'1px',width:i===current?'36px':'12px',background:i===current?'#fff':'rgba(255,255,255,.3)',borderRadius:'1px',transition:'all .4s cubic-bezier(.22,1,.36,1)'}} />
+            </button>
           ))}
         </div>
       )}
 
-      {/* Slide counter */}
-      {slides.length > 1 && (
-        <div
-          className="absolute bottom-8 right-8 z-20"
-          style={{
-            fontFamily: '"Cormorant Garamond", serif',
-            color: 'rgba(255,255,255,0.5)',
-            fontSize: '12px', letterSpacing: '0.2em',
-          }}
-        >
-          {String(current + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')}
+      {/* Counter */}
+      {slides.length>1 && (
+        <div style={{position:'absolute',top:'50%',right:'16px',zIndex:20,transform:'translateY(-50%) rotate(90deg)',fontFamily:'"DM Mono",monospace',fontSize:'9px',letterSpacing:'.2em',color:'rgba(255,255,255,.3)',whiteSpace:'nowrap'}}>
+          {String(current+1).padStart(2,'0')} — {String(slides.length).padStart(2,'0')}
         </div>
       )}
-    </div>
+
+      {/* Scroll hint */}
+      <div style={{position:'absolute',bottom:'28px',left:'clamp(32px,8vw,120px)',zIndex:20,display:'flex',flexDirection:'column',alignItems:'center',gap:'6px',animation:'nfu 1s ease 1.5s both'}}>
+        <div style={{width:'1px',height:'40px',background:'linear-gradient(to bottom,rgba(255,255,255,.5),transparent)'}} />
+        <span style={{fontFamily:'"DM Mono",monospace',fontSize:'8px',letterSpacing:'.3em',color:'rgba(255,255,255,.3)'}}>SCROLL</span>
+      </div>
+    </section>
   );
 };
 

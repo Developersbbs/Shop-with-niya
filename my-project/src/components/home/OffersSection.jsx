@@ -1,331 +1,326 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Navigation } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
 
-const banners = [
-  {
-    img: "/images/banner1.JPG",
-    tag: "New Arrivals",
-    title: "Everyday\nKurtis",
-    subtitle: "Effortless style for every day",
-    desc: "From morning meetings to evening strolls — our kurtis and coord sets are made for women who do it all. Soft fabrics, beautiful prints, perfect fits.",
-    buttonText: "Shop Now",
-    buttonLink: "/products",
-    accent: "#082B27",
-    accentLight: "#f0fdf4",
-    imgLeft: true,
-  },
-  {
-    img: "/images/banner2.JPG",
-    tag: "Office Wear",
-    title: "Dress to\nImpress",
-    subtitle: "Professional looks, ethnic soul",
-    desc: "Structured coord sets and elegant kurtis that take you from desk to dinner — without missing a beat. Look polished, feel powerful.",
-    buttonText: "Explore Collection",
-    buttonLink: "/products",
-    accent: "#7c1d1d",
-    accentLight: "#fff5f5",
-    imgLeft: false,
-  },
-  {
-    img: "/images/banner3.webp",
-    tag: "Ethnic & Traditional",
-    title: "Rooted in\nElegance",
-    subtitle: "Timeless ethnic wear, reimagined",
-    desc: "Celebrate your culture in style. Our maxi dresses and ethnic kurtis blend tradition with modern silhouettes — perfect for every occasion worth dressing up for.",
-    buttonText: "Discover More",
-    buttonLink: "/products",
-    accent: "#713f12",
-    accentLight: "#fffbeb",
-    imgLeft: true,
-  },
-];
-
-const curatedLooks = [
-  { img: "/images/look1.jpg", label: "Everyday Wear", link: "/products?tag=everyday" },
-  { img: "/images/look2.webp", label: "Festive Looks", link: "/products?tag=festive" },
-  { img: "/images/look3.jpg", label: "Work Wear", link: "/products?tag=work" },
-  { img: "/images/look5.jpg", label: "Casual Chic", link: "/products?tag=casual" },
-  { img: "/images/look4.avif", label: "Party Wear", link: "/products?tag=party" },
-];
+const API_URL = (import.meta?.env?.VITE_API_URL || 'http://localhost:5000') + '/api';
 
 /* ── Scroll reveal hook ── */
-const useScrollReveal = (options = {}) => {
+const useReveal = (delay = 0, dir = 'up') => {
   const ref = useRef(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
+    const initTransform = dir==='left' ? 'translateX(-60px)' : dir==='right' ? 'translateX(60px)' : 'translateY(40px)';
+    el.style.opacity = '0';
+    el.style.transform = initTransform;
+    el.style.transition = `opacity .9s cubic-bezier(.22,1,.36,1) ${delay}ms, transform .9s cubic-bezier(.22,1,.36,1) ${delay}ms`;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) {
         el.style.opacity = '1';
-        el.style.transform = 'translate(0, 0)';
-        observer.unobserve(el);
+        el.style.transform = 'translate(0,0)';
+        obs.unobserve(el);
       }
-    }, { threshold: 0.2, ...options });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+    }, { threshold: 0.15 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [delay, dir]);
   return ref;
 };
 
-/* ── Single split banner ── */
-const BannerCard = ({ banner }) => {
-  const imgRef = useScrollReveal();
-  const textRef = useScrollReveal();
+const SectionLabel = ({ children, light }) => (
+  <div style={{display:'inline-flex',alignItems:'center',gap:'12px',marginBottom:'14px'}}>
+    <span style={{width:'28px',height:'1px',background:'#C9A84C',display:'inline-block'}} />
+    <span style={{fontFamily:'"DM Mono",monospace',fontSize:'10px',letterSpacing:'.3em',textTransform:'uppercase',color: light ? 'rgba(201,168,76,.7)' : '#C9A84C'}}>{children}</span>
+    <span style={{width:'28px',height:'1px',background:'#C9A84C',display:'inline-block'}} />
+  </div>
+);
 
-  const imgStyle = {
-    opacity: 0,
-    transform: banner.imgLeft ? 'translateX(-70px)' : 'translateX(70px)',
-    transition: 'opacity 0.9s ease, transform 0.9s cubic-bezier(0.22,1,0.36,1)',
-  };
-  const textStyle = {
-    opacity: 0,
-    transform: banner.imgLeft ? 'translateX(70px)' : 'translateX(-70px)',
-    transition: 'opacity 0.9s ease 0.18s, transform 0.9s cubic-bezier(0.22,1,0.36,1) 0.18s',
-  };
+/* ── Fallback static banners (shown when API has no data) ── */
+const STATIC_BANNERS = [
+  {
+    img:'/images/banner1.JPG', tag:'New Arrivals',
+    title:'Everyday\nKurtis', subtitle:'Effortless style for every day',
+    desc:'From morning meetings to evening strolls — our kurtis and coord sets are made for women who do it all.',
+    buttonText:'Shop Now', buttonLink:'/products', imgLeft:true,
+  },
+  {
+    img:'/images/banner2.JPG', tag:'Office Wear',
+    title:'Dress to\nImpress', subtitle:'Professional looks, ethnic soul',
+    desc:'Structured coord sets and elegant kurtis that take you from desk to dinner — without missing a beat.',
+    buttonText:'Explore Collection', buttonLink:'/products', imgLeft:false,
+  },
+  {
+    img:'/images/banner3.webp', tag:'Ethnic & Traditional',
+    title:'Rooted in\nElegance', subtitle:'Timeless ethnic wear, reimagined',
+    desc:'Celebrate your culture in style. Our maxi dresses and ethnic kurtis blend tradition with modern silhouettes.',
+    buttonText:'Discover More', buttonLink:'/products', imgLeft:true,
+  },
+];
+
+const LOOKS = [
+  { img:'/images/look1.jpg', label:'Everyday Wear', link:'/products?tag=everyday' },
+  { img:'/images/look2.webp', label:'Festive Looks', link:'/products?tag=festive' },
+  { img:'/images/look3.jpg', label:'Work Wear', link:'/products?tag=work' },
+  { img:'/images/look5.jpg', label:'Casual Chic', link:'/products?tag=casual' },
+  { img:'/images/look4.avif', label:'Party Wear', link:'/products?tag=party' },
+];
+
+/* ── Single split banner card ── */
+const BannerCard = ({ banner, index }) => {
+  const imgRef = useReveal(0, banner.imgLeft ? 'left' : 'right');
+  const textRef = useReveal(120, banner.imgLeft ? 'right' : 'left');
+  const [hovered, setHovered] = useState(false);
 
   return (
-    <div
-      className={`flex flex-col ${banner.imgLeft ? 'md:flex-row' : 'md:flex-row-reverse'}
-                  items-stretch overflow-hidden rounded-3xl shadow-lg`}
-      style={{ background: banner.accentLight }}
+    <div style={{
+      display:'grid',
+      gridTemplateColumns: banner.imgLeft ? '1fr 1fr' : '1fr 1fr',
+      gridTemplateRows:'auto',
+      minHeight:'560px',
+      borderRadius:'2px',
+      overflow:'hidden',
+      background:'#082B27',
+      boxShadow:'0 8px 40px rgba(8,43,39,.15)',
+    }}
+      className="banner-card-grid"
     >
-      {/* Image */}
-      <div ref={imgRef} style={imgStyle}
-           className="w-full md:w-1/2 h-96 md:h-[600px] overflow-hidden flex-shrink-0">
-        <img
-          src={banner.img}
-          alt={banner.title}
-          className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-        />
+      {/* Image side */}
+      <div ref={imgRef} style={{
+        gridColumn: banner.imgLeft ? '1' : '2',
+        gridRow:'1',
+        position:'relative',overflow:'hidden',
+        minHeight:'480px',
+      }}>
+        <img src={banner.img} alt={banner.title}
+          style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top',
+            transform: hovered ? 'scale(1.05)' : 'scale(1)',
+            transition:'transform .8s cubic-bezier(.22,1,.36,1)'
+          }} />
+        <div style={{position:'absolute',inset:0,background: banner.imgLeft
+          ? 'linear-gradient(to right, transparent 60%, rgba(8,43,39,.5) 100%)'
+          : 'linear-gradient(to left, transparent 60%, rgba(8,43,39,.5) 100%)'
+        }} />
       </div>
 
-      {/* Text */}
-      <div ref={textRef} style={textStyle}
-           className="w-full md:w-1/2 flex flex-col justify-center px-8 md:px-16 py-12 md:py-0">
-
-        <span
-          className="inline-block w-fit px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.18em] mb-5"
-          style={{ background: banner.accent, color: '#fff' }}
-        >
-          {banner.tag}
+      {/* Text side */}
+      <div ref={textRef}
+        style={{
+          gridColumn: banner.imgLeft ? '2' : '1',
+          gridRow:'1',
+          display:'flex',flexDirection:'column',justifyContent:'center',
+          padding:'clamp(40px,5vw,80px) clamp(32px,5vw,72px)',
+          background:'#082B27',
+        }}
+        onMouseEnter={()=>setHovered(true)}
+        onMouseLeave={()=>setHovered(false)}
+      >
+        <span style={{
+          display:'inline-block',alignSelf:'flex-start',
+          padding:'6px 16px',borderRadius:'2px',marginBottom:'28px',
+          fontFamily:'"DM Mono",monospace',fontSize:'9px',fontWeight:400,letterSpacing:'.3em',textTransform:'uppercase',
+          background:'rgba(201,168,76,.12)',color:'#C9A84C',border:'1px solid rgba(201,168,76,.25)',
+        }}>
+          {banner.tag || banner.label}
         </span>
 
-        <h2
-          className="font-black leading-[1.05] mb-4 whitespace-pre-line"
-          style={{
-            fontSize: 'clamp(2.8rem, 5vw, 4.5rem)',
-            color: banner.accent,
-            fontFamily: '"Playfair Display", Georgia, serif',
-            letterSpacing: '-0.02em',
-          }}
-        >
+        <h2 style={{
+          fontFamily:'"Bodoni Moda",serif',
+          fontSize:'clamp(2.2rem,3.5vw,3.8rem)',fontWeight:700,lineHeight:1.08,
+          letterSpacing:'-.02em',color:'#FAF7F2',margin:'0 0 16px',whiteSpace:'pre-line',
+        }}>
           {banner.title}
         </h2>
 
-        <p
-          className="font-semibold mb-3"
-          style={{ color: banner.accent, opacity: 0.75, fontSize: '1.05rem' }}
-        >
-          {banner.subtitle}
+        {banner.subtitle && (
+          <p style={{fontFamily:'"Jost",sans-serif',fontSize:'1rem',fontWeight:300,color:'rgba(245,239,224,.6)',marginBottom:'16px',letterSpacing:'.02em'}}>
+            {banner.subtitle}
+          </p>
+        )}
+
+        <div style={{width:'48px',height:'1px',background:'linear-gradient(to right,#C9A84C,transparent)',marginBottom:'20px'}} />
+
+        <p style={{fontFamily:'"Jost",sans-serif',fontSize:'.9rem',fontWeight:300,color:'rgba(245,239,224,.55)',lineHeight:1.85,marginBottom:'36px',maxWidth:'380px'}}>
+          {banner.desc || banner.description}
         </p>
 
-        <div className="w-10 h-[3px] rounded-full mb-5"
-             style={{ background: banner.accent }} />
-
-        <p className="text-gray-500 leading-relaxed mb-9 max-w-xs text-sm">
-          {banner.desc}
-        </p>
-
-        <Link
-          to={banner.buttonLink}
-          className="inline-flex items-center gap-2.5 w-fit px-7 py-3.5 rounded-full
-                     font-semibold text-sm text-white
-                     transition-all duration-300 hover:scale-105 active:scale-95"
-          style={{
-            background: banner.accent,
-            boxShadow: `0 6px 22px ${banner.accent}45`,
-            fontFamily: '"Inter", sans-serif',
-          }}
-        >
-          {banner.buttonText}
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
-                  d="M13 7l5 5-5 5M6 12h12" />
-          </svg>
+        <Link to={banner.buttonLink || banner.link || '/products'} style={{
+          display:'inline-flex',alignItems:'center',gap:'10px',alignSelf:'flex-start',
+          padding:'14px 32px',borderRadius:'2px',
+          fontFamily:'"Jost",sans-serif',fontSize:'11px',fontWeight:600,letterSpacing:'.2em',textTransform:'uppercase',
+          textDecoration:'none',background:'#C9A84C',color:'#082B27',
+          transition:'all .3s ease',
+        }}
+          onMouseEnter={e=>{e.currentTarget.style.background='#d4b25e';e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(201,168,76,.35)';}}
+          onMouseLeave={e=>{e.currentTarget.style.background='#C9A84C';e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}>
+          {banner.buttonText || 'Shop Now'}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </Link>
       </div>
     </div>
   );
 };
 
-/* ── Curated Looks card ── */
+/* ── Look card ── */
 const LookCard = ({ look, index }) => {
-  const ref = useScrollReveal();
+  const ref = useReveal(index * 80, 'up');
+  const [hovered, setHovered] = useState(false);
+
   return (
-    <div
-      ref={ref}
-      style={{
-        opacity: 0,
-        transform: 'translateY(50px)',
-        transition: `opacity 0.7s ease ${index * 0.1}s, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${index * 0.1}s`,
-      }}
-    >
-      <Link to={look.link} className="group block relative overflow-hidden rounded-2xl">
-        {/* Image */}
-        <div className="overflow-hidden" style={{ aspectRatio: '3/4' }}>
-          <img
-            src={look.img}
-            alt={look.label}
-            className="w-full h-full object-cover object-top
-                       group-hover:scale-105 transition-transform duration-700"
-          />
+    <div ref={ref}>
+      <Link to={look.link} style={{display:'block',textDecoration:'none',position:'relative'}}
+        onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)}>
+        <div style={{position:'relative',aspectRatio:'3/4',overflow:'hidden',borderRadius:'2px'}}>
+          <img src={look.img} alt={look.label} style={{
+            width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top',
+            transform: hovered ? 'scale(1.06)' : 'scale(1)',
+            transition:'transform .7s cubic-bezier(.22,1,.36,1)',
+          }} />
+          <div style={{
+            position:'absolute',inset:0,
+            background:'linear-gradient(to top,rgba(8,43,39,.75) 0%,transparent 55%)',
+            opacity: hovered ? 1 : 0.5,
+            transition:'opacity .4s ease',
+          }} />
+          <div style={{
+            position:'absolute',bottom:'16px',left:0,right:0,
+            display:'flex',justifyContent:'center',
+            transform: hovered ? 'translateY(0)' : 'translateY(8px)',
+            opacity: hovered ? 1 : 0,
+            transition:'all .35s ease',
+          }}>
+            <span style={{
+              display:'inline-flex',alignItems:'center',gap:'6px',
+              padding:'8px 20px',borderRadius:'2px',
+              background:'rgba(201,168,76,.9)',color:'#082B27',
+              fontFamily:'"Jost",sans-serif',fontSize:'11px',fontWeight:600,letterSpacing:'.18em',textTransform:'uppercase',
+            }}>
+              Shop All
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </span>
+          </div>
         </div>
-
-        {/* Overlay on hover */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25
-                        transition-all duration-300 rounded-2xl" />
-
-        {/* Shop All button */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2
-                        translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100
-                        transition-all duration-300">
-          <span
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full
-                       bg-white text-[#082B27] font-bold text-xs shadow-xl whitespace-nowrap"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-            Shop All
-          </span>
-        </div>
+        <p style={{
+          fontFamily:'"Bodoni Moda",serif',fontSize:'.95rem',fontWeight:600,
+          color:'#082B27',textAlign:'center',marginTop:'12px',letterSpacing:'-.01em',
+          transition:'color .2s ease',
+          ...(hovered ? {color:'#C9A84C'} : {}),
+        }}>
+          {look.label}
+        </p>
       </Link>
-
-      {/* Label */}
-      <p
-        className="text-center mt-3 font-semibold text-gray-700 text-sm"
-        style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
-      >
-        {look.label}
-      </p>
     </div>
   );
 };
 
-/* ── Main export ── */
 const OffersSection = () => {
+  const [banners, setBanners] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const headerRef = useReveal(0, 'up');
+  const looksHeaderRef = useReveal(0, 'up');
+
+  useEffect(() => {
+    fetch(`${API_URL}/offers`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.data?.length > 0) setBanners(d.data);
+        else setBanners(STATIC_BANNERS);
+      })
+      .catch(() => setBanners(STATIC_BANNERS))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const displayBanners = banners.length > 0 ? banners : STATIC_BANNERS;
+
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&display=swap');
-
+        @media (max-width:768px) {
+          .banner-card-grid { grid-template-columns:1fr !important; }
+          .banner-card-grid > div { grid-column:1 !important; grid-row:auto !important; }
+        }
         .looks-swiper .swiper-button-next,
         .looks-swiper .swiper-button-prev {
-          width: 38px; height: 38px;
-          background: white;
-          border-radius: 50%;
-          border: 1px solid #e5e7eb;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.10);
-          color: #082B27;
-          transition: all 0.2s ease;
+          width:40px;height:40px;background:#082B27;border-radius:2px;
+          border:1px solid rgba(201,168,76,.3);color:#C9A84C;transition:all .25s ease;
+          --swiper-navigation-size:14px;
         }
         .looks-swiper .swiper-button-next:hover,
         .looks-swiper .swiper-button-prev:hover {
-          background: #082B27;
-          color: white;
-          border-color: #082B27;
-        }
-        .looks-swiper .swiper-button-next::after,
-        .looks-swiper .swiper-button-prev::after {
-          font-size: 12px; font-weight: 800;
+          background:#C9A84C;color:#082B27;border-color:#C9A84C;
         }
       `}</style>
 
-      {/* ── Split Banners ── */}
-      <section className="container mx-auto px-4 py-12 space-y-8">
-        <div className="text-center mb-10">
-          <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Collections</span>
-          <h2
-            className="text-4xl md:text-5xl font-black text-gray-900 mt-2"
-            style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
-          >
-            Explore Our <span style={{ color: "#082B27" }}>Latest Drops</span>
-          </h2>
-        </div>
+      {/* ── Banners Section ── */}
+      <section style={{padding:'100px 0',background:'#FAF7F2',position:'relative'}}>
+        <div style={{maxWidth:'1280px',margin:'0 auto',padding:'0 clamp(20px,5vw,64px)'}}>
 
-        {banners.map((banner, i) => (
-          <BannerCard key={i} banner={banner} />
-        ))}
+          <div ref={headerRef} style={{textAlign:'center',marginBottom:'64px'}}>
+            <SectionLabel>Collections</SectionLabel>
+            <h2 style={{fontFamily:'"Bodoni Moda",serif',fontSize:'clamp(2rem,4vw,3.2rem)',fontWeight:700,color:'#082B27',margin:0,letterSpacing:'-.02em',lineHeight:1.1}}>
+              Our Latest <em style={{fontStyle:'italic',color:'#C9A84C'}}>Drops</em>
+            </h2>
+          </div>
+
+          <div style={{display:'flex',flexDirection:'column',gap:'32px'}}>
+            {displayBanners.map((b,i) => (
+              <BannerCard key={i} banner={{...b, imgLeft:i%2===0}} index={i} />
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* ── Curated Looks ── */}
-      <section className="py-16 bg-gray-50">
-        <div className="container mx-auto px-4">
+      <section style={{padding:'100px 0',background:'#082B27',position:'relative',overflow:'hidden'}}>
+        {/* Grain overlay */}
+        <div style={{
+          position:'absolute',inset:'-50%',width:'200%',height:'200%',
+          opacity:.03,pointerEvents:'none',
+          backgroundImage:'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 512 512\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
+          animation:'ngrain 8s steps(10) infinite',
+        }} />
 
-          <div className="text-center mb-12">
-            <span className="text-xs font-bold uppercase tracking-widest text-gray-400">
-              Styled For You
-            </span>
-            <h2
-              className="text-4xl md:text-5xl font-black text-gray-900 mt-2"
-              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
-            >
-              Curated <span style={{ color: "#082B27" }}>Looks</span>
+        <div style={{maxWidth:'1280px',margin:'0 auto',padding:'0 clamp(20px,5vw,64px)',position:'relative',zIndex:1}}>
+
+          <div ref={looksHeaderRef} style={{textAlign:'center',marginBottom:'56px'}}>
+            <SectionLabel light>Styled For You</SectionLabel>
+            <h2 style={{fontFamily:'"Bodoni Moda",serif',fontSize:'clamp(2rem,4vw,3.2rem)',fontWeight:700,color:'#FAF7F2',margin:0,letterSpacing:'-.02em',lineHeight:1.1}}>
+              Curated <em style={{fontStyle:'italic',color:'#C9A84C'}}>Looks</em>
             </h2>
-            <p className="text-gray-500 mt-3 max-w-xl mx-auto text-sm leading-relaxed">
+            <p style={{fontFamily:'"Jost",sans-serif',fontSize:'1rem',fontWeight:300,color:'rgba(245,239,224,.5)',marginTop:'14px',maxWidth:'440px',margin:'14px auto 0',lineHeight:1.7}}>
               Handpicked outfits for every occasion — because every woman deserves to feel her best.
             </p>
           </div>
 
-          <div className="relative">
-            <Swiper
-              modules={[Autoplay, Navigation]}
-              navigation
-              autoplay={{ delay: 3000, disableOnInteraction: false }}
-              loop
-              spaceBetween={20}
-              slidesPerView={2}
-              breakpoints={{
-                640:  { slidesPerView: 2 },
-                768:  { slidesPerView: 3 },
-                1024: { slidesPerView: 4 },
-                1280: { slidesPerView: 5 },
-              }}
-              className="looks-swiper"
-            >
-              {curatedLooks.map((look, i) => (
-                <SwiperSlide key={i}>
-                  <LookCard look={look} index={i} />
-                </SwiperSlide>
-              ))}
-            </Swiper>
-          </div>
+          <Swiper
+            modules={[Autoplay, Navigation]}
+            navigation
+            autoplay={{ delay:3200, disableOnInteraction:false }}
+            loop spaceBetween={20} slidesPerView={2}
+            breakpoints={{640:{slidesPerView:2},768:{slidesPerView:3},1024:{slidesPerView:4},1280:{slidesPerView:5}}}
+            className="looks-swiper"
+          >
+            {LOOKS.map((l,i) => (
+              <SwiperSlide key={i}><LookCard look={l} index={i} /></SwiperSlide>
+            ))}
+          </Swiper>
 
-          <div className="text-center mt-10">
-            <Link
-              to="/products"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full
-                         font-semibold text-sm text-white transition-all duration-300
-                         hover:scale-105 active:scale-95"
-              style={{
-                background: '#082B27',
-                boxShadow: '0 6px 22px rgba(8,43,39,0.35)',
-                fontFamily: '"Inter", sans-serif',
-              }}
-            >
+          <div style={{textAlign:'center',marginTop:'52px'}}>
+            <Link to="/products" style={{
+              display:'inline-flex',alignItems:'center',gap:'10px',
+              padding:'14px 36px',borderRadius:'2px',textDecoration:'none',
+              fontFamily:'"Jost",sans-serif',fontSize:'11px',fontWeight:600,letterSpacing:'.2em',textTransform:'uppercase',
+              background:'transparent',color:'#C9A84C',border:'1px solid rgba(201,168,76,.4)',
+              transition:'all .3s ease',
+            }}
+              onMouseEnter={e=>{e.currentTarget.style.background='#C9A84C';e.currentTarget.style.color='#082B27';e.currentTarget.style.borderColor='#C9A84C';}}
+              onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='#C9A84C';e.currentTarget.style.borderColor='rgba(201,168,76,.4)';}}>
               View All Looks
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
-                      d="M13 7l5 5-5 5M6 12h12" />
-              </svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </Link>
           </div>
-
         </div>
       </section>
     </>

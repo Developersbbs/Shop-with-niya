@@ -10,7 +10,7 @@ const ProductCard = memo(({ product, viewMode = 'grid' }) => {
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const navigate = useNavigate();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [imgHovered, setImgHovered] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
   const productInWishlist = isInWishlist(product._id);
   const productInCart = isInCart(product._id);
@@ -38,40 +38,35 @@ const ProductCard = memo(({ product, viewMode = 'grid' }) => {
     ? `/product/${parentProductId}`
     : `/product/${slug || _id}`;
 
-  const toggleWishlist = async (e) => {
-    e.preventDefault(); e.stopPropagation();
-    try {
-      if (productInWishlist) { await removeFromWishlist(product._id); toast.success('Removed from wishlist'); }
-      else { await addToWishlist(product); toast.success('Added to wishlist'); }
-    } catch { toast.error('Failed to update wishlist'); }
+  // ── Images ──────────────────────────────────────────────
+  const getPlaceholderImage = () => {
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='400' height='500' viewBox='0 0 400 500'><rect width='400' height='500' fill='#f0ede8'/><text x='50%' y='50%' font-size='13' text-anchor='middle' dominant-baseline='middle' fill='#c4bfb8' font-family='Georgia,serif'>No Image</text></svg>`;
+    return `data:image/svg+xml;base64,${btoa(svg)}`;
   };
 
-  const handleAddToCart = async (e) => {
-    e.preventDefault(); e.stopPropagation();
-    if (isAddingToCart) return;
-    if (isVariantProduct && variantData) {
-      setIsAddingToCart(true);
-      try {
-        await addToCart({
-          ...variantData, _id: parentProductId,
-          name: product.originalName || product.name,
-          description: product.originalDescription || product.description,
-          categories: product.originalCategories || product.categories,
-        }, variantData, 1);
-        toast.success('Added to cart');
-      } catch { toast.error('Failed to add to cart'); }
-      finally { setIsAddingToCart(false); }
-    } else if (product_structure === 'variant' && product_variants?.length > 0) {
-      navigate(`/product/${slug || _id}`);
-    } else {
-      setIsAddingToCart(true);
-      try { await addToCart(product, null, 1); toast.success('Added to cart'); }
-      catch { toast.error('Failed to add to cart'); }
-      finally { setIsAddingToCart(false); }
-    }
+  const resolveImg = (img) => {
+    if (!img) return null;
+    const src = img.url || img;
+    if (typeof src !== 'string') return null;
+    return src.startsWith('http') ? src : `/uploads/${src}`;
   };
 
-  // Price
+  // Primary image
+  let primaryImage = null;
+  if (isVariantProduct && variantData?.images?.length > 0) primaryImage = resolveImg(variantData.images[0]);
+  else if (product_structure === 'variant' && product_variants?.[0]?.images?.length > 0)
+    primaryImage = resolveImg(product_variants[0].images[0]);
+  if (!primaryImage && Array.isArray(image_url) && image_url.length > 0)
+    primaryImage = resolveImg(image_url[0]);
+  if (!primaryImage) primaryImage = getPlaceholderImage();
+
+  // Hover image (second image if available)
+  let hoverImage = null;
+  if (Array.isArray(image_url) && image_url.length > 1) hoverImage = resolveImg(image_url[1]);
+  else if (product_structure === 'variant' && product_variants?.[0]?.images?.length > 1)
+    hoverImage = resolveImg(product_variants[0].images[1]);
+
+  // ── Price ───────────────────────────────────────────────
   let displayPrice = null;
   if (isVariantProduct && variantData) {
     displayPrice = variantData.selling_price || variantData.salesPrice || selling_price || salePrice || price;
@@ -91,141 +86,119 @@ const ProductCard = memo(({ product, viewMode = 'grid' }) => {
   const discountPct = originalPrice && displayPrice
     ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100) : null;
 
-  // Image
-  let displayImage = null;
-  if (isVariantProduct && variantData?.images?.length > 0) displayImage = variantData.images[0];
-  else if (product_structure === 'variant' && product_variants?.[0]?.images?.length > 0)
-    displayImage = product_variants[0].images[0];
-
-  const getPlaceholderImage = () => {
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'><rect width='300' height='300' fill='#f3f4f6'/><text x='50%' y='50%' font-size='13' text-anchor='middle' dominant-baseline='middle' fill='#d1d5db' font-family='sans-serif'>No Image</text></svg>`;
-    return `data:image/svg+xml;base64,${btoa(svg)}`;
+  // ── Actions ─────────────────────────────────────────────
+  const toggleWishlist = async (e) => {
+    e.preventDefault(); e.stopPropagation();
+    try {
+      if (productInWishlist) { await removeFromWishlist(product._id); toast.success('Removed from wishlist'); }
+      else { await addToWishlist(product); toast.success('Added to wishlist'); }
+    } catch { toast.error('Failed to update wishlist'); }
   };
 
-  const getMainImage = () => {
-    if (displayImage) return displayImage.startsWith('http') ? displayImage : `/uploads/${displayImage}`;
-    if (!image_url || !Array.isArray(image_url) || image_url.length === 0) return getPlaceholderImage();
-    const valid = image_url.find(img => img && (img.url || img));
-    return valid ? (valid.url || valid) : getPlaceholderImage();
+  const handleAddToCart = async (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (isAddingToCart) return;
+    if (isVariantProduct && variantData) {
+      setIsAddingToCart(true);
+      try {
+        await addToCart({ ...variantData, _id: parentProductId, name: product.originalName || product.name }, variantData, 1);
+        toast.success('Added to cart');
+      } catch { toast.error('Failed to add to cart'); }
+      finally { setIsAddingToCart(false); }
+    } else if (product_structure === 'variant' && product_variants?.length > 0) {
+      navigate(`/product/${slug || _id}`);
+    } else {
+      setIsAddingToCart(true);
+      try { await addToCart(product, null, 1); toast.success('Added to cart'); }
+      catch { toast.error('Failed to add to cart'); }
+      finally { setIsAddingToCart(false); }
+    }
   };
 
-  const mainImage = getMainImage();
   const ratingValue = averageRating || 0;
 
-  const getVariantAttributes = () => {
-    if (!isVariantProduct || !variantData?.attributes) return null;
-    const attrs = Object.entries(variantData.attributes).map(([k, v]) => `${k}: ${v}`);
-    return attrs.length > 0 ? attrs.join(' · ') : null;
-  };
-  const variantAttributes = getVariantAttributes();
-
-  const Stars = () => (
-    <div className="flex gap-0.5 flex-shrink-0">
-      {[...Array(5)].map((_, i) => (
-        <svg key={i} viewBox="0 0 20 20"
-          className={`w-2.5 h-2.5 ${i < Math.round(ratingValue) ? 'text-amber-400 fill-current' : 'text-gray-200 fill-current'}`}>
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      ))}
-    </div>
-  );
-
-  const HeartIcon = () => (
-    <svg viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-      className="w-3.5 h-3.5" fill={productInWishlist ? 'currentColor' : 'none'}>
-      <path strokeLinecap="round" strokeLinejoin="round"
-        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-    </svg>
-  );
-
-  const Spin = () => (
-    <svg className="animate-spin w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-    </svg>
-  );
-
-  const ImgPlaceholder = () => (
-    <div className="w-full h-full flex items-center justify-center bg-gray-50">
-      <svg className="w-8 h-8 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
-          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-    </div>
-  );
-
-  // ══════════════════════════════
-  //  LIST VIEW
-  // ══════════════════════════════
+  // ── LIST VIEW ────────────────────────────────────────────
   if (viewMode === 'list') {
     return (
-      <div className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
-        style={{ fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
-        <div className="flex" style={{ minHeight: '120px' }}>
-          <Link to={productLink}
-            className="relative flex-shrink-0 bg-gray-50 overflow-hidden"
-            style={{ width: '110px' }}>
-            <LazyImage src={mainImage} alt={name}
-              className="absolute inset-0 w-full h-full object-contain p-3"
-              placeholder={<ImgPlaceholder />} />
-            {discountPct && (
-              <span className="absolute top-2 left-2 text-white font-bold rounded-full"
-                style={{ fontSize: '9px', padding: '2px 6px', background: '#f43f5e' }}>
-                -{discountPct}%
-              </span>
-            )}
-            {isOutOfStock && (
-              <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-                <span className="text-gray-500 font-semibold bg-white/90 border border-gray-200 rounded-full"
-                  style={{ fontSize: '9px', padding: '2px 8px' }}>Sold Out</span>
-              </div>
-            )}
-          </Link>
-          <div className="flex flex-col flex-1 min-w-0 p-3 gap-1">
+      <div
+        className="group w-full bg-white border border-[#e8e2da] hover:border-[#1a3c2e]/30 overflow-hidden transition-all duration-300 hover:shadow-md flex"
+        style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+      >
+        <Link to={productLink} className="relative flex-shrink-0 bg-[#f7f4f0] overflow-hidden" style={{ width: 140, height: 140 }}>
+          <img src={primaryImage} alt={name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          {isOutOfStock && (
+            <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
+              <span className="text-[10px] tracking-widest uppercase text-[#1a3c2e]/60 bg-white px-3 py-1 border border-[#1a3c2e]/20">Sold Out</span>
+            </div>
+          )}
+          {discountPct && (
+            <span className="absolute top-2 left-2 bg-[#c9a96e] text-white text-[9px] tracking-widest uppercase px-2 py-0.5">-{discountPct}%</span>
+          )}
+        </Link>
+
+        <div className="flex flex-col flex-1 p-4 justify-between min-w-0">
+          <div>
             <Link to={productLink}>
-              <h3 className="font-semibold text-gray-900 leading-snug hover:text-indigo-600 transition-colors line-clamp-2"
-                style={{ fontSize: '13px' }}>{name}</h3>
+              {/* ✅ Playfair Display for product name */}
+              <h3
+                className="text-[#1a3c2e] leading-snug hover:text-[#c9a96e] transition-colors line-clamp-2"
+                style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontSize: 15,
+                  fontWeight: 600,
+                }}
+              >
+                {name}
+              </h3>
             </Link>
-            {variantAttributes && (
-              <p className="text-indigo-500 font-medium truncate" style={{ fontSize: '10px' }}>{variantAttributes}</p>
-            )}
-            <div className="flex items-center gap-1">
-              <Stars />
-              <span className="text-gray-400" style={{ fontSize: '10px' }}>({numReviews || 0})</span>
+            <div className="flex gap-0.5 mt-1.5">
+              {[...Array(5)].map((_, i) => (
+                <svg key={i} viewBox="0 0 20 20" className={`w-3 h-3 ${i < Math.round(ratingValue) ? 'text-[#c9a96e]' : 'text-gray-200'} fill-current`}>
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              ))}
+              <span className="text-[#1a3c2e]/40 text-[10px] ml-1">({numReviews || 0})</span>
             </div>
-            <div className="flex items-baseline gap-1.5 flex-wrap">
+          </div>
+
+          <div className="flex items-center justify-between mt-3">
+            <div>
+              {/* ✅ Playfair Display for cost price (strikethrough) */}
               {originalPrice && (
-                <span className="text-gray-400 line-through" style={{ fontSize: '11px' }}>
-                  ₹{Number(originalPrice).toFixed(2)}
-                </span>
+                <p
+                  className="text-[#1a3c2e]/30 line-through"
+                  style={{
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    fontSize: 12,
+                  }}
+                >
+                  ₹{Number(originalPrice).toFixed(0)}
+                </p>
               )}
-              <span className="font-bold text-gray-900" style={{ fontSize: '15px' }}>
-                ₹{displayPrice ? Number(displayPrice).toFixed(2) : '0.00'}
-              </span>
+              {/* ✅ Playfair Display for selling price */}
+              <p
+                className="text-[#1a3c2e] font-bold text-lg"
+                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+              >
+                ₹{displayPrice ? Number(displayPrice).toFixed(0) : '—'}
+              </p>
             </div>
-            <div className="flex items-center justify-between gap-2 mt-auto pt-1 flex-wrap">
-              <div className={`flex items-center gap-1 rounded-full font-semibold flex-shrink-0 ${isOutOfStock ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}
-                style={{ fontSize: '9px', padding: '3px 8px' }}>
-                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOutOfStock ? 'bg-red-400' : 'bg-emerald-400'}`} />
-                {isOutOfStock ? 'Out of Stock' : 'In Stock'}
-              </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <button onClick={toggleWishlist}
-                  className={`flex items-center justify-center rounded-lg border transition-colors ${productInWishlist ? 'bg-rose-50 border-rose-200 text-rose-500' : 'bg-gray-50 border-gray-200 text-gray-400 hover:text-rose-500'}`}
-                  style={{ width: '32px', height: '32px' }}>
-                  <HeartIcon />
-                </button>
-                <button onClick={handleAddToCart} disabled={isAddingToCart || isOutOfStock}
-                  className={`flex items-center justify-center gap-1 rounded-lg font-semibold transition-all active:scale-95 ${productInCart ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'text-white'}`}
-                  style={{ height: '32px', padding: '0 12px', fontSize: '11px', backgroundColor: !productInCart && !isOutOfStock ? '#4b5563' : undefined, minWidth: '70px' }}>
-                  {isAddingToCart ? <Spin /> : productInCart ? (
-                    <><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>In Cart</>
-                  ) : isOutOfStock ? 'Sold Out'
-                    : product_structure === 'variant' && product_variants?.length > 0 ? 'Options'
-                    : 'Add'}
-                </button>
-              </div>
+            <div className="flex gap-2">
+              <button
+                onClick={toggleWishlist}
+                className={`w-9 h-9 flex items-center justify-center border transition-all ${productInWishlist ? 'border-rose-300 text-rose-500 bg-rose-50' : 'border-[#1a3c2e]/20 text-[#1a3c2e]/40 hover:text-rose-500'}`}
+              >
+                <svg viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="w-4 h-4" fill={productInWishlist ? 'currentColor' : 'none'}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </button>
+              <button
+                onClick={handleAddToCart}
+                disabled={isAddingToCart || isOutOfStock}
+                className={`px-5 h-9 text-xs tracking-widest uppercase font-medium transition-all ${productInCart ? 'bg-[#1a3c2e]/10 text-[#1a3c2e]' : isOutOfStock ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-[#1a3c2e] text-white hover:bg-[#2d5a42]'}`}
+              >
+                {isAddingToCart ? '…' : productInCart ? '✓ Added' : isOutOfStock ? 'Sold Out' : product_structure === 'variant' ? 'Options' : 'Add to Cart'}
+              </button>
             </div>
           </div>
         </div>
@@ -233,176 +206,176 @@ const ProductCard = memo(({ product, viewMode = 'grid' }) => {
     );
   }
 
-  // ══════════════════════════════════════════
-  //  GRID VIEW — fixed for 2-col mobile
-  // ══════════════════════════════════════════
+  // ── GRID VIEW ────────────────────────────────────────────
   return (
     <>
       <style>{`
-        .pc-card { box-shadow: 0 1px 4px rgba(0,0,0,0.08); transition: box-shadow 0.3s, transform 0.3s; }
-        @media (hover: hover) {
-          .pc-card:hover { box-shadow: 0 12px 36px rgba(0,0,0,0.13); transform: translateY(-3px); }
-        }
-        .pc-wish { opacity: 1; transition: opacity 0.2s; }
-        @media (hover: hover) {
-          .pc-wish { opacity: 0; }
-          .pc-card:hover .pc-wish { opacity: 1; }
-        }
-        .pc-wish-on { opacity: 1 !important; }
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+        .niya-card { transition: box-shadow 0.4s ease, transform 0.4s ease; }
+        .niya-card:hover { box-shadow: 0 20px 60px rgba(26,60,46,0.12); transform: translateY(-4px); }
+        .niya-img-primary { transition: opacity 0.5s ease, transform 0.7s ease; }
+        .niya-img-hover { transition: opacity 0.5s ease, transform 0.7s ease; }
+        .niya-card:hover .niya-img-primary { opacity: 0; transform: scale(1.06); }
+        .niya-card:hover .niya-img-hover { opacity: 1; transform: scale(1.04); }
+        .niya-card .niya-img-hover { opacity: 0; }
+        .niya-wish { transition: opacity 0.25s ease; opacity: 0; }
+        .niya-card:hover .niya-wish { opacity: 1; }
+        .niya-wish-active { opacity: 1 !important; }
       `}</style>
 
-      <div className="pc-card relative bg-white rounded-xl overflow-hidden flex flex-col w-full h-full"
-        style={{ fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
+      <div
+        className="niya-card relative bg-white flex flex-col w-full overflow-hidden"
+        style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", border: '1px solid #ede8e0' }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {/* ── Image Area ── */}
+        <Link to={productLink} className="relative block w-full bg-[#f7f4f0] overflow-hidden flex-shrink-0" style={{ paddingTop: '125%' }}>
 
-        {/* ── Square image via padding trick ── */}
-        <Link to={productLink} className="relative block w-full flex-shrink-0 bg-gray-50 overflow-hidden"
-          style={{ paddingTop: '100%' }}
-          onMouseEnter={() => setImgHovered(true)}
-          onMouseLeave={() => setImgHovered(false)}>
-          <div className="absolute inset-0">
-            <LazyImage
-              src={mainImage} alt={name}
-              className="w-full h-full object-contain p-2 sm:p-4"
-              style={{
-                mixBlendMode: 'multiply',
-                transition: 'transform 0.5s ease',
-                transform: imgHovered ? 'scale(1.06)' : 'scale(1)',
-              }}
-              placeholder={<ImgPlaceholder />}
+          {/* Primary image */}
+          <img
+            src={primaryImage}
+            alt={name}
+            className="niya-img-primary absolute inset-0 w-full h-full object-cover"
+            onError={e => { e.target.src = getPlaceholderImage(); }}
+          />
+
+          {/* Hover image */}
+          {hoverImage && (
+            <img
+              src={hoverImage}
+              alt={`${name} - alternate`}
+              className="niya-img-hover absolute inset-0 w-full h-full object-cover"
+              onError={e => { e.target.style.display = 'none'; }}
             />
-          </div>
+          )}
+
+          {/* Sold out overlay */}
+          {isOutOfStock && (
+            <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+              <span className="text-[10px] tracking-[0.3em] uppercase text-[#1a3c2e]/50 bg-white/90 px-4 py-1.5 border border-[#1a3c2e]/15">
+                Sold Out
+              </span>
+            </div>
+          )}
 
           {/* Badges */}
-          <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 z-10"
-            style={{ maxWidth: 'calc(100% - 36px)' }}>
+          <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-20">
             {discountPct && (
-              <span className="text-white font-bold rounded-full self-start"
-                style={{ fontSize: '8px', padding: '2px 6px', background: '#f43f5e', whiteSpace: 'nowrap' }}>
+              <span className="bg-[#c9a96e] text-white text-[9px] tracking-[0.2em] uppercase px-2.5 py-1 font-medium">
                 -{discountPct}%
               </span>
             )}
-            {isOutOfStock && (
-              <span className="text-white font-semibold rounded-full self-start"
-                style={{ fontSize: '8px', padding: '2px 6px', background: '#374151', whiteSpace: 'nowrap' }}>
-                SOLD OUT
+            {product_structure === 'variant' && (
+              <span className="bg-[#1a3c2e] text-white text-[9px] tracking-[0.15em] uppercase px-2.5 py-1">
+                Options
               </span>
             )}
           </div>
 
-          {isOutOfStock && <div className="absolute inset-0 bg-white/40" />}
+          {/* Wishlist button */}
+          <button
+            onClick={toggleWishlist}
+            className={`niya-wish ${productInWishlist ? 'niya-wish-active' : ''} absolute top-2.5 right-2.5 z-20 w-9 h-9 flex items-center justify-center bg-white/90 border transition-all hover:scale-110`}
+            style={{ border: productInWishlist ? '1px solid #fca5a5' : '1px solid rgba(26,60,46,0.15)' }}
+          >
+            <svg viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}
+              className={`w-4 h-4 ${productInWishlist ? 'text-rose-500' : 'text-[#1a3c2e]/50'}`}
+              fill={productInWishlist ? 'currentColor' : 'none'}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </button>
         </Link>
 
-        {/* Wishlist — always visible on touch devices */}
-        <button
-          onClick={toggleWishlist}
-          className={`pc-wish ${productInWishlist ? 'pc-wish-on' : ''} absolute top-1.5 right-1.5 z-20 flex items-center justify-center rounded-full border shadow-sm transition-all ${
-            productInWishlist
-              ? 'bg-white border-rose-200 text-rose-500'
-              : 'bg-white/90 border-gray-200 text-gray-400'
-          }`}
-          style={{ width: '30px', height: '30px', minWidth: '30px', minHeight: '30px' }}
-        >
-          <HeartIcon />
-        </button>
+        {/* ── Product Info ── */}
+        <div className="flex flex-col p-3 sm:p-4">
 
-        {/* ── Info ── */}
-        <div className="flex flex-col flex-1 p-2 sm:p-3 min-w-0">
-
-          {variantAttributes && (
-            <p className="text-indigo-500 font-semibold uppercase truncate mb-0.5"
-              style={{ fontSize: '8px', letterSpacing: '0.06em' }}>
-              {variantAttributes}
-            </p>
-          )}
-
-          {/* Name */}
-          <Link to={productLink} className="block mb-1 min-w-0">
+          {/* ✅ Name — Playfair Display */}
+          <Link to={productLink}>
             <h3
-              className="font-semibold text-gray-800 line-clamp-2 leading-tight hover:text-indigo-600 transition-colors"
-              style={{ fontSize: '11px', minHeight: '2em' }}
-              title={name}
+              className="text-[#1a3c2e] leading-snug line-clamp-2 hover:text-[#c9a96e] transition-colors"
+              style={{
+                fontFamily: "'Playfair Display', Georgia, serif",
+                fontSize: 'clamp(13px, 1.4vw, 15px)',
+                fontWeight: 600,
+                minHeight: '2.4em',
+                letterSpacing: '0.01em',
+              }}
             >
               {name}
             </h3>
           </Link>
 
           {/* Stars */}
-          <div className="flex items-center gap-1 mb-1.5 flex-wrap">
-            <Stars />
-            <span className="text-gray-400" style={{ fontSize: '9px' }}>
-              ({numReviews || 0})
-            </span>
+          <div className="flex items-center gap-1 mt-1">
+            <div className="flex gap-0.5">
+              {[...Array(5)].map((_, i) => (
+                <svg key={i} viewBox="0 0 20 20" className={`w-2.5 h-2.5 ${i < Math.round(ratingValue) ? 'text-[#c9a96e]' : 'text-gray-200'} fill-current`}>
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              ))}
+            </div>
+            <span className="text-[#1a3c2e]/30 text-[9px]">({numReviews || 0})</span>
           </div>
 
-          <div className="flex-1" />
-
-          {/* Price + stock pill */}
-          <div className="flex items-end justify-between gap-1 mb-2 min-w-0">
-            <div className="min-w-0 flex-1 overflow-hidden">
+          {/* Price + stock */}
+          <div className="flex items-center justify-between mt-2 mb-3">
+            <div>
+              {/* ✅ Cost price — Playfair Display strikethrough */}
               {originalPrice && (
-                <p className="text-gray-400 line-through leading-none mb-0.5"
-                  style={{ fontSize: '9px' }}>
+                <p
+                  className="text-[#1a3c2e]/30 line-through leading-none mb-0.5"
+                  style={{
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    fontSize: 11,
+                  }}
+                >
                   ₹{Number(originalPrice).toFixed(0)}
                 </p>
               )}
-              <p className="font-bold text-gray-900 leading-none truncate"
-                style={{ fontSize: '13px' }}>
+              {/* ✅ Selling price — Playfair Display */}
+              <p
+                className="text-[#1a3c2e] leading-none"
+                style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontSize: 'clamp(16px, 2.2vw, 20px)',
+                  fontWeight: 700,
+                  letterSpacing: '-0.01em',
+                }}
+              >
                 ₹{displayPrice ? Number(displayPrice).toFixed(0) : '—'}
               </p>
             </div>
-
-            {/* Stock pill */}
-            <div
-              className={`flex items-center gap-0.5 rounded-full font-semibold flex-shrink-0 ${
-                isOutOfStock ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'
-              }`}
-              style={{ fontSize: '8px', padding: '2px 6px', whiteSpace: 'nowrap' }}
-            >
-              <span className={`w-1 h-1 rounded-full flex-shrink-0 ${isOutOfStock ? 'bg-red-400' : 'bg-emerald-400'}`} />
-              {isOutOfStock ? 'Out' : 'Stock'}
+            <div className={`flex items-center gap-1 text-[9px] tracking-widest uppercase font-medium ${isOutOfStock ? 'text-rose-400' : 'text-emerald-500'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOutOfStock ? 'bg-rose-400' : 'bg-emerald-400'}`} />
+              {isOutOfStock ? 'Sold Out' : 'In Stock'}
             </div>
           </div>
 
-          {/* Cart button — full width, 40px tall tap target */}
+          {/* Add to Cart button */}
           <button
             onClick={handleAddToCart}
             disabled={isAddingToCart || isOutOfStock}
-            className={`w-full flex items-center justify-center gap-1 rounded-lg font-semibold transition-all active:scale-95 ${
+            className={`w-full py-2.5 text-[10px] tracking-[0.22em] uppercase font-medium transition-all duration-300 ${
               productInCart
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                ? 'bg-[#1a3c2e]/8 text-[#1a3c2e] border border-[#1a3c2e]/25'
                 : isOutOfStock
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'text-white'
+                ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-gray-100'
+                : 'bg-[#1a3c2e] text-white hover:bg-[#2d5a42] border border-[#1a3c2e]'
             }`}
-            style={{
-              height: '36px',
-              fontSize: '11px',
-              backgroundColor: !productInCart && !isOutOfStock ? '#4b5563' : undefined,
-            }}
           >
             {isAddingToCart ? (
-              <Spin />
-            ) : productInCart ? (
-              <>
-                <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24"
-                  stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                 </svg>
-                Added
-              </>
-            ) : isOutOfStock ? 'Out of Stock'
-              : product_structure === 'variant' && product_variants?.length > 0
-              ? 'Options'
-              : (
-                <>
-                  <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round"
-                      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  Add to Cart
-                </>
-              )}
+                Adding…
+              </span>
+            ) : productInCart ? '✓ Added to Cart'
+              : isOutOfStock ? 'Out of Stock'
+              : product_structure === 'variant' && product_variants?.length > 0 ? 'Select Options'
+              : 'Add to Cart'}
           </button>
         </div>
       </div>

@@ -1,55 +1,44 @@
 import React, { useEffect, useRef } from 'react';
 
-const features = [
+const FEATURES = [
   {
     icon: (
-      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-              d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+        <circle cx="12" cy="12" r="10" opacity=".15" fill="currentColor" stroke="none"/>
       </svg>
     ),
-    title: "Handpicked Quality",
-    desc: "Every piece is carefully curated for fabric, fit, and finish — because you deserve nothing less.",
+    title: 'Free Delivery',
+    desc: 'On all orders above ₹599. Pan-India, 2–5 day delivery.',
   },
   {
     icon: (
-      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
       </svg>
     ),
-    title: "Fast Delivery",
-    desc: "Orders dispatched within 7 days. We bring your wardrobe right to your doorstep.",
+    title: 'Authentic Quality',
+    desc: 'Every piece handpicked, quality-checked before dispatch.',
   },
   {
     icon: (
-      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
       </svg>
     ),
-    title: "Inclusive Size Range",
-    desc: "From XS to 5XL, fashion that fits every beautiful body.",
+    title: 'Easy Returns',
+    desc: '7-day hassle-free return policy. No questions asked.',
   },
   {
     icon: (
-      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 8v4l3 3"/>
       </svg>
     ),
-    title: "Secure Payments",
-    desc: "Shop confidently with 100% encrypted and secure payment gateways.",
-  },
-  {
-    icon: (
-      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-              d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    title: "Sustainable Fashion",
-    desc: "Ethically sourced, eco-conscious clothing that looks good and does good for the planet.",
+    title: '24/7 Support',
+    desc: 'WhatsApp & email support. Always here for you.',
   },
 ];
 
@@ -57,95 +46,59 @@ const WhyUs = () => {
   const refs = useRef([]);
 
   useEffect(() => {
-    const observers = refs.current.map((el) => {
-      if (!el) return null;
-      const observer = new IntersectionObserver(([entry]) => {
-        if (entry.isIntersecting) {
-          el.style.opacity = '1';
-          el.style.transform = 'translateY(0)';
-          observer.unobserve(el);
-        }
-      }, { threshold: 0.2 });
-      observer.observe(el);
-      return observer;
-    });
-    return () => observers.forEach(o => o?.disconnect());
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+            obs.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+    refs.current.forEach(el => { if (el) obs.observe(el); });
+    return () => obs.disconnect();
   }, []);
 
-  const topRow = features.slice(0, 3);
-  const bottomRow = features.slice(3, 5);
-
-  const Card = ({ f, refIndex }) => (
-    <div
-      ref={el => refs.current[refIndex] = el}
-      style={{
-        opacity: 0,
-        transform: 'translateY(40px)',
-        transition: `opacity 0.7s ease ${refIndex * 0.12}s, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${refIndex * 0.12}s`,
-      }}
-      className="group bg-white/5 hover:bg-white/10 border border-white/10
-                 hover:border-yellow-400/40 rounded-2xl p-9
-                 transition-all duration-300 cursor-default h-full min-h-[220px]"
-    >
-      <div className="w-14 h-14 rounded-xl bg-yellow-400/10 group-hover:bg-yellow-400/20
-                      flex items-center justify-center text-yellow-400 mb-5
-                      transition-colors duration-300">
-        {f.icon}
-      </div>
-      <h3
-        className="text-white font-bold text-lg mb-2"
-        style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
-      >
-        {f.title}
-      </h3>
-      <p className="text-white/50 text-sm leading-relaxed">{f.desc}</p>
-    </div>
-  );
-
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&display=swap');
-      `}</style>
+    <section style={{ background: '#082B27', padding: '72px 0', position: 'relative', overflow: 'hidden' }}>
+      {/* Thin top/bottom lines */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'linear-gradient(to right,transparent,rgba(201,168,76,.2),transparent)' }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '1px', background: 'linear-gradient(to right,transparent,rgba(201,168,76,.2),transparent)' }} />
 
-      <section className="py-20 bg-[#082B27] relative overflow-hidden">
-
-        <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full opacity-5 bg-white" />
-        <div className="absolute -bottom-20 -right-20 w-96 h-96 rounded-full opacity-5 bg-white" />
-
-        <div className="container mx-auto px-4 relative z-10">
-
-          {/* Heading */}
-          <div className="text-center mb-14">
-            <span className="text-xs font-bold uppercase tracking-widest text-white/40">
-              Our Promise
-            </span>
-            <h2
-              className="text-4xl md:text-5xl font-black text-white mt-2"
-              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 clamp(20px,5vw,64px)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: '0' }}>
+          {FEATURES.map((f, i) => (
+            <div
+              key={i}
+              ref={el => refs.current[i] = el}
+              style={{
+                opacity: 0,
+                transform: 'translateY(24px)',
+                transition: `opacity .7s ease ${i * 100}ms, transform .7s cubic-bezier(.22,1,.36,1) ${i * 100}ms`,
+                display: 'flex', alignItems: 'flex-start', gap: '20px',
+                padding: 'clamp(24px,3vw,40px) clamp(20px,3vw,36px)',
+                borderRight: i < FEATURES.length - 1 ? '1px solid rgba(255,255,255,.06)' : 'none',
+              }}
             >
-              Why Customers Love{' '}
-              <span className="text-yellow-400">Shop With Niya</span>
-            </h2>
-          </div>
-
-          {/* Top Row — 3 equal cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
-            {topRow.map((f, i) => (
-              <Card key={i} f={f} refIndex={i} />
-            ))}
-          </div>
-
-          {/* Bottom Row — 2 cards centered */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:w-2/3 mx-auto">
-            {bottomRow.map((f, i) => (
-              <Card key={i + 3} f={f} refIndex={i + 3} />
-            ))}
-          </div>
-
+              <div style={{ color: '#C9A84C', flexShrink: 0, marginTop: '2px' }}>
+                {f.icon}
+              </div>
+              <div>
+                <p style={{ fontFamily: '"Bodoni Moda",serif', fontSize: '1rem', fontWeight: 700, color: '#FAF7F2', margin: '0 0 6px', letterSpacing: '-.01em' }}>
+                  {f.title}
+                </p>
+                <p style={{ fontFamily: '"Jost",sans-serif', fontSize: '.85rem', fontWeight: 300, color: 'rgba(245,239,224,.45)', lineHeight: 1.7, margin: 0 }}>
+                  {f.desc}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
-      </section>
-    </>
+      </div>
+    </section>
   );
 };
 
