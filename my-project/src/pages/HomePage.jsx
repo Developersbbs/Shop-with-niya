@@ -7,9 +7,8 @@ import Testimonials from '../components/home/Testimonials';
 import Newsletter from '../components/home/Newsletter';
 import WhyUs from '../pages/WhuUs';
 
-
 const HomePage = () => {
-  const { isLoading } = useGetProductsQuery({ limit: 8 }); // ← remove error
+  const { isLoading } = useGetProductsQuery({ limit: 8 });
 
   if (isLoading) return (
     <div className="flex justify-center items-center h-64">
@@ -17,16 +16,15 @@ const HomePage = () => {
     </div>
   );
 
-  // ← remove the error block entirely, just render the page
   return (
     <div>
       <Hero />
       <div className="space-y-0">
         <Categories />
         <OffersSection />
-        <WhyUs />
+        {/* <WhyUs /> */}
         <Testimonials />
-        <Newsletter />
+        {/* <Newsletter /> */}
       </div>
     </div>
   );
