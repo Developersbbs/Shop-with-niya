@@ -1,6 +1,6 @@
 [
   {
-    "origin": [],
+    "origin": ["http://shop-with-niya.sbbs.co.in/", "https://shop-with-niya.sbbs.co.in/","http://admin-shop-with-niya.sbbs.co.in/", "https://admin-shop-with-niya.sbbs.co.in/"],
     "method": ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
     "responseHeader": [
       "Content-Type",
