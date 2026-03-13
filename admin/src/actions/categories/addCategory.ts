@@ -58,6 +58,21 @@ export async function addCategory(
   // Get the image file
   const imageFile = formData.get("image") as File | null;
 
+  // Get the category name
+  const nameValue = formData.get("name");
+  const title = typeof nameValue === 'string' ? nameValue : '';
+
+  // If no category name is provided, return an error
+  if (!title || title.trim() === '') {
+    return {
+      success: false,
+      message: "Category name is required",
+      errors: {
+        name: ["Category name is required"],
+      } as Record<string, string[]>,
+    };
+  }
+
   // If no image is provided, return an error
   if (!imageFile) {
     return {

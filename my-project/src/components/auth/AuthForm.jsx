@@ -59,26 +59,30 @@ const AuthForm = ({
     
     if (!isLogin) {
       // First name validation
-      if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+      const firstName = formData.firstName || '';
+      if (!firstName.trim()) newErrors.firstName = 'First name is required';
       
       // Email validation
-      if (!formData.email) {
+      const email = formData.email || '';
+      if (!email.trim()) {
         newErrors.email = 'Email is required';
-      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      } else if (!/\S+@\S+\.\S+/.test(email)) {
         newErrors.email = 'Please enter a valid email address';
       }
       
       // Password validation
-      if (!formData.password) {
+      const password = formData.password || '';
+      if (!password.trim()) {
         newErrors.password = 'Password is required';
-      } else if (formData.password.length < 6) {
+      } else if (password.length < 6) {
         newErrors.password = 'Password must be at least 6 characters';
       }
       
       // Confirm password validation
-      if (!formData.confirmPassword) {
+      const confirmPassword = formData.confirmPassword || '';
+      if (!confirmPassword.trim()) {
         newErrors.confirmPassword = 'Please confirm your password';
-      } else if (formData.password !== formData.confirmPassword) {
+      } else if (password !== confirmPassword) {
         newErrors.confirmPassword = 'Passwords do not match';
         // Also show error on password field for better UX
         if (!newErrors.password) {
@@ -87,8 +91,11 @@ const AuthForm = ({
       }
     } else {
       // Login validation
-      if (!formData.email) newErrors.email = 'Email is required';
-      if (!formData.password) newErrors.password = 'Password is required';
+      const email = formData.email || '';
+      if (!email.trim()) newErrors.email = 'Email is required';
+      
+      const password = formData.password || '';
+      if (!password.trim()) newErrors.password = 'Password is required';
     }
     
     setErrors(newErrors);
