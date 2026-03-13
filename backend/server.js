@@ -15,6 +15,10 @@ console.log('🔥 Firebase Admin SDK status:', firebaseAdmin ? 'Initialized' : '
 const allowedOrigins = [
   process.env.ADMIN_URL,
   process.env.FRONTEND_URL,
+  "http://admin-shop-with-niya.sbbs.co.in",
+  "https://admin-shop-with-niya.sbbs.co.in",
+  "http://shop-with-niya.sbbs.co.in/",
+  "https://shop-with-niya.sbbs.co.in/"
 ].filter(Boolean);
 
 // Simple CORS middleware
