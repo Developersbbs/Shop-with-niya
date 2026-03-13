@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Control, FieldValues, Path, UseFormSetValue, UseFormWatch, PathValue } from "react-hook-form";
 import { X, Plus, Edit, Check, X as XIcon } from "lucide-react";
@@ -63,9 +63,10 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingSubcategoryIds, setEditingSubcategoryIds] = useState<string[]>([]);
 
-  const currentSelections = useMemo(() => watch(name) as CategorySubcategorySelection[] || [], [watch, name]);
+  // ✅ Fixed: removed useMemo — watch() must be called directly for live updates
+  const currentSelections = (watch(name) as CategorySubcategorySelection[]) || [];
 
-  // Clean initial data by removing inactive subcategories
+  // Clean initial data by removing inactive subcategories — runs once on mount only
   useEffect(() => {
     const cleanSelections = async () => {
       if (!currentSelections || currentSelections.length === 0) return;
@@ -75,30 +76,25 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
 
       for (const selection of currentSelections) {
         try {
-          // Fetch current subcategories for this category
           const { data } = await axiosInstance.get(`/api/categories/${selection.categoryId}`);
           const activeSubcategories = (data.data.subcategories || [])
             .filter((subcategory: Subcategory) => subcategory?.published)
             .map((subcategory: Subcategory) => subcategory._id);
 
-          // Filter out inactive subcategories
           const activeSubcategoryIds = selection.subcategoryIds.filter(id =>
             activeSubcategories.includes(id)
           );
 
-          // Get subcategory names for the active subcategories
           const activeSubcategoryNames = (data.data.subcategories || [])
             .filter((subcategory: Subcategory) =>
               subcategory?.published && activeSubcategoryIds.includes(subcategory._id)
             )
             .map((subcategory: Subcategory) => subcategory.name);
 
-          // Check if any subcategories were removed
           if (activeSubcategoryIds.length !== selection.subcategoryIds.length) {
             hasChanges = true;
           }
 
-          // Also check if we need to populate subcategory names
           if (!selection.subcategoryNames || selection.subcategoryNames.length === 0) {
             hasChanges = true;
           }
@@ -110,7 +106,6 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
           });
         } catch (error) {
           console.error('Error cleaning selection for category', selection.categoryId, error);
-          // If we can't validate, keep the original but remove all subcategories to be safe
           hasChanges = true;
           cleanedSelections.push({
             ...selection,
@@ -120,9 +115,7 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
         }
       }
 
-      // Update form if changes were made
       if (hasChanges) {
-        console.log('Cleaning inactive subcategories from form data');
         setValue(name, cleanedSelections as PathValue<TFormData, Path<TFormData>>, {
           shouldDirty: true,
           shouldTouch: true,
@@ -132,7 +125,7 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
     };
 
     cleanSelections();
-  }, [currentSelections, name, setValue]); // Run only once on mount
+  }, []); // ✅ Fixed: empty dependency array — runs once on mount only
 
   // Fetch categories
   const {
@@ -180,6 +173,12 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
   const handleAddSelection = () => {
     if (!selectedCategoryId) return;
 
+    // Prevent duplicate category
+    const alreadyAdded = currentSelections.some(
+      (s) => s.categoryId === selectedCategoryId
+    );
+    if (alreadyAdded) return;
+
     const category = categories?.find((c) => c._id === selectedCategoryId);
     const selectedSubcategories = subcategories?.filter((s: Subcategory) =>
       selectedSubcategoryIds.includes(s._id)
@@ -192,16 +191,14 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
       subcategoryNames: selectedSubcategories?.map((s: Subcategory) => s.name) || [],
     };
 
-    console.log('Adding selection:', newSelection);
     const updatedSelections = [...currentSelections, newSelection];
-    console.log('Updated selections:', updatedSelections);
     setValue(name, updatedSelections as PathValue<TFormData, Path<TFormData>>, {
       shouldDirty: true,
       shouldTouch: true,
       shouldValidate: true,
     });
 
-    // Reset selection
+    // ✅ Reset both so user can pick next category
     setSelectedCategoryId("");
     setSelectedSubcategoryIds([]);
   };
@@ -235,7 +232,6 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
     updatedSelections[editingIndex] = updatedSelection;
     setValue(name, updatedSelections as PathValue<TFormData, Path<TFormData>>);
 
-    // Reset editing state
     setEditingIndex(null);
     setEditingSubcategoryIds([]);
   };
@@ -269,6 +265,7 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
         <FormItem className="flex flex-col md:flex-row md:gap-x-4 md:space-y-0">
           {label && <FormLabel className="md:flex-shrink-0 md:w-1/4 md:mt-2 leading-snug">{label}</FormLabel>}
           <div className="space-y-6 w-full">
+
             {/* Display selected categories and subcategories */}
             {currentSelections.length > 0 && (
               <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
@@ -282,7 +279,6 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
                         <div className="font-medium text-sm mb-2">{displayName}</div>
 
                         {editingIndex === index ? (
-                          // Edit mode
                           <div className="space-y-2">
                             {editingSubcategoriesLoading ? (
                               <div className="text-sm text-muted-foreground">Loading subcategories...</div>
@@ -291,8 +287,7 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
                                 {editingSubcategories.map((subcategory: Subcategory) => (
                                   <label
                                     key={subcategory._id}
-                                    className={`flex items-center space-x-2 p-2 rounded ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'
-                                      }`}
+                                    className={`flex items-center space-x-2 p-2 rounded ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'}`}
                                   >
                                     <input
                                       type="checkbox"
@@ -310,79 +305,45 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
                                 No subcategories available for this category
                               </div>
                             )}
-
                             <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                size="sm"
-                                onClick={handleSaveEdit}
-                                className="h-8"
-                              >
-                                <Check className="h-4 w-4 mr-1" />
-                                Save
+                              <Button type="button" size="sm" onClick={handleSaveEdit} className="h-8">
+                                <Check className="h-4 w-4 mr-1" /> Save
                               </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCancelEdit}
-                                className="h-8"
-                              >
-                                <XIcon className="h-4 w-4 mr-1" />
-                                Cancel
+                              <Button type="button" variant="outline" size="sm" onClick={handleCancelEdit} className="h-8">
+                                <XIcon className="h-4 w-4 mr-1" /> Cancel
                               </Button>
                             </div>
                           </div>
                         ) : (
-                          // Display mode
                           <div className="flex flex-wrap gap-1">
-                            {selection.subcategoryNames?.map((name, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
-                                {name}
-                              </Badge>
-                            ))}
+                            {selection.subcategoryNames && selection.subcategoryNames.length > 0 ? (
+                              selection.subcategoryNames.map((subName, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {subName}
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-xs text-muted-foreground">No subcategories</span>
+                            )}
                           </div>
                         )}
                       </div>
 
                       {editingIndex === index ? (
                         <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={handleSaveEdit}
-                            className="h-8 w-8 p-0"
-                          >
+                          <Button type="button" size="sm" onClick={handleSaveEdit} className="h-8 w-8 p-0">
                             <Check className="h-4 w-4" />
                           </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleCancelEdit}
-                            className="h-8 w-8 p-0"
-                          >
+                          <Button type="button" variant="outline" size="sm" onClick={handleCancelEdit} className="h-8 w-8 p-0">
                             <XIcon className="h-4 w-4" />
                           </Button>
                         </div>
                       ) : (
                         <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditSelection(index)}
-                            className="h-8 w-8 p-0"
-                          >
+                          <Button type="button" variant="ghost" size="sm" onClick={() => handleEditSelection(index)} className="h-8 w-8 p-0">
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveSelection(index)}
-                            className="h-8 w-8 p-0"
-                          >
+                          <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveSelection(index)} className="h-8 w-8 p-0">
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
@@ -393,7 +354,7 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
               </div>
             )}
 
-            {/* Category Selection */}
+            {/* Category Selection Dropdown */}
             <div className="space-y-2">
               <Select
                 value={selectedCategoryId}
@@ -430,8 +391,9 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
                     {!categoriesLoading &&
                       !categoriesError &&
                       categories &&
-                      categories.filter((category) => !currentSelections.some((selection) => selection.categoryId === category._id))
-                        .length === 0 && (
+                      categories.filter((category) =>
+                        !currentSelections.some((selection) => selection.categoryId === category._id)
+                      ).length === 0 && (
                         <div className="p-2 text-sm text-muted-foreground text-center">
                           All categories have been selected
                         </div>
@@ -454,8 +416,7 @@ export default function FormMultipleCategorySubcategoryInput<TFormData extends F
                     {subcategories.map((subcategory: Subcategory) => (
                       <label
                         key={subcategory._id}
-                        className={`flex items-center space-x-2 p-2 rounded ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'
-                          }`}
+                        className={`flex items-center space-x-2 p-2 rounded ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'}`}
                       >
                         <input
                           type="checkbox"

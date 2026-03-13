@@ -59,7 +59,7 @@ export default function AppSidebar() {
               )}
             >
               <FaBagShopping className="size-6 text-primary mb-1 flex-shrink-0" />
-              <Typography component="span">ECommerce</Typography>
+              <Typography component="span" className="whitespace-nowrap pr-8">Shop With Niya</Typography>
             </Link>
 
             <ul className="pt-6 flex flex-col gap-y-2">

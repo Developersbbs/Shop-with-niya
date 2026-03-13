@@ -75,18 +75,18 @@ export const navItems = [
   //   icon: <RiCoupon2Line />,
   // },
 
-  {
-    title: "Offers",
-    url: "/offers",
-    icon: <FaGift />,
-    children: [
-      {
-        title: "Combo Offers",
-        url: "/offers/combo-offers",
-        icon: <FaTag />
-      }
-    ]
-  },
+  // {
+  //   title: "Offers",
+  //   url: "/offers",
+  //   icon: <FaGift />,
+  //   children: [
+  //     {
+  //       title: "Combo Offers",
+  //       url: "/offers/combo-offers",
+  //       icon: <FaTag />
+  //     }
+  //   ]
+  // },
   {
     title: "Customers",
     url: "/customers",

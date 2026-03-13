@@ -357,7 +357,7 @@ const LoadingScreen = ({ variant = 'ring', message = 'Loading…', fullScreen = 
             color: '#c9a84c',
             letterSpacing: '0.5em',
             textTransform: 'uppercase',
-          }}>by Yakkha Fashion Studio</span>
+          }}>by Yuktha Fashion Studio</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
             <div style={{ width: 28, height: 1, background: 'linear-gradient(to right, transparent, #c9a84c)' }} />
             <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#c9a84c', opacity: 0.7 }} />
