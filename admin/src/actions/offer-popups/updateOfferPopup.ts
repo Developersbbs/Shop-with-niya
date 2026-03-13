@@ -39,8 +39,10 @@ export async function updateOfferPopup(
   }
 
   // Validate required fields
-  const heading = formData.get("heading") as string;
-  const description = formData.get("description") as string;
+  const headingRaw = formData.get("heading");
+  const descriptionRaw = formData.get("description");
+  const heading = typeof headingRaw === "string" ? headingRaw : "";
+  const description = typeof descriptionRaw === "string" ? descriptionRaw : "";
 
   if (!heading || heading.trim() === '') {
     return {
@@ -74,8 +76,10 @@ export async function updateOfferPopup(
     };
 
     // Only include dates if they're provided
-    const startDate = formData.get("startDate") as string;
-    const endDate = formData.get("endDate") as string;
+    const startDateRaw = formData.get("startDate");
+    const endDateRaw = formData.get("endDate");
+    const startDate = typeof startDateRaw === "string" ? startDateRaw : "";
+    const endDate = typeof endDateRaw === "string" ? endDateRaw : "";
     if (startDate && startDate.trim() !== '') {
       requestBody.startDate = startDate;
     }
@@ -84,7 +88,8 @@ export async function updateOfferPopup(
     }
 
     // Include linked_offer if provided
-    const linkedOffer = formData.get("linked_offer") as string;
+    const linkedOfferRaw = formData.get("linked_offer");
+    const linkedOffer = typeof linkedOfferRaw === "string" ? linkedOfferRaw : "";
     if (linkedOffer && linkedOffer.trim() !== '') {
       requestBody.linked_offer = linkedOffer;
     }

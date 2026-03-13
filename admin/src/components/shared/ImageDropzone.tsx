@@ -80,7 +80,7 @@ export const ImageDropzone = forwardRef<
         </div>
       </div>
 
-      {preview && preview.trim() !== '' && (
+      {typeof preview === "string" && preview.trim() !== '' && (
         <div className="size-28 p-2 rounded-md relative border border-input mt-4">
           <Image
             src={preview}

@@ -8,20 +8,31 @@ export async function addComboOffer(
   formData: FormData
 ): Promise<EnhancedServerActionResponse> {
   // Extract form data
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const price = formData.get("price") as string;
-  const originalPrice = formData.get("originalPrice") as string;
+  const titleRaw = formData.get("title");
+  const descriptionRaw = formData.get("description");
+  const priceRaw = formData.get("price");
+  const originalPriceRaw = formData.get("originalPrice");
+
+  const title = typeof titleRaw === "string" ? titleRaw : "";
+  const description = typeof descriptionRaw === "string" ? descriptionRaw : "";
+  const price = typeof priceRaw === "string" ? priceRaw : "";
+  const originalPrice = typeof originalPriceRaw === "string" ? originalPriceRaw : "";
   const isLimitedTime = formData.get("isLimitedTime") === "true";
   const isActive = formData.get("isActive") === "true";
   const badgeType = formData.get("badgeType") as string || "LIMITED_TIME";
   const showOnHomepage = formData.get("showOnHomepage") === "true";
   const showOnOffersPage = formData.get("showOnOffersPage") === "true";
-  const startDate = formData.get("startDate") as string;
-  const endDate = formData.get("endDate") as string;
-  const displayPriority = formData.get("displayPriority") as string;
-  const comboImage = formData.get("comboImage") as string;
-  const productsStr = formData.get("products") as string;
+  const startDateRaw = formData.get("startDate");
+  const endDateRaw = formData.get("endDate");
+  const displayPriorityRaw = formData.get("displayPriority");
+  const comboImageRaw = formData.get("comboImage");
+  const productsStrRaw = formData.get("products");
+
+  const startDate = typeof startDateRaw === "string" ? startDateRaw : "";
+  const endDate = typeof endDateRaw === "string" ? endDateRaw : "";
+  const displayPriority = typeof displayPriorityRaw === "string" ? displayPriorityRaw : "";
+  const comboImage = typeof comboImageRaw === "string" ? comboImageRaw : "";
+  const productsStr = typeof productsStrRaw === "string" ? productsStrRaw : "";
 
   // Validate required fields
   if (!title || title.trim() === '') {

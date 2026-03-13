@@ -28,7 +28,8 @@ export async function updateHeroSection(
   formData: FormData
 ): Promise<EnhancedServerActionResponse> {
 
-  const title = formData.get("title") as string;
+  const titleRaw = formData.get("title");
+  const title = typeof titleRaw === "string" ? titleRaw : "";
   if (!title || title.trim() === '') {
     return {
       success: false,

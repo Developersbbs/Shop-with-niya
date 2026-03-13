@@ -37,7 +37,7 @@ const FormImageInput = forwardRef(function FormImageInputRender<
             <FormControl>
               <ImageDropzone
                 ref={ref}
-                previewImage={field.value || previewImage}
+                previewImage={typeof field.value === "string" ? field.value : previewImage}
                 onFileAccepted={(file) => field.onChange(file)}
                 onFileRemoved={() => field.onChange(undefined)}
               />

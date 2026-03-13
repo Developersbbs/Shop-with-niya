@@ -62,7 +62,8 @@ export async function addHeroSection(
     }
   }
 
-  const title = formData.get("title") as string;
+  const titleRaw = formData.get("title");
+  const title = typeof titleRaw === "string" ? titleRaw : "";
   if (!title || title.trim() === '') {
     return {
       success: false,
@@ -164,7 +165,8 @@ export async function updateHeroSection(
     }
   }
 
-  const title = formData.get("title") as string;
+  const titleRaw = formData.get("title");
+  const title = typeof titleRaw === "string" ? titleRaw : "";
   if (!title || title.trim() === '') {
     return {
       success: false,

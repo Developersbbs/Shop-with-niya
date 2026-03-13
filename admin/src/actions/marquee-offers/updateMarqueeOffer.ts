@@ -9,8 +9,10 @@ export async function updateMarqueeOffer(
   formData: FormData
 ): Promise<EnhancedServerActionResponse> {
   // Extract form data
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
+  const titleRaw = formData.get("title");
+  const descriptionRaw = formData.get("description");
+  const title = typeof titleRaw === "string" ? titleRaw : "";
+  const description = typeof descriptionRaw === "string" ? descriptionRaw : "";
   const icon = formData.get("icon") as string;
   const isActive = formData.get("isActive") === "true";
 

@@ -47,8 +47,10 @@ export async function addOfferPopup(
   }
 
   // Validate required fields
-  const heading = formData.get("heading") as string;
-  const description = formData.get("description") as string;
+  const headingRaw = formData.get("heading");
+  const descriptionRaw = formData.get("description");
+  const heading = typeof headingRaw === "string" ? headingRaw : "";
+  const description = typeof descriptionRaw === "string" ? descriptionRaw : "";
 
   if (!heading || heading.trim() === '') {
     return {
@@ -75,14 +77,14 @@ export async function addOfferPopup(
     const requestBody = {
       heading: heading.trim(),
       description: description.trim(),
-      buttonText: formData.get("buttonText") || "Shop Now",
-      buttonLink: formData.get("buttonLink") || "/products",
+      buttonText: typeof formData.get("buttonText") === "string" ? (formData.get("buttonText") as string) : "Shop Now",
+      buttonLink: typeof formData.get("buttonLink") === "string" ? (formData.get("buttonLink") as string) : "/products",
       image: imageUrl, // Use the uploaded image URL
       isActive: formData.get("isActive") === "true",
       priority: parseInt(formData.get("priority") as string) || 0,
-      startDate: formData.get("startDate") || null,
-      endDate: formData.get("endDate") || null,
-      linked_offer: formData.get("linked_offer") || null,
+      startDate: typeof formData.get("startDate") === "string" ? (formData.get("startDate") as string) : null,
+      endDate: typeof formData.get("endDate") === "string" ? (formData.get("endDate") as string) : null,
+      linked_offer: typeof formData.get("linked_offer") === "string" ? (formData.get("linked_offer") as string) : null,
     };
 
     // Make the API request to your backend
