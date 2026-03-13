@@ -113,7 +113,7 @@ export const productFormSchema = z
       .int({ message: "Min stock threshold must be a whole number" })
       .min(0, { message: "Min stock threshold cannot be negative" })
       .optional()
-      .transform((val) => {
+      .transform((val: number | string | undefined | null) => {
         if (val === 0 || val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
           return undefined;
         }
@@ -249,7 +249,7 @@ export const productFormSchema = z
             path: ["fileSize"],
           });
         }
-        if (data.downloadFormat !== undefined && !data.downloadFormat.trim()) {
+        if (data.downloadFormat !== undefined && typeof data.downloadFormat === 'string' && !data.downloadFormat.trim()) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Download format must be specified when uploading a file",
@@ -297,7 +297,7 @@ export const productFormSchema = z
     if (data.product_variants && data.product_variants.combinations.length > 0) {
       const skus = data.product_variants.combinations
         .map(c => c.sku)
-        .filter(sku => sku && sku.trim() !== '');
+        .filter(sku => sku && typeof sku === 'string' && sku.trim() !== '');
       const uniqueSkus = new Set(skus);
       if (skus.length !== uniqueSkus.size) {
         ctx.addIssue({

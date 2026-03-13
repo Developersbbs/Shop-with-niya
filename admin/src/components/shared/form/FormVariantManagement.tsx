@@ -370,7 +370,7 @@ export default function FormVariantManagement<TFormData extends FieldValues>({
   }, [productName, variantData.combinations]);
 
   const addAttribute = () => {
-    if (!newAttributeName.trim()) return;
+    if (!newAttributeName || (newAttributeName && !newAttributeName.trim())) return;
     if (!VariantManager.validateAttributeName(newAttributeName, variantData.attributes)) {
       alert("Attribute name already exists!");
       return;

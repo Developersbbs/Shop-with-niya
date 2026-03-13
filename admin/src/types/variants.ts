@@ -162,8 +162,8 @@ export class VariantManager {
     // Add variant attributes to make it unique
     if (combination.attributes && Object.keys(combination.attributes).length > 0) {
       const attributeValues = Object.entries(combination.attributes)
-        .filter(([, value]) => value && value.trim())
-        .map(([, value]) => this.slugify(value))
+        .filter(([, value]) => value && typeof value === 'string' && String(value).trim())
+        .map(([, value]) => this.slugify(String(value)))
         .join('-');
 
       if (attributeValues) {
@@ -186,7 +186,7 @@ export class VariantManager {
     // Add variant attributes to make it descriptive
     if (combination.attributes && Object.keys(combination.attributes).length > 0) {
       const attributeValues = Object.entries(combination.attributes)
-        .filter(([, value]) => value && value.trim())
+        .filter(([, value]) => value && typeof value === 'string' && value.trim())
         .map(([, value]) => value.trim())
         .join(' ');
 

@@ -44,8 +44,8 @@ app.use((req, res, next) => {
 });
 
 // JSON and URL-encoded body parsing
-app.use(express.json({ limit: '200mb' }));
-app.use(express.urlencoded({ limit: '200mb', extended: true }));
+app.use(express.json({ limit: 'Infinity' }));
+app.use(express.urlencoded({ limit: 'Infinity', extended: true }));
 
 // Configure body parsing to skip multipart/form-data
 app.use((req, res, next) => {
