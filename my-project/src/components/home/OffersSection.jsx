@@ -5,7 +5,7 @@ import { Autoplay, Navigation } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
 
-const API_URL = (import.meta?.env?.VITE_API_URL || 'http://localhost:5000') + '/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 /* ─────────────────────────────────────────
    Inject styles once

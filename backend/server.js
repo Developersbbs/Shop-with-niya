@@ -13,16 +13,7 @@ console.log('🔥 Firebase Admin SDK status:', firebaseAdmin ? 'Initialized' : '
 
 // CORS configuration
 const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:3002',
-  'http://localhost:3003',
-  'http://127.0.0.1:3003',
-  'http://localhost:5173', // Vite default port
-  'http://localhost:5174', // Vite alternate port
-  'http://127.0.0.1:5175',
-  'https://admin-shop-with-niya.netlify.app',
-  'https://shop-with-niya.netlify.app',
+  process.env.ADMIN_URL,
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 

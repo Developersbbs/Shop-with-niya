@@ -245,7 +245,7 @@ const fetchBackendUserDataForLogin = async (firebaseUser, dispatch) => {
     
     console.log('LoginThunk: Using token:', token ? 'present' : 'missing');
     
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const API_URL = import.meta.env.VITE_API_URL;
     const response = await fetch(`${API_URL}/auth/profile/${firebaseUser.uid}`, {
       headers: {
         'Authorization': `Bearer ${token}`,

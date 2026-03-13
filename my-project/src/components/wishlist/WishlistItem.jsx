@@ -24,7 +24,7 @@ useEffect(() => {
       const productId = item._id || item.id;
       const token = localStorage.getItem('authToken') || localStorage.getItem('jwt_token');
       
-      const res = await fetch(`http://localhost:5000/api/products/${productId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${productId}`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       const data = await res.json();

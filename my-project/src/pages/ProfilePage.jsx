@@ -148,7 +148,7 @@ export default function ProfilePage() {
     try {
       const cu = auth.currentUser;
       if (!cu) { setError('Please sign in'); setIsPageLoading(false); return; }
-      const res  = await fetch(`http://localhost:5000/api/auth/profile/${cu.uid}`);
+      const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/profile/${cu.uid}`);
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed'); }
       const result = await res.json();
       if (!result.success) throw new Error(result.error || 'Failed');
@@ -250,7 +250,7 @@ export default function ProfilePage() {
         catch { toast.error('Failed to upload photo.'); setIsSaving(false); return; }
       }
       if (typeof avatarUrl==='string' && avatarUrl.startsWith('data:')) avatarUrl = userData.avatar;
-      const res = await fetch(`http://localhost:5000/api/auth/profile/${cu.uid}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/profile/${cu.uid}`, {
         method:'PUT', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ name:`${formData.firstName} ${formData.lastName}`.trim(), email:formData.email, phone:formData.phone, address:formData.address, image_url:avatarUrl })
       });

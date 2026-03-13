@@ -64,7 +64,7 @@ const App = () => {
         console.log('App: fetchBackendUserData called for user:', firebaseUser.uid);
         dispatch(setBackendUserLoading(true)); // Set loading to true
         
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const API_URL = import.meta.env.VITE_API_URL;
         
         // Check if we already have backend user data in localStorage (cache)
         const cachedBackendUser = localStorage.getItem('sbbs_backend_user');

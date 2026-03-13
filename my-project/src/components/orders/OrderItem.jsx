@@ -25,7 +25,7 @@ const OrderItem = ({ item }) => {
   useEffect(() => {
     if (!slug && (item.product_id || item._id)) {
       const id = item.product_id || item._id;
-      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/products/${id}`)
+      fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`)
         .then(res => res.json())
         .then(data => {
           const product = data.data || data.product || data;

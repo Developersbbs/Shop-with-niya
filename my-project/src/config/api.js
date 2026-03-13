@@ -10,7 +10,7 @@ const getApiBaseUrl = () => {
         url = url.replace('http:', 'http://');
       } else {
         // Otherwise prepend the full protocol
-        url = `http://localhost:5000${url.startsWith('/') ? '' : '/'}${url}`;
+        url = `${import.meta.env.VITE_API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
       }
     }
     return url;
@@ -25,14 +25,14 @@ const getApiBaseUrl = () => {
         url = url.replace('http:', 'http://');
       } else {
         // Otherwise prepend the full protocol
-        url = `http://localhost:5000${url.startsWith('/') ? '' : '/'}${url}`;
+        url = `${import.meta.env.VITE_API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
       }
     }
     return url;
   }
   
   // Fallback to localhost for development
-  return 'http://localhost:5000/api';
+  return import.meta.env.VITE_API_URL;
 };
 
 export const API_BASE_URL = getApiBaseUrl();

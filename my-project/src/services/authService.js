@@ -17,7 +17,7 @@ import { clearAllAuthData } from '../utils/authUtils';
 import { exchangeFirebaseToken, storeJWTToken, clearStoredJWTToken } from './authTokenService';
 
 // Use environment variable if set, otherwise default to local development URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Sync user with backend
 const syncUserWithBackend = async (user, additionalData = {}) => {

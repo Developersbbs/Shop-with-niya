@@ -382,7 +382,7 @@ productSchema.pre('save', function (next) {
     if (!this.seo) {
       this.seo = {};
     }
-    const baseUrl = process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://yourstore.com';
+    const baseUrl = process.env.ADMIN_URL;
     this.seo.canonical = `${baseUrl}/products/${this.slug}`;
   }
 
