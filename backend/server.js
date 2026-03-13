@@ -17,9 +17,11 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   "http://admin-shop-with-niya.sbbs.co.in",
   "https://admin-shop-with-niya.sbbs.co.in",
-  "http://shop-with-niya.sbbs.co.in/",
-  "https://shop-with-niya.sbbs.co.in/"
-].filter(Boolean);
+  "http://shop-with-niya.sbbs.co.in",
+  "https://shop-with-niya.sbbs.co.in",
+  "https://sbbs.cloud",
+  "https://www.sbbs.cloud"
+].filter(Boolean).map(origin => origin.replace(/\/$/, '')); // Remove trailing slashes
 
 // Simple CORS middleware
 app.use((req, res, next) => {

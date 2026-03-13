@@ -176,6 +176,20 @@ router.post("/", async (req, res) => {
   try {
     const { name, description, slug, image } = req.body;
 
+    // Safely extract and validate required fields
+    const categoryName = typeof name === 'string' ? name.trim() : '';
+    const categoryDescription = typeof description === 'string' ? description.trim() : '';
+    const categorySlug = typeof slug === 'string' ? slug.trim() : '';
+    const categoryImage = typeof image === 'string' ? image.trim() : null;
+
+    if (!categoryName) {
+      return res.status(400).json({ success: false, error: "Category name is required" });
+    }
+
+    if (!categorySlug) {
+      return res.status(400).json({ success: false, error: "Category slug is required" });
+    }
+
     // Parse subcategories from form data
     const subcategories = [];
     let subcategoryIndex = 0;
